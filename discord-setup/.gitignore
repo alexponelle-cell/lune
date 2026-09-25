@@ -1,0 +1,3 @@
+# Le token du bot ne doit JAMAIS être commité
+token.txt
+__pycache__/
