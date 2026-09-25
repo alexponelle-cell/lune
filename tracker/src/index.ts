@@ -11,6 +11,11 @@ import { createFetchers } from './platforms/index.js';
 import { Analytics } from './services/analytics.js';
 import { createApp, startWeb } from './web/server.js';
 
+// Une erreur imprévue est journalisée au lieu de faire tomber le bot.
+process.on('unhandledRejection', (err) => log.error('promesse rejetée non gérée', err));
+process.on('uncaughtException', (err) => log.error('exception non gérée', err));
+
+log.info(`démarrage (bot: ${config.DISCORD_TOKEN ? 'oui' : 'non'}, serveur: ${config.DISCORD_GUILD_ID ?? 'global'}, données: ${config.FETCHER_MODE})`);
 const db = openDatabase(config.DATABASE_PATH);
 const repo = new Repo(db);
 const analytics = new Analytics(repo);

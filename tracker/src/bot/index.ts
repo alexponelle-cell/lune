@@ -54,6 +54,7 @@ export async function startBot(deps: {
 
   discord.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
+    log.info(`commande /${interaction.commandName} par ${interaction.user.username} (salon ${interaction.channelId})`);
     try {
       await handleCommand(interaction, deps);
     } catch (err) {
@@ -63,6 +64,10 @@ export async function startBot(deps: {
       else await interaction.reply(reply).catch(() => {});
     }
   });
+
+  discord.on(Events.Error, (err) => log.error('discord', err));
+  discord.on(Events.Warn, (msg) => log.warn(`discord: ${msg}`));
+  discord.on(Events.ShardDisconnect, (e) => log.warn(`discord déconnecté (code ${e.code})`));
 
   await discord.login(deps.token);
 
