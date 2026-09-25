@@ -158,4 +158,7 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
       insert.run(r.id, JSON.stringify(config), r.created_at);
     }
   },
+
+  // v3 : vues de référence des vidéos découvertes après le début du suivi
+  `ALTER TABLE videos ADD COLUMN baseline_views INTEGER NOT NULL DEFAULT 0;`,
 ];

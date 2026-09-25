@@ -297,8 +297,8 @@ export class Repo {
    */
   recordCollection(accountId: number, videos: readonly VideoInput[], at: number): Snapshot {
     const upsertVideo = this.db.prepare(
-      `INSERT INTO videos (account_id, platform_video_id, url, title, thumbnail_url, published_at, views, likes, comments, first_seen_at, updated_at)
-       VALUES (@accountId, @id, @url, @title, @thumbnail, @publishedAt, @views, @likes, @comments, @at, @at)
+      `INSERT INTO videos (account_id, platform_video_id, url, title, thumbnail_url, published_at, views, baseline_views, likes, comments, first_seen_at, updated_at)
+       VALUES (@accountId, @id, @url, @title, @thumbnail, @publishedAt, @views, @baseline, @likes, @comments, @at, @at)
        ON CONFLICT (account_id, platform_video_id) DO UPDATE SET
          url = COALESCE(excluded.url, videos.url),
          thumbnail_url = COALESCE(excluded.thumbnail_url, videos.thumbnail_url),
@@ -314,8 +314,18 @@ export class Repo {
       'INSERT INTO video_snapshots (video_id, captured_at, views, likes, comments) VALUES (?, ?, ?, ?, ?)',
     );
     const totals = this.db.prepare(
-      'SELECT COALESCE(SUM(views), 0) AS total, COUNT(*) AS count FROM videos WHERE account_id = ?',
+      'SELECT COALESCE(SUM(views - baseline_views), 0) AS total, COUNT(*) AS count FROM videos WHERE account_id = ?',
     );
+    // Une vieille vidéo (publiée avant le début du suivi) qui apparaît après la 1re collecte
+    // ne doit pas compter ses vues passées comme des vues gagnées : on les met en référence.
+    const account = this.db
+      .prepare(
+        `SELECT created_at AS createdAt, EXISTS (SELECT 1 FROM account_snapshots WHERE account_id = @id) AS tracked
+         FROM accounts WHERE id = @id`,
+      )
+      .get({ id: accountId }) as { createdAt: number; tracked: number } | undefined;
+    const baselineFor = (v: VideoInput) =>
+      account?.tracked && (v.publishedAt === undefined || v.publishedAt < account.createdAt) ? v.views : 0;
     const insertAccountSnap = this.db.prepare(
       'INSERT INTO account_snapshots (account_id, captured_at, total_views, video_count) VALUES (?, ?, ?, ?)',
     );
@@ -330,6 +340,7 @@ export class Repo {
           thumbnail: v.thumbnailUrl ?? null,
           publishedAt: v.publishedAt ?? null,
           views: v.views,
+          baseline: baselineFor(v),
           likes: v.likes ?? null,
           comments: v.comments ?? null,
           at,

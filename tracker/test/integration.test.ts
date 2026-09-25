@@ -180,3 +180,24 @@ describe('parcours complet', () => {
     expect(await runRelances(repo, analytics, notifier, settings, t0 + 25 * HOUR)).toBe(1);
   });
 });
+
+describe('vieilles vidéos découvertes en cours de suivi', () => {
+  it('ne compte pas leurs vues passées comme vues gagnées', () => {
+    const repo = new Repo(openDatabase(':memory:'));
+    const t0 = 1_000 * DAY;
+    const clipper = repo.upsertClipper('u1', 'Khaby', t0);
+    const { account } = repo.registerAccount({ clipperId: clipper.id, clientId: null, platform: 'tiktok', handle: 'k', url: 'u', now: t0 });
+    repo.recordCollection(account.id, [{ platformVideoId: 'a', views: 1_000, publishedAt: t0 - DAY }], t0);
+    // Le scraper renvoie soudain une vieille vidéo à 50 M de vues + une vraie nouvelle vidéo.
+    const snap = repo.recordCollection(
+      account.id,
+      [
+        { platformVideoId: 'a', views: 1_500, publishedAt: t0 - DAY },
+        { platformVideoId: 'old', views: 50_000_000, publishedAt: t0 - 300 * DAY },
+        { platformVideoId: 'new', views: 2_000, publishedAt: t0 + HOUR },
+      ],
+      t0 + DAY,
+    );
+    expect(snap.totalViews - 1_000).toBe(500 + 2_000);
+  });
+});
