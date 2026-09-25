@@ -25,6 +25,11 @@ client par client (Loann, BeOne…), et qui relancent automatiquement ceux qui d
 - Les fenêtres sont **glissantes** (les dernières 24 h comparées aux 24 h d'avant, et ainsi de suite). On évite ainsi de comparer une journée entamée à une journée complète.
 - Si le suivi est trop récent pour couvrir la période précédente, la comparaison est marquée *partielle* et ne déclenche pas de relance « baisse ».
 
+## Mise en ligne
+
+👉 Guide pas à pas (Discord, YouTube, Apify, Railway) : **[DEPLOY.md](DEPLOY.md)**.
+Le `Dockerfile` marche sur n'importe quel hébergeur Docker, à condition de monter un volume persistant sur `/data`.
+
 ## Démarrage rapide (sans Discord ni APIs)
 
 ```bash
@@ -42,7 +47,7 @@ npm run dev               # http://localhost:3000
    - active **Message Content Intent** (nécessaire pour lire les liens du salon COMPTES).
 2. Copie l'Application ID dans `DISCORD_CLIENT_ID` et l'ID du serveur dans `DISCORD_GUILD_ID`.
 3. Invite le bot avec les scopes `bot` et `applications.commands`, et les permissions *View Channel, Send Messages, Add Reactions, Read Message History*.
-4. `npm run register-commands`
+4. Les slash commands s'enregistrent toutes seules au démarrage (`npm run register-commands` pour le faire à la main).
 5. Sur Discord : `/client nom:Loann tarif:1 salon:#comptes-loann` (une fois par client).
 
 ### Commandes
@@ -108,7 +113,6 @@ npm run build && npm start # production
 
 ## Pistes pour la suite
 
-- Hébergement : un petit VPS ou Railway / Fly.io avec un volume persistant pour `data/` (SQLite suffit largement au début).
 - Export CSV des paiements par client et par mois, puis validation et suivi des versements.
 - Rôle Discord « Admin » pour voir le classement de tous les clients ; vue restreinte pour chaque clipper.
 - Lien de connexion Discord (OAuth) sur le site pour que chaque clipper voie ses propres stats.

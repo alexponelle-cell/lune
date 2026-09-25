@@ -16,6 +16,8 @@ const schema = z.object({
   DATABASE_PATH: z.string().default('./data/tracker.db'),
 
   WEB_PORT: z.coerce.number().int().positive().default(3000),
+  /** URL publique du dashboard (affichée dans les messages du bot). */
+  PUBLIC_URL: optionalString,
   DASHBOARD_PASSWORD: optionalString,
 
   FETCHER_MODE: z.enum(['mock', 'live']).default('mock'),
@@ -35,4 +37,5 @@ const schema = z.object({
 
 export type Config = z.infer<typeof schema>;
 
-export const config: Config = schema.parse(process.env);
+// Les hébergeurs (Railway, Render, Fly…) imposent le port via PORT.
+export const config: Config = schema.parse({ ...process.env, WEB_PORT: process.env.PORT ?? process.env.WEB_PORT });

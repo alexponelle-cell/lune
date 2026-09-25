@@ -1,4 +1,5 @@
 import { type Bot, startBot } from './bot/index.js';
+import { registerCommands } from './bot/register.js';
 import { config } from './config.js';
 import { openDatabase } from './db/index.js';
 import { Repo } from './db/repo.js';
@@ -14,13 +15,29 @@ const db = openDatabase(config.DATABASE_PATH);
 const repo = new Repo(db);
 const analytics = new Analytics(repo);
 const fetchers = createFetchers(config);
-const dashboardUrl = process.env.PUBLIC_URL ?? `http://localhost:${config.WEB_PORT}`;
+const dashboardUrl = config.PUBLIC_URL ?? `http://localhost:${config.WEB_PORT}`;
 
 const stopWeb = startWeb(createApp({ repo, analytics, password: config.DASHBOARD_PASSWORD }), config.WEB_PORT);
 log.info(`dashboard sur ${dashboardUrl} (données : ${config.FETCHER_MODE})`);
+if (!config.DASHBOARD_PASSWORD) log.warn('DASHBOARD_PASSWORD absent : le dashboard est accessible sans mot de passe');
 
 let bot: Bot | undefined;
 if (config.DISCORD_TOKEN) {
+  if (config.DISCORD_CLIENT_ID) {
+    try {
+      log.info(
+        await registerCommands({
+          token: config.DISCORD_TOKEN,
+          clientId: config.DISCORD_CLIENT_ID,
+          guildId: config.DISCORD_GUILD_ID,
+        }),
+      );
+    } catch (err) {
+      log.error('enregistrement des slash commands', err);
+    }
+  } else {
+    log.warn('DISCORD_CLIENT_ID absent : slash commands non enregistrées');
+  }
   bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, dashboardUrl });
 } else {
   log.warn('DISCORD_TOKEN absent : bot désactivé, seuls le site et la collecte tournent');
