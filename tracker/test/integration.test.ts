@@ -1,0 +1,123 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { Clipper } from '../src/db/repo.js';
+import { openDatabase } from '../src/db/index.js';
+import { Repo } from '../src/db/repo.js';
+import { registerAccountsFromMessage } from '../src/bot/comptes.js';
+import { DAY, HOUR } from '../src/domain/stats.js';
+import { collectAll } from '../src/jobs/collect.js';
+import { runRelances } from '../src/jobs/relance.js';
+import type { FetcherRegistry, PlatformFetcher } from '../src/platforms/types.js';
+import { Analytics } from '../src/services/analytics.js';
+import { createApp } from '../src/web/server.js';
+
+/** Fausse plateforme pilotée par le test : chaque handle a une liste de vidéos modifiable. */
+function fakeFetchers(videos: Map<string, Array<{ id: string; views: number; publishedAt: number }>>): FetcherRegistry {
+  const make = (platform: 'tiktok' | 'instagram' | 'youtube'): PlatformFetcher => ({
+    platform,
+    async fetchAccount({ handle }) {
+      const list = videos.get(`${platform}:${handle}`);
+      if (!list) throw new Error('compte privé');
+      return { videos: list.map((v) => ({ platformVideoId: v.id, views: v.views, publishedAt: v.publishedAt })) };
+    },
+  });
+  return { tiktok: make('tiktok'), instagram: make('instagram'), youtube: make('youtube') };
+}
+
+describe('parcours complet', () => {
+  let repo: Repo;
+  let analytics: Analytics;
+  const t0 = 1_000 * DAY;
+
+  beforeEach(() => {
+    repo = new Repo(openDatabase(':memory:'));
+    analytics = new Analytics(repo);
+  });
+
+  it('salon COMPTES → collecte → stats → rémunération → API', async () => {
+    const loann = repo.upsertClient({
+      name: 'Loann',
+      discordChannelId: 'chan-loann',
+      rule: { ratePer1kCents: 100, minViews: 0, capCents: null },
+    });
+
+    const result = registerAccountsFromMessage(
+      repo,
+      loann,
+      { discordId: 'u1', username: 'Nono' },
+      'mes comptes https://tiktok.com/@nono et https://instagram.com/nono',
+      t0,
+    );
+    expect(result?.added).toHaveLength(2);
+
+    // Un autre membre ne peut pas revendiquer le même compte.
+    const stolen = registerAccountsFromMessage(repo, loann, { discordId: 'u2', username: 'Voleur' }, 'https://tiktok.com/@nono', t0);
+    expect(stolen?.conflicts[0]?.owner).toBe('Nono');
+
+    const videos = new Map([
+      ['tiktok:nono', [{ id: 'a', views: 5_000, publishedAt: t0 - 10 * DAY }]],
+      ['instagram:nono', [{ id: 'x', views: 1_000, publishedAt: t0 - 10 * DAY }]],
+    ]);
+    const fetchers = fakeFetchers(videos);
+    let clock = t0;
+
+    // Capture initiale = référence (les 6 000 vues existantes ne comptent pas).
+    expect(await collectAll(repo, fetchers, () => clock)).toEqual({ ok: 2, failed: 0 });
+
+    // Jour 1 : +2 000 sur la vidéo a, nouvelle vidéo b à 3 000.
+    clock = t0 + DAY;
+    videos.get('tiktok:nono')!.splice(0, 1, { id: 'a', views: 7_000, publishedAt: t0 - 10 * DAY }, { id: 'b', views: 3_000, publishedAt: t0 + 12 * HOUR });
+    await collectAll(repo, fetchers, () => clock);
+
+    // Jour 2 : la vidéo a sort du lot récupéré mais ses vues restent comptées ; b monte.
+    clock = t0 + 2 * DAY;
+    videos.set('tiktok:nono', [{ id: 'b', views: 4_000, publishedAt: t0 + 12 * HOUR }]);
+    videos.set('instagram:nono', [{ id: 'x', views: 1_500, publishedAt: t0 - 10 * DAY }]);
+    await collectAll(repo, fetchers, () => clock);
+
+    const nono = repo.getClipperByDiscordId('u1')!;
+    const day = analytics.clipperComparison(nono.id, DAY, { now: clock });
+    expect(day).toMatchObject({ current: 1_500, previous: 5_000, trend: 'down' });
+
+    const board = analytics.leaderboard('7d', { client: loann, now: clock });
+    expect(board).toHaveLength(1);
+    expect(board[0]).toMatchObject({ accounts: 2, rewardCents: 650 }); // 6 500 vues × 1 €/1k
+    expect(board[0]!.stats.current).toBe(6_500);
+
+    // Une erreur de plateforme est enregistrée sans casser la collecte des autres comptes.
+    videos.delete('instagram:nono');
+    expect(await collectAll(repo, fetchers, () => clock)).toEqual({ ok: 1, failed: 1 });
+    expect(repo.getAccountByHandle('instagram', 'nono')?.lastError).toBe('compte privé');
+
+    const app = createApp({ repo, analytics });
+    const res = await app.request('/api/leaderboard?window=30d&client=loann');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { rows: Array<{ username: string }> };
+    expect(body.rows[0]?.username).toBe('Nono');
+    expect((await app.request('/api/leaderboard?window=1y')).status).toBe(400);
+    expect((await app.request(`/api/clippers/${nono.id}`)).status).toBe(200);
+  });
+
+  it('protège le dashboard par mot de passe', async () => {
+    const app = createApp({ repo, analytics, password: 'secret' });
+    expect((await app.request('/api/clients')).status).toBe(401);
+    const auth = { Authorization: `Basic ${Buffer.from('x:secret').toString('base64')}` };
+    expect((await app.request('/api/clients', { headers: auth })).status).toBe(200);
+    expect((await app.request('/healthz')).status).toBe(200);
+  });
+
+  it('relance les inactifs une seule fois par cooldown', async () => {
+    const client = repo.upsertClient({ name: 'BeOne', rule: { ratePer1kCents: 80, minViews: 0, capCents: null } });
+    registerAccountsFromMessage(repo, client, { discordId: 'u1', username: 'Maé' }, 'https://tiktok.com/@mae', t0);
+    const fetchers = fakeFetchers(new Map([['tiktok:mae', [{ id: 'a', views: 100, publishedAt: t0 - 5 * DAY }]]]));
+    await collectAll(repo, fetchers, () => t0);
+
+    const sent: Array<{ who: string; msg: string }> = [];
+    const notifier = { relance: async (c: Clipper, _r: unknown, msg: string) => void sent.push({ who: c.username, msg }) };
+    const settings = { inactivityDays: 3, dropWindowDays: 7, dropThresholdPercent: 30, dropMinPreviousViews: 1000, cooldownHours: 24 };
+
+    expect(await runRelances(repo, analytics, notifier, settings, t0)).toBe(1);
+    expect(sent[0]?.who).toBe('Maé');
+    expect(await runRelances(repo, analytics, notifier, settings, t0 + HOUR)).toBe(0);
+    expect(await runRelances(repo, analytics, notifier, settings, t0 + 25 * HOUR)).toBe(1);
+  });
+});
