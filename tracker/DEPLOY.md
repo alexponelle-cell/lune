@@ -58,9 +58,10 @@ Garde un bloc-notes ouvert pour noter au fur et à mesure les valeurs marquées 
 3. Clique sur **New Project > Deploy from GitHub repo** et choisis `alexponelle-cell/lune`.
    Si le repo n'apparaît pas, clique sur **Configure GitHub App** et donne l'accès au repo.
 4. Clique sur le service créé, puis va dans l'onglet **Settings** :
-   - **Source > Root Directory** : `/tracker`
-   - **Config-as-code > Railway Config File** : `/tracker/railway.json`
+   - **Source > Root Directory** : `/tracker` (Railway détecte alors le `Dockerfile` tout seul)
    - **Source > Branch** : `main`, ou la branche du tracker
+   - **Deploy > Healthcheck Path** : `/healthz`
+   - Ne remplis pas *Config-as-code* : Railway l'a abandonné pour les nouveaux services.
 5. **Ajoute le disque** où la base de données sera gardée :
    - fais un clic droit sur le service, puis **Attach Volume** ;
    - dans **Mount path**, mets `/data`.
@@ -78,8 +79,8 @@ Garde un bloc-notes ouvert pour noter au fur et à mesure les valeurs marquées 
    DASHBOARD_PASSWORD=choisis-un-mot-de-passe-solide
    ```
 
-7. Dans l'onglet **Settings > Networking**, clique sur **Generate Domain**. Railway donne une URL du type `lune-tracker-production.up.railway.app`.
-   Ajoute ensuite la variable `PUBLIC_URL=https://<cette-url>`.
+7. Dans l'onglet **Settings > Networking**, clique sur **Generate Domain**. Railway donne une URL du type `lune-tracker-production.up.railway.app`, avec un port (souvent 8080).
+   Ajoute ensuite les variables `PUBLIC_URL=https://<cette-url>` et `PORT=<ce port>`.
 8. Railway redéploie tout seul. Dans l'onglet **Deployments > View logs**, tu dois voir :
 
    ```
