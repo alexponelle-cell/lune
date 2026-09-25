@@ -51,12 +51,20 @@
   .accounts td, .accounts th { padding: 8px 10px; }
   .err { color: var(--down); font-size: 12px; }
   a { color: var(--accent); }
+  .status { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+    margin-bottom: 16px; font-size: 14px; overflow-wrap: anywhere; }
+  .status .line { margin: 2px 0; }
+  .status .warn { color: var(--down); }
+  .status details { margin-top: 6px; color: var(--muted); font-size: 12px; }
+  .status details li { margin: 4px 0; }
 </style>
 </head>
 <body>
 <main>
   <h1>Suivi des clippers</h1>
   <p class="sub" id="updated">Chargement…</p>
+
+  <section class="status" id="status" aria-live="polite"></section>
 
   <div class="controls">
     <select id="client" aria-label="Client"><option value="">Tous les clients</option></select>
@@ -100,6 +108,36 @@ async function api(path) {
   const res = await fetch(path);
   if (!res.ok) throw new Error((await res.json()).error || res.statusText);
   return res.json();
+}
+
+const ago = (t) => {
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 1 ? "à l'instant" : m < 60 ? `il y a ${m} min` : `il y a ${Math.round(m / 60)} h`;
+};
+
+async function renderStatus() {
+  const s = await api('/api/status');
+  const b = s.bot;
+  const state = {
+    ready: `🟢 Bot connecté${b.tag ? ` (${esc(b.tag)})` : ''}${b.guilds != null ? ` sur ${b.guilds} serveur(s)` : ''}`,
+    connecting: '🟡 Bot en cours de connexion…',
+    error: `🔴 Bot hors service : ${esc(b.error)}`,
+    disabled: '⚪ Bot désactivé (DISCORD_TOKEN manquant)',
+  }[b.state];
+  const lines = [`<div class="line">${state}</div>`];
+  if (b.state === 'ready' && b.messageContent === false) {
+    lines.push('<div class="line warn">⚠️ « Message Content Intent » désactivé dans le Developer Portal Discord : le bot ne peut pas lire les liens du salon COMPTES.</div>');
+  }
+  if (b.commandsRegistered) lines.push(`<div class="line">✅ ${esc(b.commandsRegistered)}</div>`);
+  if (b.lastCommand) {
+    const c = b.lastCommand;
+    lines.push(`<div class="line${c.ok ? '' : ' warn'}">Dernière commande : /${esc(c.name)} ${ago(c.at)} ${c.ok ? '✅' : `❌ ${esc(c.error)}`}</div>`);
+  }
+  if (s.lastErrors.length) {
+    lines.push(`<details><summary>${s.lastErrors.length} erreur(s) récente(s)</summary><ul>${
+      s.lastErrors.map((e) => `<li>${ago(e.at)} : ${esc(e.message)}</li>`).join('')}</ul></details>`);
+  }
+  document.getElementById('status').innerHTML = lines.join('');
 }
 
 async function loadClients() {
@@ -184,8 +222,9 @@ document.getElementById('rows').addEventListener('click', (e) => {
   if (tr) openDetail(tr.dataset.id).catch(alert);
 });
 
+renderStatus().catch(() => {});
 loadClients().then(render).catch((e) => { document.getElementById('updated').textContent = 'Erreur : ' + e.message; });
-setInterval(() => render().catch(() => {}), 60_000);
+setInterval(() => { render().catch(() => {}); renderStatus().catch(() => {}); }, 30_000);
 </script>
 </body>
 </html>

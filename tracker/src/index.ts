@@ -9,6 +9,7 @@ import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
 import { Analytics } from './services/analytics.js';
+import { status } from './status.js';
 import { createApp, startWeb } from './web/server.js';
 
 // Une erreur imprévue est journalisée au lieu de faire tomber le bot.
@@ -30,28 +31,37 @@ let bot: Bot | undefined;
 if (config.DISCORD_TOKEN) {
   if (config.DISCORD_CLIENT_ID) {
     try {
-      log.info(
-        await registerCommands({
-          token: config.DISCORD_TOKEN,
-          clientId: config.DISCORD_CLIENT_ID,
-          guildId: config.DISCORD_GUILD_ID,
-        }),
-      );
+      const result = await registerCommands({
+        token: config.DISCORD_TOKEN,
+        clientId: config.DISCORD_CLIENT_ID,
+        guildId: config.DISCORD_GUILD_ID,
+      });
+      status.bot.commandsRegistered = result;
+      log.info(result);
     } catch (err) {
       log.error('enregistrement des slash commands', err);
     }
   } else {
     log.warn('DISCORD_CLIENT_ID absent : slash commands non enregistrées');
   }
-  bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, dashboardUrl });
+  try {
+    bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, dashboardUrl });
+  } catch (err) {
+    // Le site reste en ligne pour afficher l'erreur sur le dashboard.
+    const httpStatus = (err as { status?: number }).status;
+    const message = err instanceof Error ? err.message : String(err);
+    status.bot = { ...status.bot, state: 'error', error: httpStatus ? `${message} (HTTP ${httpStatus})` : message };
+    log.error('connexion du bot impossible', err);
+  }
 } else {
   log.warn('DISCORD_TOKEN absent : bot désactivé, seuls le site et la collecte tournent');
 }
 
 const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () => collectAll(repo, fetchers));
-const stopRelance = bot
+const notifier = bot?.notifier;
+const stopRelance = notifier
   ? every('relances', config.RELANCE_CHECK_INTERVAL_MINUTES, async () => ({
-      envoyées: await runRelances(repo, analytics, bot.notifier, {
+      envoyées: await runRelances(repo, analytics, notifier, {
         inactivityDays: config.INACTIVITY_DAYS,
         dropWindowDays: config.DROP_WINDOW_DAYS,
         dropThresholdPercent: config.DROP_THRESHOLD_PERCENT,

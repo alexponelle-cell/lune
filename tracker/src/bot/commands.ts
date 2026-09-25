@@ -2,6 +2,7 @@ import {
   ChannelType,
   type ChatInputCommandInteraction,
   EmbedBuilder,
+  MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from 'discord.js';
@@ -67,7 +68,7 @@ export async function handleCommand(
       const clipper = repo.getClipperByDiscordId(user.id);
       const detail = clipper && analytics.clipperDetail(clipper.id);
       if (!detail || detail.accounts.length === 0) {
-        await interaction.reply({ content: `Aucun compte suivi pour ${user}.`, ephemeral: true });
+        await interaction.reply({ content: `Aucun compte suivi pour ${user}.`, flags: MessageFlags.Ephemeral });
         return;
       }
       const embed = new EmbedBuilder()
@@ -93,7 +94,7 @@ export async function handleCommand(
       const slug = interaction.options.getString('client') ?? repo.getClientByChannel(interaction.channelId)?.slug;
       const client = slug ? repo.getClientBySlug(slug) : undefined;
       if (slug && !client) {
-        await interaction.reply({ content: `Client « ${slug} » inconnu.`, ephemeral: true });
+        await interaction.reply({ content: `Client « ${slug} » inconnu.`, flags: MessageFlags.Ephemeral });
         return;
       }
       const periode = interaction.options.getString('periode');
@@ -130,7 +131,7 @@ export async function handleCommand(
           `✅ Client **${client.name}** (\`${client.slug}\`) enregistré.\n` +
           `Salon COMPTES : ${client.discordChannelId ? `<#${client.discordChannelId}>` : '_aucun_'}\n` +
           `Exemple : 100 000 vues → ${formatEuros(example)}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -140,11 +141,11 @@ export async function handleCommand(
       const account = link && repo.getAccountByHandle(link.platform, link.handle);
       const clipper = repo.getClipperByDiscordId(interaction.user.id);
       if (!account || !clipper || account.clipperId !== clipper.id) {
-        await interaction.reply({ content: 'Ce compte n’est pas suivi à ton nom.', ephemeral: true });
+        await interaction.reply({ content: 'Ce compte n’est pas suivi à ton nom.', flags: MessageFlags.Ephemeral });
         return;
       }
       repo.deactivateAccount(account.id);
-      await interaction.reply({ content: `Suivi arrêté pour ${account.platform} @${account.handle}.`, ephemeral: true });
+      await interaction.reply({ content: `Suivi arrêté pour ${account.platform} @${account.handle}.`, flags: MessageFlags.Ephemeral });
       return;
     }
   }

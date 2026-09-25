@@ -4,13 +4,14 @@ import { basicAuth } from 'hono/basic-auth';
 import type { Repo } from '../db/repo.js';
 import { isWindowKey } from '../domain/stats.js';
 import type { Analytics } from '../services/analytics.js';
+import { status } from '../status.js';
 import { dashboardHtml } from './dashboard.js';
 
 export function createApp(deps: { repo: Repo; analytics: Analytics; password?: string }): Hono {
   const { repo, analytics } = deps;
   const app = new Hono();
 
-  app.get('/healthz', (c) => c.json({ ok: true }));
+  app.get('/healthz', (c) => c.json({ ok: true, bot: status.bot.state }));
 
   if (deps.password) {
     const password = deps.password;
@@ -18,6 +19,8 @@ export function createApp(deps: { repo: Repo; analytics: Analytics; password?: s
   }
 
   app.get('/', (c) => c.html(dashboardHtml));
+
+  app.get('/api/status', (c) => c.json(status));
 
   app.get('/api/clients', (c) =>
     c.json(repo.listClients().map(({ id, name, slug, rule }) => ({ id, name, slug, rule }))),
