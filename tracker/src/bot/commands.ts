@@ -8,8 +8,10 @@ import {
 } from 'discord.js';
 import type { Repo } from '../db/repo.js';
 import { parseAccountUrl } from '../domain/links.js';
-import { computeRewardCents, formatEuros } from '../domain/rewards.js';
+import { formatEuros } from '../domain/rewards.js';
+import { computeReward, normalizeRewardConfig } from '../domain/remuneration.js';
 import { type Comparison, isWindowKey, WINDOWS, type WindowKey } from '../domain/stats.js';
+import type { AgencyService } from '../services/agency.js';
 import type { Analytics } from '../services/analytics.js';
 
 const WINDOW_LABELS: Record<WindowKey, string> = { '24h': '24 h', '7d': '7 jours', '30d': '30 jours' };
@@ -58,7 +60,7 @@ function trendLine(c: Comparison): string {
 
 export async function handleCommand(
   interaction: ChatInputCommandInteraction,
-  deps: { repo: Repo; analytics: Analytics; dashboardUrl: string },
+  deps: { repo: Repo; analytics: Analytics; agency: AgencyService; dashboardUrl: string },
 ): Promise<void> {
   const { repo, analytics } = deps;
 
@@ -99,15 +101,17 @@ export async function handleCommand(
       }
       const periode = interaction.options.getString('periode');
       const window: WindowKey = isWindowKey(periode) ? periode : '7d';
-      const rows = analytics.leaderboard(window, { client }).slice(0, 15);
+      const now = Date.now();
+      const range = deps.agency.range({ from: now - WINDOWS[window], to: now }, now);
+      const rows = deps.agency.ranked(range, client?.id, now).slice(0, 15);
       const medals = ['🥇', '🥈', '🥉'];
       const lines = rows.map((r, i) => {
-        const reward = r.rewardCents !== null ? ` · ${formatEuros(r.rewardCents)}` : '';
-        return `${medals[i] ?? `**${i + 1}.**`} <@${r.clipper.discordId}> — ${fmt(r.stats.current)} vues${reward}`;
+        const reward = r.reward.total > 0 ? ` · ${formatEuros(Math.round(r.reward.total * 100))}` : '';
+        return `${medals[i] ?? `**${i + 1}.**`} <@${r.clipper.discordId}> — ${fmt(r.views)} vues · score ${r.score.total}${reward}`;
       });
       const embed = new EmbedBuilder()
         .setTitle(`Classement ${client ? client.name : 'global'} · ${WINDOW_LABELS[window]}`)
-        .setColor(0xffb020)
+        .setColor(0x16a34a)
         .setDescription(lines.join('\n') || 'Pas encore de données.');
       await interaction.reply({ embeds: [embed], allowedMentions: { users: [] } });
       return;
@@ -125,7 +129,15 @@ export async function handleCommand(
           capCents: plafond === null ? null : Math.round(plafond * 100),
         },
       });
-      const example = computeRewardCents(100_000, client.rule);
+      // Le tarif devient la base "par vue" du barème de l'agence (modifiable ensuite sur le dashboard).
+      const current = normalizeRewardConfig(repo.getRewardRule('client', client.id) ?? {});
+      const config = {
+        ...current,
+        base: { enabled: true, perView: interaction.options.getNumber('tarif', true) / 1000 },
+        cap: plafond === null ? current.cap : plafond,
+      };
+      repo.setRewardRule('client', client.id, config);
+      const example = Math.round(computeReward({ views: 100_000, posts: 0, strikes: 0, rank: null, periodMs: 7 * 86_400_000 }, config).total * 100);
       await interaction.reply({
         content:
           `✅ Client **${client.name}** (\`${client.slug}\`) enregistré.\n` +

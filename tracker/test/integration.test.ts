@@ -7,6 +7,7 @@ import { DAY, HOUR } from '../src/domain/stats.js';
 import { collectAll } from '../src/jobs/collect.js';
 import { runRelances } from '../src/jobs/relance.js';
 import type { FetcherRegistry, PlatformFetcher } from '../src/platforms/types.js';
+import { AgencyService } from '../src/services/agency.js';
 import { Analytics } from '../src/services/analytics.js';
 import { createApp } from '../src/web/server.js';
 
@@ -88,20 +89,78 @@ describe('parcours complet', () => {
     expect(await collectAll(repo, fetchers, () => clock)).toEqual({ ok: 1, failed: 1 });
     expect(repo.getAccountByHandle('instagram', 'nono')?.lastError).toBe('compte privé');
 
-    const app = createApp({ repo, analytics });
-    const res = await app.request('/api/leaderboard?window=30d&client=loann');
+    // Même calcul via la couche "agence" du dashboard (barème de l'agence : 1 € / 1 000 vues).
+    repo.setRewardRule('client', loann.id, { base: { enabled: true, perView: 0.001 } });
+    const agency = new AgencyService(repo);
+    const range = agency.range({ from: clock - 7 * DAY, to: clock + 1 }, clock);
+    const ranked = agency.ranked(range, loann.id, clock);
+    expect(ranked[0]).toMatchObject({ views: 6_500, posts: 1, rank: 1 });
+    expect(ranked[0]!.reward.total).toBe(6.5);
+
+    const app = createApp({ repo, agency, bot: {} });
+    const q = `from=${clock - 7 * DAY}&to=${clock + 1}`;
+    const res = await app.request(`/api/leaderboard?${q}&client=${loann.id}`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { rows: Array<{ username: string }> };
-    expect(body.rows[0]?.username).toBe('Nono');
-    expect((await app.request('/api/leaderboard?window=1y')).status).toBe(400);
-    expect((await app.request(`/api/clippers/${nono.id}`)).status).toBe(200);
+    const body = (await res.json()) as { rows: Array<{ username: string; views: number }> };
+    expect(body.rows[0]).toMatchObject({ username: 'Nono', views: 6_500 });
+    expect((await app.request(`/api/overview?${q}`)).status).toBe(200);
+    expect((await app.request(`/api/clippers/${nono.id}?${q}`)).status).toBe(200);
+    expect((await app.request('/api/clippers/9999')).status).toBe(404);
+    const csv = await (await app.request(`/api/export.csv?${q}`)).text();
+    expect(csv).toContain('"Nono"');
+  });
+
+  it('gère clippers, strikes, retours et barèmes depuis le dashboard', async () => {
+    const agency = new AgencyService(repo);
+    const sent: string[] = [];
+    const bot = { current: { send: async (_c: Clipper, text: string) => (sent.push(text), true), roles: async () => [], membersWithRole: async () => [] } };
+    const app = createApp({ repo, agency, bot });
+    const json = (method: string, body: unknown) => ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+    const client = (await (await app.request('/api/clients', json('POST', { name: 'Loann', monthlyFee: 1500 }))).json()) as { id: number };
+    const created = (await (
+      await app.request('/api/clippers', json('POST', { username: 'Saiko', clientId: client.id, accounts: { tiktok: '@Saiko.Edit', youtube: 'https://www.youtube.com/@saiko' } }))
+    ).json()) as { clipper: { id: number }; warnings: string[] };
+    expect(created.warnings).toEqual([]);
+    expect(repo.listAccountsForClipper(created.clipper.id).map((a) => `${a.platform}:${a.handle}`).sort()).toEqual([
+      'tiktok:saiko.edit',
+      'youtube:saiko',
+    ]);
+
+    // Retirer un compte = champ vide ; changer de statut
+    await app.request(`/api/clippers/${created.clipper.id}`, json('PATCH', { status: 'inactif', accounts: { youtube: '' } }));
+    expect(repo.getClipper(created.clipper.id)?.status).toBe('inactif');
+    expect(repo.listAccountsForClipper(created.clipper.id).map((a) => a.platform)).toEqual(['tiktok']);
+
+    // Strike : enregistré et transmis au bot pour prévenir le clipper
+    const strike = await app.request(`/api/clippers/${created.clipper.id}/strikes`, json('POST', { reason: 'Absent au call' }));
+    expect(strike.status).toBe(200);
+    expect(repo.strikes(created.clipper.id)).toHaveLength(1);
+
+    // Barème universel puis surcharge clipper : la plus précise l'emporte
+    await app.request('/api/rewards/universal/0', json('PUT', { base: { enabled: true, perView: 0.002 } }));
+    await app.request(`/api/rewards/clipper/${created.clipper.id}`, json('PUT', { base: { enabled: true, perView: 0.005 } }));
+    expect(agency.rewardConfigFor(repo.getClipper(created.clipper.id)!)).toMatchObject({ source: 'clipper', config: { base: { perView: 0.005 } } });
+    await app.request(`/api/rewards/clipper/${created.clipper.id}`, { method: 'DELETE' });
+    expect(agency.rewardConfigFor(repo.getClipper(created.clipper.id)!).source).toBe('universal');
+
+    // Réglages : les valeurs invalides sont ignorées
+    const settings = (await (await app.request('/api/settings', json('PUT', { postsPerDay: 3, viewsPerDay: -5 }))).json()) as { postsPerDay: number; viewsPerDay: number };
+    expect(settings).toMatchObject({ postsPerDay: 3, viewsPerDay: 5_000 });
+
+    // Données invalides → 400
+    expect((await app.request('/api/clippers', json('POST', { username: '' }))).status).toBe(400);
+    expect(sent).toEqual(['⚠️ Tu as reçu un **strike** : Absent au call']);
   });
 
   it('protège le dashboard par mot de passe', async () => {
-    const app = createApp({ repo, analytics, password: 'secret' });
-    expect((await app.request('/api/clients')).status).toBe(401);
+    const app = createApp({ repo, agency: new AgencyService(repo), bot: {}, password: 'secret' });
+    const denied = await app.request('/api/meta');
+    expect(denied.status).toBe(401);
+    expect(denied.headers.get('www-authenticate')).toContain('Basic');
     const auth = { Authorization: `Basic ${Buffer.from('x:secret').toString('base64')}` };
-    expect((await app.request('/api/clients', { headers: auth })).status).toBe(200);
+    expect((await app.request('/api/meta', { headers: auth })).status).toBe(200);
+    expect((await app.request('/', { headers: auth })).status).toBe(200);
     expect((await app.request('/healthz')).status).toBe(200);
   });
 

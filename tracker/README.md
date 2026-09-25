@@ -14,7 +14,7 @@ client par client (Loann, BeOne…), et qui relancent automatiquement ceux qui d
 | **Stats** | Vues gagnées sur 24 h / 7 j / 30 j, comparées à la période d'avant (hier, semaine dernière, mois dernier). |
 | **Rémunération** | Chaque client a son tarif (€ / 1 000 vues), un minimum de vues et un plafond optionnel. |
 | **Relances** | Ping du clipper s'il n'a rien posté depuis `INACTIVITY_DAYS` jours ou si ses vues chutent de plus de `DROP_THRESHOLD_PERCENT` %. Cooldown pour éviter le spam. |
-| **Dashboard web** | Classement par client et par période, évolution, rémunération estimée, détail par clipper avec courbe sur 30 jours. |
+| **Dashboard web** | Vue Agence (KPIs, courbe, alertes, classement, export CSV), Clippers, Classement, profil clipper (vidéos, retours, score, strikes), Inspiration (top 10), Management, Rémunération (barème en cascade), Paramètres. |
 
 ### Comment les vues sont comptées
 
@@ -88,16 +88,28 @@ src/
   services/analytics.ts assemble la DB et le domaine : classements, détail clipper
   jobs/                 collecte, relances, planificateur
   bot/                  discord.js : salon COMPTES, slash commands, envoi des relances
-  web/                  API JSON (Hono) + dashboard HTML
+  services/agency.ts    tout ce que le dashboard affiche (périodes, score, rémunération, alertes…)
+  web/server.ts         API JSON (Hono)
+  web/app/              application du dashboard (HTML/CSS/JS sans build)
 scripts/seed.ts         données de démo
 test/                   vitest (unitaires et parcours complet)
 ```
 
-### API
+### Score et rémunération
 
-- `GET /api/clients`
-- `GET /api/leaderboard?window=24h|7d|30d&client=<slug>`
-- `GET /api/clippers/:id` : fenêtres, courbe sur 30 jours, comptes, top vidéos
+- **Score /100** : Production /40 (posts vs objectif/jour), Performance /30 (vues vs objectif/jour),
+  Régularité /20 (jours avec au moins un post), Discipline /10 (−5 par strike). Objectifs réglables dans Paramètres.
+- **Barème en cascade** : universel → agence → clipper, le plus précis existant s'applique en entier.
+  Base par vue, primes (vues, posts, classement, régularité par paliers), malus strikes, plafond.
+
+### API (toutes les routes acceptent `preset=today|7d|30d|all` ou `from`/`to` en ms, et `client=<id>`)
+
+- `GET /api/overview` : KPIs, série par jour, alertes, classement
+- `GET /api/leaderboard` · `GET /api/clippers/:id` · `GET /api/inspiration?week=<ms>` · `GET /api/export.csv`
+- `GET /api/management` · `POST /api/clippers` · `PATCH|DELETE /api/clippers/:id`
+- `POST /api/clippers/:id/strikes` · `DELETE /api/strikes/:id` · `POST /api/videos/:id/feedback`
+- `GET /api/remuneration` · `GET|PUT|DELETE /api/rewards/:scope/:id` · `PUT /api/settings`
+- `POST /api/clients` · `PATCH|DELETE /api/clients/:id` · `GET /api/discord/roles` · `POST /api/discord/import`
 - `GET /healthz` (sans mot de passe)
 
 Si `DASHBOARD_PASSWORD` est défini, tout le reste passe par une authentification basique (nom d'utilisateur libre).

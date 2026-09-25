@@ -3,6 +3,7 @@ import type { Clipper, Repo } from '../db/repo.js';
 import type { RelanceReason } from '../domain/relance.js';
 import type { Notifier } from '../jobs/relance.js';
 import { log } from '../log.js';
+import type { AgencyService } from '../services/agency.js';
 import type { Analytics } from '../services/analytics.js';
 import { status } from '../status.js';
 import { handleCommand } from './commands.js';
@@ -10,13 +11,23 @@ import { formatComptesReply, registerAccountsFromMessage } from './comptes.js';
 
 export interface Bot {
   notifier: Notifier;
+  bridge: BotBridge;
   stop: () => Promise<void>;
+}
+
+/** Ce que le dashboard peut demander au bot. */
+export interface BotBridge {
+  /** Envoie un message au clipper (salon COMPTES de son agence, sinon DM). false si impossible. */
+  send(clipper: Clipper, text: string): Promise<boolean>;
+  roles(): Promise<Array<{ id: string; name: string }>>;
+  membersWithRole(roleId: string): Promise<Array<{ id: string; name: string }>>;
 }
 
 interface Deps {
   token: string;
   repo: Repo;
   analytics: Analytics;
+  agency: AgencyService;
   dashboardUrl: string;
 }
 
@@ -84,7 +95,7 @@ function createClient(deps: Deps, withMessageContent: boolean): DiscordClient {
 const isDisallowedIntents = (err: unknown) =>
   err instanceof Error && (/disallowed intents/i.test(err.message) || (err as { code?: unknown }).code === 'DisallowedIntents');
 
-export async function startBot(deps: Deps): Promise<Bot> {
+export async function startBot(deps: Deps & { guildId?: string }): Promise<Bot> {
   const { repo } = deps;
   status.bot = { ...status.bot, state: 'connecting' };
 
@@ -102,24 +113,64 @@ export async function startBot(deps: Deps): Promise<Bot> {
   }
 
   const client = discord;
-  const notifier: Notifier = {
-    async relance(clipper: Clipper, _reason: RelanceReason, text: string) {
-      // On ping dans le salon COMPTES du client du clipper ; à défaut, en DM.
-      const channelId = repo
-        .listAccountsForClipper(clipper.id)
-        .map((a) => (a.clientId ? repo.getClient(a.clientId)?.discordChannelId : null))
-        .find((id): id is string => !!id);
-      if (channelId) {
-        const channel = await client.channels.fetch(channelId);
-        if (channel?.isSendable()) {
-          await channel.send(`<@${clipper.discordId}> ${text}`);
-          return;
-        }
+
+  /** Salon COMPTES de l'agence du clipper, sinon DM. */
+  async function deliver(clipper: Clipper, text: string, dmPrefix: string): Promise<void> {
+    if (clipper.discordId.startsWith('manual:')) throw new Error(`${clipper.username} n'a pas de compte Discord lié`);
+    const clientIds = [clipper.clientId, ...repo.listAccountsForClipper(clipper.id).map((a) => a.clientId)];
+    const channelId = clientIds
+      .map((id) => (id ? repo.getClient(id)?.discordChannelId : null))
+      .find((id): id is string => !!id);
+    if (channelId) {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isSendable()) {
+        await channel.send(`<@${clipper.discordId}> ${text}`);
+        return;
       }
-      const user = await client.users.fetch(clipper.discordId);
-      await user.send(`Salut ${clipper.username}, ${text}`);
+    }
+    const user = await client.users.fetch(clipper.discordId);
+    await user.send(`${dmPrefix}${text}`);
+  }
+
+  const notifier: Notifier = {
+    relance: (clipper: Clipper, _reason: RelanceReason, text: string) => deliver(clipper, text, `Salut ${clipper.username}, `),
+  };
+
+  const guild = async () => {
+    const g = deps.guildId ? await client.guilds.fetch(deps.guildId) : client.guilds.cache.first();
+    if (!g) throw new Error("Le bot n'est sur aucun serveur");
+    return g;
+  };
+
+  const bridge: BotBridge = {
+    async send(clipper, text) {
+      try {
+        await deliver(clipper, text, '');
+        return true;
+      } catch (err) {
+        log.warn(`message à ${clipper.username} non envoyé : ${String(err)}`);
+        return false;
+      }
+    },
+    async roles() {
+      const g = await guild();
+      const roles = await g.roles.fetch();
+      return [...roles.values()]
+        .filter((r) => r.id !== g.id && !r.managed)
+        .sort((a, b) => b.position - a.position)
+        .map((r) => ({ id: r.id, name: r.name }));
+    },
+    async membersWithRole(roleId) {
+      const g = await guild();
+      // Liste REST des membres : nécessite "Server Members Intent" dans le Developer Portal.
+      const members = await g.members.list({ limit: 1000 }).catch((err) => {
+        throw new Error(`Active « Server Members Intent » dans le Developer Portal Discord (onglet Bot). (${String(err)})`);
+      });
+      return [...members.values()]
+        .filter((m) => !m.user.bot && m.roles.cache.has(roleId))
+        .map((m) => ({ id: m.id, name: m.displayName }));
     },
   };
 
-  return { notifier, stop: () => client.destroy() };
+  return { notifier, bridge, stop: () => client.destroy() };
 }

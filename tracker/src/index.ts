@@ -8,6 +8,7 @@ import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
+import { AgencyService } from './services/agency.js';
 import { Analytics } from './services/analytics.js';
 import { status } from './status.js';
 import { createApp, startWeb } from './web/server.js';
@@ -23,7 +24,14 @@ const analytics = new Analytics(repo);
 const fetchers = createFetchers(config);
 const dashboardUrl = config.PUBLIC_URL ?? `http://localhost:${config.WEB_PORT}`;
 
-const stopWeb = startWeb(createApp({ repo, analytics, password: config.DASHBOARD_PASSWORD }), config.WEB_PORT);
+const agency = new AgencyService(repo, {
+  inactivityDays: config.INACTIVITY_DAYS,
+  dropThresholdPercent: config.DROP_THRESHOLD_PERCENT,
+  dropMinPreviousViews: config.DROP_MIN_PREVIOUS_VIEWS,
+});
+const botHolder: { current?: Bot['bridge'] } = {};
+
+const stopWeb = startWeb(createApp({ repo, agency, password: config.DASHBOARD_PASSWORD, bot: botHolder }), config.WEB_PORT);
 log.info(`dashboard sur ${dashboardUrl} (données : ${config.FETCHER_MODE})`);
 if (!config.DASHBOARD_PASSWORD) log.warn('DASHBOARD_PASSWORD absent : le dashboard est accessible sans mot de passe');
 
@@ -45,7 +53,8 @@ if (config.DISCORD_TOKEN) {
     log.warn('DISCORD_CLIENT_ID absent : slash commands non enregistrées');
   }
   try {
-    bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, dashboardUrl });
+    bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, agency, dashboardUrl, guildId: config.DISCORD_GUILD_ID });
+    botHolder.current = bot.bridge;
   } catch (err) {
     // Le site reste en ligne pour afficher l'erreur sur le dashboard.
     const httpStatus = (err as { status?: number }).status;

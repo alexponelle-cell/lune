@@ -9,13 +9,41 @@ export interface Client {
   slug: string;
   discordChannelId: string | null;
   rule: RewardRule;
+  monthlyFeeCents: number;
   createdAt: number;
 }
 
+export type ClipperStatus = 'actif' | 'inactif';
+
 export interface Clipper {
   id: number;
+  /** ID Discord, ou "manual:…" pour un clipper ajouté à la main depuis le dashboard. */
   discordId: string;
   username: string;
+  clientId: number | null;
+  status: ClipperStatus;
+  createdAt: number;
+}
+
+export interface VideoRow {
+  id: number;
+  accountId: number;
+  clipperId: number;
+  platform: Platform;
+  platformVideoId: string;
+  url: string | null;
+  title: string | null;
+  thumbnailUrl: string | null;
+  publishedAt: number | null;
+  views: number;
+  likes: number | null;
+  comments: number | null;
+}
+
+export interface Strike {
+  id: number;
+  clipperId: number;
+  reason: string;
   createdAt: number;
 }
 
@@ -42,6 +70,7 @@ export interface VideoInput {
   views: number;
   likes?: number;
   comments?: number;
+  thumbnailUrl?: string;
 }
 
 type Row = Record<string, any>;
@@ -52,6 +81,7 @@ const toClient = (r: Row): Client => ({
   slug: r.slug,
   discordChannelId: r.discord_channel_id,
   rule: { ratePer1kCents: r.rate_per_1k_cents, minViews: r.min_views, capCents: r.cap_cents },
+  monthlyFeeCents: r.monthly_fee_cents ?? 0,
   createdAt: r.created_at,
 });
 
@@ -59,8 +89,13 @@ const toClipper = (r: Row): Clipper => ({
   id: r.id,
   discordId: r.discord_id,
   username: r.username,
+  clientId: r.client_id ?? null,
+  status: r.status === 'inactif' ? 'inactif' : 'actif',
   createdAt: r.created_at,
 });
+
+const VIDEO_COLUMNS = `v.id, v.account_id AS accountId, a.clipper_id AS clipperId, a.platform, v.platform_video_id AS platformVideoId,
+  v.url, v.title, v.thumbnail_url AS thumbnailUrl, v.published_at AS publishedAt, v.views, v.likes, v.comments`;
 
 const toAccount = (r: Row): Account => ({
   id: r.id,
@@ -143,14 +178,17 @@ export class Repo {
 
   // --- Clippers --------------------------------------------------------------
 
-  upsertClipper(discordId: string, username: string, now = Date.now()): Clipper {
+  /** Crée ou met à jour un clipper. L'agence n'est posée que s'il n'en a pas encore. */
+  upsertClipper(discordId: string, username: string, now = Date.now(), clientId: number | null = null): Clipper {
     const r = this.db
       .prepare(
-        `INSERT INTO clippers (discord_id, username, created_at) VALUES (?, ?, ?)
-         ON CONFLICT (discord_id) DO UPDATE SET username = excluded.username
+        `INSERT INTO clippers (discord_id, username, client_id, created_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT (discord_id) DO UPDATE SET
+           username = excluded.username,
+           client_id = COALESCE(clippers.client_id, excluded.client_id)
          RETURNING *`,
       )
-      .get(discordId, username, now);
+      .get(discordId, username, clientId, now);
     return toClipper(r as Row);
   }
 
@@ -259,10 +297,11 @@ export class Repo {
    */
   recordCollection(accountId: number, videos: readonly VideoInput[], at: number): Snapshot {
     const upsertVideo = this.db.prepare(
-      `INSERT INTO videos (account_id, platform_video_id, url, title, published_at, views, likes, comments, first_seen_at, updated_at)
-       VALUES (@accountId, @id, @url, @title, @publishedAt, @views, @likes, @comments, @at, @at)
+      `INSERT INTO videos (account_id, platform_video_id, url, title, thumbnail_url, published_at, views, likes, comments, first_seen_at, updated_at)
+       VALUES (@accountId, @id, @url, @title, @thumbnail, @publishedAt, @views, @likes, @comments, @at, @at)
        ON CONFLICT (account_id, platform_video_id) DO UPDATE SET
          url = COALESCE(excluded.url, videos.url),
+         thumbnail_url = COALESCE(excluded.thumbnail_url, videos.thumbnail_url),
          title = COALESCE(excluded.title, videos.title),
          published_at = COALESCE(excluded.published_at, videos.published_at),
          views = MAX(videos.views, excluded.views),
@@ -288,6 +327,7 @@ export class Repo {
           id: v.platformVideoId,
           url: v.url ?? null,
           title: v.title ?? null,
+          thumbnail: v.thumbnailUrl ?? null,
           publishedAt: v.publishedAt ?? null,
           views: v.views,
           likes: v.likes ?? null,
@@ -349,5 +389,202 @@ export class Repo {
     this.db
       .prepare('INSERT INTO relances (clipper_id, kind, message, sent_at) VALUES (?, ?, ?, ?)')
       .run(clipperId, kind, message, at);
+  }
+
+  // --- Agences (clients) : gestion depuis le dashboard ----------------------
+
+  updateClient(
+    id: number,
+    patch: { name?: string; discordChannelId?: string | null; monthlyFeeCents?: number },
+  ): Client | undefined {
+    const current = this.getClient(id);
+    if (!current) return undefined;
+    this.db
+      .prepare('UPDATE clients SET name = ?, discord_channel_id = ?, monthly_fee_cents = ? WHERE id = ?')
+      .run(
+        patch.name ?? current.name,
+        patch.discordChannelId === undefined ? current.discordChannelId : patch.discordChannelId,
+        patch.monthlyFeeCents ?? current.monthlyFeeCents,
+        id,
+      );
+    return this.getClient(id);
+  }
+
+  deleteClient(id: number): void {
+    this.db.transaction(() => {
+      this.db.prepare("DELETE FROM reward_rules WHERE scope = 'client' AND scope_id = ?").run(id);
+      this.db.prepare('DELETE FROM clients WHERE id = ?').run(id);
+    })();
+  }
+
+  // --- Clippers : gestion depuis le dashboard -------------------------------
+
+  listClippers(opts: { clientId?: number; includeInactive?: boolean } = {}): Clipper[] {
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (opts.clientId !== undefined) {
+      where.push('client_id = ?');
+      params.push(opts.clientId);
+    }
+    if (!opts.includeInactive) where.push("status = 'actif'");
+    const sql = `SELECT * FROM clippers ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY username COLLATE NOCASE`;
+    return this.db
+      .prepare(sql)
+      .all(...params)
+      .map((r) => toClipper(r as Row));
+  }
+
+  createManualClipper(username: string, clientId: number | null, now = Date.now()): Clipper {
+    const r = this.db
+      .prepare('INSERT INTO clippers (discord_id, username, client_id, created_at) VALUES (?, ?, ?, ?) RETURNING *')
+      .get(`manual:${now.toString(36)}${Math.random().toString(36).slice(2, 8)}`, username, clientId, now);
+    return toClipper(r as Row);
+  }
+
+  updateClipper(id: number, patch: { username?: string; clientId?: number | null; status?: ClipperStatus }): Clipper | undefined {
+    const current = this.getClipper(id);
+    if (!current) return undefined;
+    this.db
+      .prepare('UPDATE clippers SET username = ?, client_id = ?, status = ? WHERE id = ?')
+      .run(
+        patch.username ?? current.username,
+        patch.clientId === undefined ? current.clientId : patch.clientId,
+        patch.status ?? current.status,
+        id,
+      );
+    return this.getClipper(id);
+  }
+
+  deleteClipper(id: number): void {
+    this.db.transaction(() => {
+      this.db.prepare("DELETE FROM reward_rules WHERE scope = 'clipper' AND scope_id = ?").run(id);
+      this.db.prepare('DELETE FROM clippers WHERE id = ?').run(id);
+    })();
+  }
+
+  /** Date du tout premier relevé (début de l'historique "all-time"). */
+  firstSnapshotAt(): number | null {
+    const r = this.db.prepare('SELECT MIN(captured_at) AS first FROM account_snapshots').get() as { first: number | null };
+    return r.first;
+  }
+
+  // --- Vidéos ----------------------------------------------------------------
+
+  /** Vidéos publiées dans [from, to[, éventuellement limitées à certains clippers. */
+  videosPublished(from: number, to: number, clipperIds?: readonly number[]): VideoRow[] {
+    if (clipperIds && clipperIds.length === 0) return [];
+    const filter = clipperIds ? `AND a.clipper_id IN (${clipperIds.map(() => '?').join(',')})` : '';
+    return this.db
+      .prepare(
+        `SELECT ${VIDEO_COLUMNS} FROM videos v JOIN accounts a ON a.id = v.account_id
+         WHERE a.active = 1 AND v.published_at >= ? AND v.published_at < ? ${filter}
+         ORDER BY v.published_at DESC`,
+      )
+      .all(from, to, ...(clipperIds ?? [])) as VideoRow[];
+  }
+
+  /** Meilleures vidéos (vues actuelles) d'une plateforme, publiées dans [from, to[. */
+  bestVideos(platform: Platform, from: number, to: number, limit = 10, clipperIds?: readonly number[]): VideoRow[] {
+    if (clipperIds && clipperIds.length === 0) return [];
+    const filter = clipperIds ? `AND a.clipper_id IN (${clipperIds.map(() => '?').join(',')})` : '';
+    return this.db
+      .prepare(
+        `SELECT ${VIDEO_COLUMNS} FROM videos v JOIN accounts a ON a.id = v.account_id
+         WHERE a.active = 1 AND a.platform = ? AND COALESCE(v.published_at, v.first_seen_at) >= ?
+           AND COALESCE(v.published_at, v.first_seen_at) < ? ${filter}
+         ORDER BY v.views DESC LIMIT ?`,
+      )
+      .all(platform, from, to, ...(clipperIds ?? []), limit) as VideoRow[];
+  }
+
+  getVideo(id: number): VideoRow | undefined {
+    return this.db
+      .prepare(`SELECT ${VIDEO_COLUMNS} FROM videos v JOIN accounts a ON a.id = v.account_id WHERE v.id = ?`)
+      .get(id) as VideoRow | undefined;
+  }
+
+  // --- Strikes ---------------------------------------------------------------
+
+  addStrike(clipperId: number, reason: string, at = Date.now()): Strike {
+    const r = this.db
+      .prepare('INSERT INTO strikes (clipper_id, reason, created_at) VALUES (?, ?, ?) RETURNING id')
+      .get(clipperId, reason, at) as { id: number };
+    return { id: r.id, clipperId, reason, createdAt: at };
+  }
+
+  deleteStrike(id: number): void {
+    this.db.prepare('DELETE FROM strikes WHERE id = ?').run(id);
+  }
+
+  strikes(clipperId: number, from = 0, to = Number.MAX_SAFE_INTEGER): Strike[] {
+    return this.db
+      .prepare(
+        `SELECT id, clipper_id AS clipperId, reason, created_at AS createdAt FROM strikes
+         WHERE clipper_id = ? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC`,
+      )
+      .all(clipperId, from, to) as Strike[];
+  }
+
+  // --- Retours ---------------------------------------------------------------
+
+  addFeedback(clipperId: number, videoId: number | null, message: string, at = Date.now()): number {
+    const r = this.db
+      .prepare('INSERT INTO feedbacks (clipper_id, video_id, message, created_at) VALUES (?, ?, ?, ?) RETURNING id')
+      .get(clipperId, videoId, message, at) as { id: number };
+    return r.id;
+  }
+
+  markFeedbackDelivered(id: number): void {
+    this.db.prepare('UPDATE feedbacks SET delivered = 1 WHERE id = ?').run(id);
+  }
+
+  feedbackCounts(videoIds: readonly number[]): Map<number, number> {
+    if (videoIds.length === 0) return new Map();
+    const rows = this.db
+      .prepare(
+        `SELECT video_id AS id, COUNT(*) AS n FROM feedbacks WHERE video_id IN (${videoIds.map(() => '?').join(',')}) GROUP BY video_id`,
+      )
+      .all(...videoIds) as Array<{ id: number; n: number }>;
+    return new Map(rows.map((r) => [r.id, r.n]));
+  }
+
+  // --- Barèmes & réglages ----------------------------------------------------
+
+  getRewardRule(scope: string, scopeId: number): unknown | undefined {
+    const r = this.db.prepare('SELECT config FROM reward_rules WHERE scope = ? AND scope_id = ?').get(scope, scopeId) as
+      | { config: string }
+      | undefined;
+    return r ? JSON.parse(r.config) : undefined;
+  }
+
+  setRewardRule(scope: string, scopeId: number, config: unknown, at = Date.now()): void {
+    this.db
+      .prepare(
+        `INSERT INTO reward_rules (scope, scope_id, config, updated_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT (scope, scope_id) DO UPDATE SET config = excluded.config, updated_at = excluded.updated_at`,
+      )
+      .run(scope, scopeId, JSON.stringify(config), at);
+  }
+
+  deleteRewardRule(scope: string, scopeId: number): void {
+    this.db.prepare('DELETE FROM reward_rules WHERE scope = ? AND scope_id = ?').run(scope, scopeId);
+  }
+
+  listRewardRuleScopes(): Array<{ scope: string; scopeId: number }> {
+    return this.db.prepare('SELECT scope, scope_id AS scopeId FROM reward_rules').all() as Array<{
+      scope: string;
+      scopeId: number;
+    }>;
+  }
+
+  getSetting<T>(key: string, fallback: T): T {
+    const r = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+    return r ? (JSON.parse(r.value) as T) : fallback;
+  }
+
+  setSetting(key: string, value: unknown): void {
+    this.db
+      .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value')
+      .run(key, JSON.stringify(value));
   }
 }

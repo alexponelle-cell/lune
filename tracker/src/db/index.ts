@@ -17,8 +17,10 @@ export function openDatabase(path: string): DB {
 function migrate(db: DB): void {
   const current = db.pragma('user_version', { simple: true }) as number;
   for (let v = current; v < MIGRATIONS.length; v++) {
+    const migration = MIGRATIONS[v]!;
     db.transaction(() => {
-      db.exec(MIGRATIONS[v]!);
+      if (typeof migration === 'string') db.exec(migration);
+      else migration(db);
       db.pragma(`user_version = ${v + 1}`);
     })();
   }

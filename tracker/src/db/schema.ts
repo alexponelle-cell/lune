@@ -1,9 +1,11 @@
+import type Database from 'better-sqlite3';
+
 /**
  * Migrations appliquées dans l'ordre. Ne jamais modifier une migration déjà déployée :
  * en ajouter une nouvelle à la fin.
  * Toutes les dates sont des timestamps en millisecondes (UTC).
  */
-export const MIGRATIONS: readonly string[] = [
+export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void)> = [
   `
   CREATE TABLE clients (
     id                 INTEGER PRIMARY KEY,
@@ -86,4 +88,74 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX relances_clipper ON relances(clipper_id, kind, sent_at);
   `,
+
+  // v2 : structure "agence" (dashboard complet)
+  `
+  -- Un clipper appartient à une agence (= client) ; statut géré depuis Management
+  ALTER TABLE clippers ADD COLUMN client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL;
+  ALTER TABLE clippers ADD COLUMN status TEXT NOT NULL DEFAULT 'actif';
+  UPDATE clippers SET client_id = (
+    SELECT a.client_id FROM accounts a WHERE a.clipper_id = clippers.id AND a.client_id IS NOT NULL LIMIT 1
+  );
+
+  ALTER TABLE clients ADD COLUMN monthly_fee_cents INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE videos ADD COLUMN thumbnail_url TEXT;
+  CREATE INDEX videos_published ON videos(published_at);
+
+  -- Strikes disciplinaires
+  CREATE TABLE strikes (
+    id         INTEGER PRIMARY KEY,
+    clipper_id INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    reason     TEXT    NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX strikes_clipper ON strikes(clipper_id, created_at);
+
+  -- Retours du staff sur une vidéo ("Faire un retour")
+  CREATE TABLE feedbacks (
+    id         INTEGER PRIMARY KEY,
+    clipper_id INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    video_id   INTEGER REFERENCES videos(id) ON DELETE SET NULL,
+    message    TEXT    NOT NULL,
+    delivered  INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX feedbacks_clipper ON feedbacks(clipper_id, created_at);
+
+  -- Barèmes de rémunération : universel (scope_id 0), par agence, par clipper
+  CREATE TABLE reward_rules (
+    scope      TEXT    NOT NULL CHECK (scope IN ('universal', 'client', 'clipper')),
+    scope_id   INTEGER NOT NULL DEFAULT 0,
+    config     TEXT    NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (scope, scope_id)
+  );
+
+  -- Réglages globaux (objectifs, seuils…) en JSON
+  CREATE TABLE settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
+
+  // v2 bis : les tarifs posés avec /client deviennent le barème de l'agence
+  (db) => {
+    const rows = db.prepare('SELECT id, rate_per_1k_cents, min_views, cap_cents, created_at FROM clients').all() as Array<{
+      id: number;
+      rate_per_1k_cents: number;
+      cap_cents: number | null;
+      created_at: number;
+    }>;
+    const insert = db.prepare(
+      "INSERT OR IGNORE INTO reward_rules (scope, scope_id, config, updated_at) VALUES ('client', ?, ?, ?)",
+    );
+    for (const r of rows) {
+      if (r.rate_per_1k_cents <= 0) continue;
+      const config = {
+        base: { enabled: true, perView: r.rate_per_1k_cents / 100 / 1000 },
+        cap: r.cap_cents ? r.cap_cents / 100 : null,
+      };
+      insert.run(r.id, JSON.stringify(config), r.created_at);
+    }
+  },
 ];

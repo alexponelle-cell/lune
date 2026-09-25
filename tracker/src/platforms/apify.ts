@@ -46,6 +46,7 @@ export class TikTokApifyFetcher implements PlatformFetcher {
         .map((i) => ({
           platformVideoId: String(i.id),
           url: i.webVideoUrl,
+          thumbnailUrl: i.videoMeta?.coverUrl ?? i.covers?.[0],
           title: i.text,
           publishedAt: i.createTimeISO ? Date.parse(i.createTimeISO) : undefined,
           views: num(i.playCount) ?? 0,
@@ -78,6 +79,7 @@ export class InstagramApifyFetcher implements PlatformFetcher {
         .map((i) => ({
           platformVideoId: String(i.shortCode ?? i.id),
           url: i.url,
+          thumbnailUrl: i.displayUrl ?? i.thumbnailUrl,
           title: i.caption,
           publishedAt: i.timestamp ? Date.parse(i.timestamp) : undefined,
           views: num(i.videoPlayCount) ?? num(i.videoViewCount) ?? 0,

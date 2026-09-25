@@ -21,7 +21,7 @@ export function registerAccountsFromMessage(
   const links = parseAccountLinks(content);
   if (links.length === 0) return null;
 
-  const clipper = repo.upsertClipper(author.discordId, author.username, now);
+  const clipper = repo.upsertClipper(author.discordId, author.username, now, client.id);
   const result: ComptesResult = { added: [], alreadyTracked: [], conflicts: [] };
   for (const link of links) {
     const r = repo.registerAccount({ clipperId: clipper.id, clientId: client.id, ...link, now });

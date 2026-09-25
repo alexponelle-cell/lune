@@ -57,6 +57,7 @@ export class YouTubeFetcher implements PlatformFetcher {
       videos: (videos.items ?? []).map((v) => ({
         platformVideoId: v.id,
         url: `https://www.youtube.com/shorts/${v.id}`,
+        thumbnailUrl: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
         title: v.snippet.title,
         publishedAt: Date.parse(v.snippet.publishedAt),
         views: Number(v.statistics.viewCount ?? 0),
