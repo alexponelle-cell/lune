@@ -6,10 +6,11 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { BotBridge } from '../bot/index.js';
 import type { Repo } from '../db/repo.js';
-import { canonicalUrl, parseAccountUrl, PLATFORMS } from '../domain/links.js';
+import { parseAccountInput, PLATFORMS } from '../domain/links.js';
 import { normalizeRewardConfig } from '../domain/remuneration.js';
 import { dayKey } from '../domain/time.js';
 import type { AgencyService } from '../services/agency.js';
+import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
 
 // Application web (HTML + CSS + JS sans build), copiée dans dist/ par `npm run build`.
@@ -23,6 +24,7 @@ const ASSETS = {
 export interface WebDeps {
   repo: Repo;
   agency: AgencyService;
+  recruitment: RecruitmentService;
   password?: string;
   /** Rempli quand le bot est connecté (sinon les actions Discord sont indisponibles). */
   bot: { current?: BotBridge };
@@ -149,9 +151,7 @@ export function createApp(deps: WebDeps): Hono {
         for (const a of existing) repo.deactivateAccount(a.id);
         continue;
       }
-      const parsed = value.startsWith('http')
-        ? parseAccountUrl(value)
-        : { platform, handle: value.replace(/^@/, '').toLowerCase(), url: canonicalUrl(platform, value.replace(/^@/, '').toLowerCase()) };
+      const parsed = parseAccountInput(platform, value);
       if (!parsed || parsed.platform !== platform) {
         errors.push(`Lien ${platform} invalide`);
         continue;
@@ -300,6 +300,100 @@ export function createApp(deps: WebDeps): Hono {
 
   app.delete('/api/clients/:id', (c) => {
     repo.deleteClient(Number(c.req.param('id')));
+    return c.json({ ok: true });
+  });
+
+  // --- Recrutement (phase 2) --------------------------------------------------------------
+
+  const { recruitment } = deps;
+  const rec = recruitment.rec;
+  const ticket = (channelId: string | null) => (channelId ? deps.bot.current?.ticketUrl(channelId) ?? null : null);
+
+  app.get('/api/recruitment/settings', (c) => c.json(recruitment.settings()));
+  app.put('/api/recruitment/settings', async (c) => c.json(recruitment.saveSettings(await c.req.json())));
+
+  app.get('/api/funnel', (c) => {
+    const recruiter = clientIdParam(c.req.query('recruiter'));
+    const f = recruitment.funnel(rangeOf(c), { recruiterId: recruiter });
+    return c.json({ ...f, people: f.people.map((p) => ({ ...p, ticketUrl: ticket(p.channelId) })) });
+  });
+
+  app.get('/api/agency-cards', (c) => c.json(recruitment.agencyCards(rangeOf(c))));
+
+  app.get('/api/recruiters', (c) => c.json({ settings: recruitment.settings(), rows: recruitment.recruitersReport(rangeOf(c)) }));
+
+  app.patch('/api/recruiters/:id', async (c) => {
+    const body = z.object({ name: z.string().trim().min(1).max(80).optional(), active: z.boolean().optional() }).parse(await c.req.json());
+    rec.updateRecruiter(Number(c.req.param('id')), body);
+    return c.json({ ok: true });
+  });
+
+  app.delete('/api/recruiters/:id', (c) => {
+    rec.deleteRecruiter(Number(c.req.param('id')));
+    return c.json({ ok: true });
+  });
+
+  app.get('/api/suivi', (c) => {
+    const s = recruitment.suivi(rangeOf(c));
+    const withTicket = <T extends { channelId: string | null }>(list: T[]) => list.map((x) => ({ ...x, ticketUrl: ticket(x.channelId) }));
+    return c.json({
+      ...s,
+      toTreat: { ...s.toTreat, tests: withTicket(s.toTreat.tests), messages: withTicket(s.toTreat.messages) },
+      rows: withTicket(s.rows),
+    });
+  });
+
+  app.post('/api/tests/:clipperId/validate', async (c) => {
+    const clipperId = Number(c.req.param('clipperId'));
+    if (!rec.candidate(clipperId)) return c.json({ error: 'Candidat introuvable' }, 404);
+    if (deps.bot.current) return c.json({ ok: true, warnings: await deps.bot.current.validateTest(clipperId) });
+    const test = rec.currentTest(clipperId);
+    if (test) rec.reviewTest(test.id, 'validated', null);
+    rec.setStage(clipperId, 'clipper');
+    return c.json({ ok: true, warnings: ['Bot hors ligne : message et rôle Discord non envoyés'] });
+  });
+
+  app.post('/api/tests/:clipperId/review', async (c) => {
+    const clipperId = Number(c.req.param('clipperId'));
+    const { note, final } = z.object({ note: z.string().trim().max(1500).default(''), final: z.boolean().default(false) }).parse(await c.req.json());
+    if (!final && !note) return c.json({ error: 'Explique ce qu’il faut corriger' }, 400);
+    if (!rec.candidate(clipperId)) return c.json({ error: 'Candidat introuvable' }, 404);
+    if (deps.bot.current) return c.json({ ok: true, warnings: await deps.bot.current.reviewTest(clipperId, note, final) });
+    const test = rec.currentTest(clipperId);
+    if (test) rec.reviewTest(test.id, final ? 'refused' : 'changes', note);
+    if (final) rec.setStage(clipperId, 'refuse');
+    return c.json({ ok: true, warnings: ['Bot hors ligne : message Discord non envoyé'] });
+  });
+
+  app.post('/api/requests/:id/done', (c) => {
+    rec.closeRequest(Number(c.req.param('id')));
+    return c.json({ ok: true });
+  });
+
+  /** Réponse à une demande d'avis : enregistrée comme analyse + envoyée sur Discord. */
+  app.post('/api/requests/:id/feedback', async (c) => {
+    const request = rec.request(Number(c.req.param('id')));
+    if (!request) return c.json({ error: 'Demande introuvable' }, 404);
+    const clipper = repo.getClipper(request.clipperId);
+    if (!clipper) return c.json({ error: 'Clipper introuvable' }, 404);
+    const { message } = z.object({ message: z.string().trim().min(1).max(1500) }).parse(await c.req.json());
+    const id = repo.addFeedback(clipper.id, null, message);
+    const link = request.payload.url ? `\n${request.payload.url}` : '';
+    const sent = deps.bot.current ? await deps.bot.current.send(clipper, `📝 **Retour sur ta vidéo** :${link}\n\n${message}`) : false;
+    if (sent) repo.markFeedbackDelivered(id);
+    rec.closeRequest(request.id);
+    return c.json({ ok: true, sent });
+  });
+
+  app.get('/api/discord/channels', async (c) => {
+    if (!deps.bot.current) return c.json({ error: 'Bot Discord non connecté' }, 503);
+    return c.json(await deps.bot.current.channels());
+  });
+
+  app.post('/api/discord/test-message', async (c) => {
+    if (!deps.bot.current) return c.json({ error: 'Bot Discord non connecté' }, 503);
+    const { channelId } = z.object({ channelId: z.string().regex(/^\d+$/) }).parse(await c.req.json());
+    await deps.bot.current.publishTestMessage(channelId);
     return c.json({ ok: true });
   });
 

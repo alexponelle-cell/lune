@@ -9,6 +9,8 @@ export interface ServiceStatus {
     tag?: string;
     /** false si le Message Content Intent n'est pas activé : le salon COMPTES ne marche pas. */
     messageContent?: boolean;
+    /** false si le Server Members Intent n'est pas activé : pas de suivi des invitations. */
+    membersIntent?: boolean;
     guilds?: number;
     lastCommand?: { name: string; at: number; ok: boolean; error?: string };
     commandsRegistered?: string;

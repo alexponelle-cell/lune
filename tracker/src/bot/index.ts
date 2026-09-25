@@ -5,9 +5,11 @@ import type { Notifier } from '../jobs/relance.js';
 import { log } from '../log.js';
 import type { AgencyService } from '../services/agency.js';
 import type { Analytics } from '../services/analytics.js';
+import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
 import { handleCommand } from './commands.js';
 import { formatComptesReply, registerAccountsFromMessage } from './comptes.js';
+import { attachRecruitment, RECRUITMENT_COMMANDS, type RecruitmentBridge } from './recruitment.js';
 
 export interface Bot {
   notifier: Notifier;
@@ -16,7 +18,7 @@ export interface Bot {
 }
 
 /** Ce que le dashboard peut demander au bot. */
-export interface BotBridge {
+export interface BotBridge extends RecruitmentBridge {
   /** Envoie un message au clipper (salon COMPTES de son agence, sinon DM). false si impossible. */
   send(clipper: Clipper, text: string): Promise<boolean>;
   roles(): Promise<Array<{ id: string; name: string }>>;
@@ -28,26 +30,48 @@ interface Deps {
   repo: Repo;
   analytics: Analytics;
   agency: AgencyService;
+  recruitment: RecruitmentService;
   dashboardUrl: string;
+  guildId?: string;
 }
 
-function createClient(deps: Deps, withMessageContent: boolean): DiscordClient {
+/** Intents privilégiés (à activer dans le Developer Portal, onglet Bot) dont on peut se passer. */
+interface Privileged {
+  messageContent: boolean;
+  members: boolean;
+}
+
+function createClient(deps: Deps, privileged: Privileged): { discord: DiscordClient; recruitmentBridge: RecruitmentBridge } {
   const { repo } = deps;
   const discord = new DiscordClient({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.DirectMessages,
-      // Intent privilégié : à activer dans le Developer Portal (Bot > Message Content Intent).
-      ...(withMessageContent ? [GatewayIntentBits.MessageContent] : []),
+      GatewayIntentBits.GuildVoiceStates,
+      GatewayIntentBits.GuildInvites,
+      // Message Content : lire les liens du salon COMPTES et des salons de test.
+      ...(privileged.messageContent ? [GatewayIntentBits.MessageContent] : []),
+      // Server Members : savoir qui rejoint le serveur (suivi des invitations / recruteurs).
+      ...(privileged.members ? [GatewayIntentBits.GuildMembers] : []),
     ],
     partials: [Partials.Channel],
   });
 
   discord.once(Events.ClientReady, (c) => {
-    status.bot = { ...status.bot, state: 'ready', tag: c.user.tag, messageContent: withMessageContent, guilds: c.guilds.cache.size, error: undefined };
+    status.bot = {
+      ...status.bot,
+      state: 'ready',
+      tag: c.user.tag,
+      messageContent: privileged.messageContent,
+      membersIntent: privileged.members,
+      guilds: c.guilds.cache.size,
+      error: undefined,
+    };
     log.info(`bot connecté en tant que ${c.user.tag} sur ${c.guilds.cache.size} serveur(s)`);
   });
+
+  const recruitmentBridge = attachRecruitment(discord, { repo, recruitment: deps.recruitment, guildId: deps.guildId });
 
   // Salon COMPTES : enregistrement des comptes postés par les clippers.
   discord.on(Events.MessageCreate, async (message) => {
@@ -70,7 +94,7 @@ function createClient(deps: Deps, withMessageContent: boolean): DiscordClient {
   });
 
   discord.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
+    if (!interaction.isChatInputCommand() || RECRUITMENT_COMMANDS.has(interaction.commandName)) return;
     const name = interaction.commandName;
     log.info(`commande /${name} par ${interaction.user.username} (salon ${interaction.channelId})`);
     try {
@@ -89,38 +113,51 @@ function createClient(deps: Deps, withMessageContent: boolean): DiscordClient {
   discord.on(Events.Error, (err) => log.error('discord', err));
   discord.on(Events.Warn, (msg) => log.warn(`discord: ${msg}`));
   discord.on(Events.ShardDisconnect, (e) => log.warn(`discord déconnecté (code ${e.code})`));
-  return discord;
+  return { discord, recruitmentBridge };
 }
 
 const isDisallowedIntents = (err: unknown) =>
   err instanceof Error && (/disallowed intents/i.test(err.message) || (err as { code?: unknown }).code === 'DisallowedIntents');
 
-export async function startBot(deps: Deps & { guildId?: string }): Promise<Bot> {
+export async function startBot(deps: Deps): Promise<Bot> {
   const { repo } = deps;
   status.bot = { ...status.bot, state: 'connecting' };
 
-  let discord = createClient(deps, true);
-  try {
-    await discord.login(deps.token);
-  } catch (err) {
-    if (!isDisallowedIntents(err)) throw err;
-    // Sans le Message Content Intent, les slash commands marchent quand même :
-    // on se reconnecte sans, et on le signale sur le dashboard.
-    log.error('Message Content Intent non activé dans le Developer Portal : le salon COMPTES ne lira pas les liens', err);
-    await discord.destroy();
-    discord = createClient(deps, false);
-    await discord.login(deps.token);
+  // On tente avec tous les intents, puis sans ceux que Discord refuse (non activés dans le portail).
+  const attempts: Privileged[] = [
+    { messageContent: true, members: true },
+    { messageContent: true, members: false },
+    { messageContent: false, members: false },
+  ];
+  let created: ReturnType<typeof createClient> | undefined;
+  for (const [i, privileged] of attempts.entries()) {
+    const attempt = createClient(deps, privileged);
+    try {
+      await attempt.discord.login(deps.token);
+      created = attempt;
+      break;
+    } catch (err) {
+      await attempt.discord.destroy();
+      if (!isDisallowedIntents(err) || i === attempts.length - 1) throw err;
+      log.warn(
+        privileged.members
+          ? 'Server Members Intent non activé : le suivi des invitations (recruteurs) est désactivé'
+          : 'Message Content Intent non activé : le salon COMPTES et les salons de test ne lisent pas les liens',
+      );
+    }
   }
+  const { discord, recruitmentBridge } = created!;
 
   const client = discord;
 
   /** Salon COMPTES de l'agence du clipper, sinon DM. */
   async function deliver(clipper: Clipper, text: string, dmPrefix: string): Promise<void> {
     if (clipper.discordId.startsWith('manual:')) throw new Error(`${clipper.username} n'a pas de compte Discord lié`);
+    // Salon privé du clipper (ticket), sinon salon COMPTES de son agence, sinon DM.
     const clientIds = [clipper.clientId, ...repo.listAccountsForClipper(clipper.id).map((a) => a.clientId)];
-    const channelId = clientIds
-      .map((id) => (id ? repo.getClient(id)?.discordChannelId : null))
-      .find((id): id is string => !!id);
+    const channelId =
+      deps.recruitment.rec.candidate(clipper.id)?.privateChannelId ??
+      clientIds.map((id) => (id ? repo.getClient(id)?.discordChannelId : null)).find((id): id is string => !!id);
     if (channelId) {
       const channel = await client.channels.fetch(channelId);
       if (channel?.isSendable()) {
@@ -143,6 +180,7 @@ export async function startBot(deps: Deps & { guildId?: string }): Promise<Bot> 
   };
 
   const bridge: BotBridge = {
+    ...recruitmentBridge,
     async send(clipper, text) {
       try {
         await deliver(clipper, text, '');

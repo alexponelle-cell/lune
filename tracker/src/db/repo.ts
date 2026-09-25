@@ -185,7 +185,9 @@ export class Repo {
         `INSERT INTO clippers (discord_id, username, client_id, created_at) VALUES (?, ?, ?, ?)
          ON CONFLICT (discord_id) DO UPDATE SET
            username = excluded.username,
-           client_id = COALESCE(clippers.client_id, excluded.client_id)
+           client_id = COALESCE(clippers.client_id, excluded.client_id),
+           stage = CASE WHEN clippers.stage IN ('invite', 'test') THEN 'clipper' ELSE clippers.stage END,
+           validated_at = CASE WHEN clippers.stage IN ('invite', 'test') THEN excluded.created_at ELSE clippers.validated_at END
          RETURNING *`,
       )
       .get(discordId, username, clientId, now);
@@ -207,7 +209,7 @@ export class Repo {
     return this.db
       .prepare(
         `SELECT DISTINCT c.* FROM clippers c
-         JOIN accounts a ON a.clipper_id = c.id AND a.active = 1
+         JOIN accounts a ON a.clipper_id = c.id AND a.active = 1 AND c.stage = 'clipper' AND c.status = 'actif'
          ORDER BY c.username`,
       )
       .all()
@@ -431,7 +433,8 @@ export class Repo {
   // --- Clippers : gestion depuis le dashboard -------------------------------
 
   listClippers(opts: { clientId?: number; includeInactive?: boolean } = {}): Clipper[] {
-    const where: string[] = [];
+    // Les candidats (invités, en test, refusés) n'apparaissent que dans le recrutement.
+    const where: string[] = ["stage = 'clipper'"];
     const params: unknown[] = [];
     if (opts.clientId !== undefined) {
       where.push('client_id = ?');

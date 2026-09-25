@@ -161,4 +161,73 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
 
   // v3 : vues de référence des vidéos découvertes après le début du suivi
   `ALTER TABLE videos ADD COLUMN baseline_views INTEGER NOT NULL DEFAULT 0;`,
+
+  // v4 : recrutement (phase 2)
+  `
+  -- Membres qui invitent des candidats sur le serveur (suivi des invitations Discord)
+  CREATE TABLE recruiters (
+    id         INTEGER PRIMARY KEY,
+    discord_id TEXT    NOT NULL UNIQUE,
+    name       TEXT    NOT NULL,
+    active     INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL
+  );
+
+  -- Étape dans le parcours : invite → test → clipper (ou refuse).
+  -- Les clippers existants sont déjà "clipper".
+  ALTER TABLE clippers ADD COLUMN stage TEXT NOT NULL DEFAULT 'clipper';
+  ALTER TABLE clippers ADD COLUMN recruiter_id INTEGER REFERENCES recruiters(id) ON DELETE SET NULL;
+  ALTER TABLE clippers ADD COLUMN joined_at INTEGER;
+  ALTER TABLE clippers ADD COLUMN validated_at INTEGER;
+  ALTER TABLE clippers ADD COLUMN private_channel_id TEXT;
+  ALTER TABLE clippers ADD COLUMN drive_url TEXT;
+  CREATE INDEX clippers_stage ON clippers(stage);
+  CREATE INDEX clippers_channel ON clippers(private_channel_id);
+
+  -- Test de clip : open → submitted → (changes → submitted…) → validated | refused
+  CREATE TABLE tests (
+    id             INTEGER PRIMARY KEY,
+    clipper_id     INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    channel_id     TEXT,
+    status         TEXT    NOT NULL DEFAULT 'open',
+    submission_url TEXT,
+    submitted_at   INTEGER,
+    attempts       INTEGER NOT NULL DEFAULT 0,
+    reviewed_at    INTEGER,
+    note           TEXT,
+    created_at     INTEGER NOT NULL
+  );
+  CREATE INDEX tests_clipper ON tests(clipper_id, created_at);
+
+  -- Demandes à traiter par le staff : /inscription, /avis
+  CREATE TABLE requests (
+    id         INTEGER PRIMARY KEY,
+    clipper_id INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    kind       TEXT    NOT NULL CHECK (kind IN ('inscription', 'avis')),
+    payload    TEXT    NOT NULL,
+    created_at INTEGER NOT NULL,
+    done_at    INTEGER
+  );
+  CREATE INDEX requests_pending ON requests(kind, done_at);
+
+  -- Messages des salons privés (tests / tickets) : réactivité du staff
+  CREATE TABLE channel_messages (
+    id         INTEGER PRIMARY KEY,
+    channel_id TEXT    NOT NULL,
+    clipper_id INTEGER REFERENCES clippers(id) ON DELETE CASCADE,
+    is_staff   INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX channel_messages_channel ON channel_messages(channel_id, created_at);
+
+  -- Présence dans le salon vocal des calls
+  CREATE TABLE voice_sessions (
+    id         INTEGER PRIMARY KEY,
+    discord_id TEXT    NOT NULL,
+    channel_id TEXT    NOT NULL,
+    joined_at  INTEGER NOT NULL,
+    left_at    INTEGER
+  );
+  CREATE INDEX voice_sessions_time ON voice_sessions(joined_at);
+  `,
 ];

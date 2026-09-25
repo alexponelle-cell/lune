@@ -1,5 +1,6 @@
 import { REST, Routes } from 'discord.js';
 import { commandDefinitions } from './commands.js';
+import { recruitmentCommandDefinitions } from './recruitment.js';
 
 /**
  * Enregistre les slash commands auprès de Discord. Appelé automatiquement au démarrage du bot.
@@ -11,6 +12,6 @@ export async function registerCommands(opts: { token: string; clientId: string; 
   const route = opts.guildId
     ? Routes.applicationGuildCommands(opts.clientId, opts.guildId)
     : Routes.applicationCommands(opts.clientId);
-  await rest.put(route, { body: commandDefinitions });
-  return `${commandDefinitions.length} commandes enregistrées ${opts.guildId ? `sur le serveur ${opts.guildId}` : 'globalement'}`;
+  await rest.put(route, { body: [...commandDefinitions, ...recruitmentCommandDefinitions] });
+  return `${commandDefinitions.length + recruitmentCommandDefinitions.length} commandes enregistrées ${opts.guildId ? `sur le serveur ${opts.guildId}` : 'globalement'}`;
 }

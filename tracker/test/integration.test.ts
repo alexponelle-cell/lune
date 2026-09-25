@@ -7,7 +7,9 @@ import { DAY, HOUR } from '../src/domain/stats.js';
 import { collectAll } from '../src/jobs/collect.js';
 import { runRelances } from '../src/jobs/relance.js';
 import type { FetcherRegistry, PlatformFetcher } from '../src/platforms/types.js';
+import { RecruitmentRepo } from '../src/db/recruitment.js';
 import { AgencyService } from '../src/services/agency.js';
+import { RecruitmentService } from '../src/services/recruitment.js';
 import { Analytics } from '../src/services/analytics.js';
 import { createApp } from '../src/web/server.js';
 
@@ -23,6 +25,18 @@ function fakeFetchers(videos: Map<string, Array<{ id: string; views: number; pub
   });
   return { tiktok: make('tiktok'), instagram: make('instagram'), youtube: make('youtube') };
 }
+
+const recruitmentOf = (repo: Repo, agency: AgencyService) => new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency);
+const fakeBridge = () => ({
+  send: async () => true,
+  roles: async () => [],
+  membersWithRole: async () => [],
+  validateTest: async () => [],
+  reviewTest: async () => [],
+  publishTestMessage: async () => {},
+  channels: async () => [],
+  ticketUrl: () => null,
+});
 
 describe('parcours complet', () => {
   let repo: Repo;
@@ -97,7 +111,7 @@ describe('parcours complet', () => {
     expect(ranked[0]).toMatchObject({ views: 6_500, posts: 1, rank: 1 });
     expect(ranked[0]!.reward.total).toBe(6.5);
 
-    const app = createApp({ repo, agency, bot: {} });
+    const app = createApp({ repo, agency, recruitment: recruitmentOf(repo, agency), bot: {} });
     const q = `from=${clock - 7 * DAY}&to=${clock + 1}`;
     const res = await app.request(`/api/leaderboard?${q}&client=${loann.id}`);
     expect(res.status).toBe(200);
@@ -113,8 +127,8 @@ describe('parcours complet', () => {
   it('gère clippers, strikes, retours et barèmes depuis le dashboard', async () => {
     const agency = new AgencyService(repo);
     const sent: string[] = [];
-    const bot = { current: { send: async (_c: Clipper, text: string) => (sent.push(text), true), roles: async () => [], membersWithRole: async () => [] } };
-    const app = createApp({ repo, agency, bot });
+    const bot = { current: { ...fakeBridge(), send: async (_c: Clipper, text: string) => (sent.push(text), true) } };
+    const app = createApp({ repo, agency, recruitment: recruitmentOf(repo, agency), bot });
     const json = (method: string, body: unknown) => ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
     const client = (await (await app.request('/api/clients', json('POST', { name: 'Loann', monthlyFee: 1500 }))).json()) as { id: number };
@@ -154,7 +168,7 @@ describe('parcours complet', () => {
   });
 
   it('protège le dashboard par mot de passe', async () => {
-    const app = createApp({ repo, agency: new AgencyService(repo), bot: {}, password: 'secret' });
+    const app = createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret' });
     const denied = await app.request('/api/meta');
     expect(denied.status).toBe(401);
     expect(denied.headers.get('www-authenticate')).toContain('Basic');

@@ -8,7 +8,9 @@ import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
+import { RecruitmentRepo } from './db/recruitment.js';
 import { AgencyService } from './services/agency.js';
+import { RecruitmentService } from './services/recruitment.js';
 import { Analytics } from './services/analytics.js';
 import { status } from './status.js';
 import { createApp, startWeb } from './web/server.js';
@@ -29,9 +31,10 @@ const agency = new AgencyService(repo, {
   dropThresholdPercent: config.DROP_THRESHOLD_PERCENT,
   dropMinPreviousViews: config.DROP_MIN_PREVIOUS_VIEWS,
 });
+const recruitment = new RecruitmentService(repo, new RecruitmentRepo(db), agency);
 const botHolder: { current?: Bot['bridge'] } = {};
 
-const stopWeb = startWeb(createApp({ repo, agency, password: config.DASHBOARD_PASSWORD, bot: botHolder }), config.WEB_PORT);
+const stopWeb = startWeb(createApp({ repo, agency, recruitment, password: config.DASHBOARD_PASSWORD, bot: botHolder }), config.WEB_PORT);
 log.info(`dashboard sur ${dashboardUrl} (données : ${config.FETCHER_MODE})`);
 if (!config.DASHBOARD_PASSWORD) log.warn('DASHBOARD_PASSWORD absent : le dashboard est accessible sans mot de passe');
 
@@ -53,7 +56,7 @@ if (config.DISCORD_TOKEN) {
     log.warn('DISCORD_CLIENT_ID absent : slash commands non enregistrées');
   }
   try {
-    bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, agency, dashboardUrl, guildId: config.DISCORD_GUILD_ID });
+    bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, agency, recruitment, dashboardUrl, guildId: config.DISCORD_GUILD_ID });
     botHolder.current = bot.bridge;
   } catch (err) {
     // Le site reste en ligne pour afficher l'erreur sur le dashboard.

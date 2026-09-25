@@ -25,6 +25,22 @@ client par client (Loann, BeOne…), et qui relancent automatiquement ceux qui d
 - Les fenêtres sont **glissantes** (les dernières 24 h comparées aux 24 h d'avant, et ainsi de suite). On évite ainsi de comparer une journée entamée à une journée complète.
 - Si le suivi est trop récent pour couvrir la période précédente, la comparaison est marquée *partielle* et ne déclenche pas de relance « baisse ».
 
+## Recrutement (phase 2)
+
+| Étape | Ce qui se passe |
+| --- | --- |
+| **Invité** | Un membre rejoint le serveur : le bot note qui l'a invité (recruteur). Nécessite *Server Members Intent*. |
+| **En test** | Il clique sur **Envoyer mon test** (message publié depuis Paramètres) : un salon privé `pseudo-test` s'ouvre. Le lien Drive/WeTransfer qu'il y poste est détecté comme dépôt. |
+| **Validation** | Page **Suivi → Tests** : *Valider* (message de bienvenue + rôle « Nouveau clipper ») ou *Refuser* (à corriger, ou refus définitif). |
+| **Inscription** | Le clipper fait `/inscription` : ses comptes sont suivis, son Drive enregistré, le sujet de son salon mis à jour. |
+| **Apprenti / Confirmé** | Automatique selon les vues (seuils dans Paramètres). |
+
+Le bot suit aussi les **messages sans réponse** et le **temps de réponse du staff** dans les salons privés, les demandes `/avis`,
+et la **présence aux calls** (salon vocal, jour et heure réglables, présence validée après N minutes).
+
+Permissions du bot : Gérer les salons, Gérer les rôles (au-dessus de « Nouveau clipper »), Gérer le serveur (invitations).
+Lien d'invitation avec ces permissions : `https://discord.com/oauth2/authorize?client_id=<ID>&scope=bot+applications.commands&permissions=268520560`
+
 ## Mise en ligne
 
 👉 Guide pas à pas (Discord, YouTube, Apify, Railway) : **[DEPLOY.md](DEPLOY.md)**.

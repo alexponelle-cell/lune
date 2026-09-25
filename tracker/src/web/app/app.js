@@ -69,6 +69,36 @@ const ago = (t) => {
   return `il y a ${Math.round(m / 1440)} j`;
 };
 
+/** 4h50 · 35 min · 2 j 3h */
+function fmtDur(ms) {
+  if (ms == null) return '—';
+  const min = Math.round(ms / 60_000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h${String(min % 60).padStart(2, '0')}`;
+  return `${Math.floor(h / 24)} j ${h % 24}h`;
+}
+
+function pipeline(stages) {
+  const max = Math.max(1, stages[0]?.count ?? 0);
+  return `<div class="bars" style="padding:0 20px 20px">${stages
+    .map(
+      (st, i) => `<div class="bar-row"><header>${esc(st.label)}<span><b>${st.count}</b></span></header>
+      <div class="bar pipe"><i style="width:${(st.count / max) * 100}%;opacity:${1 - i * 0.12}"></i></div>
+      ${st.rate != null ? `<small class="faint" style="font-size:11.5px">${st.rate} % ${esc(st.hint)}</small>` : ''}</div>`,
+    )
+    .join('')}</div>`;
+}
+
+const STAGE_PILL = {
+  invite: '<span class="pill gray">Invité</span>',
+  test: '<span class="pill wait">En test</span>',
+  clipper: '<span class="pill ok">Clipper</span>',
+  refuse: '<span class="pill ko">Refusé</span>',
+};
+const LEVEL_LABEL = { nouveau: 'Nouveau', apprenti: 'Apprenti', confirme: 'Confirmé' };
+const TEST_LABEL = { open: 'Salon ouvert', submitted: 'À valider', changes: 'À corriger', validated: 'Validé', refused: 'Refusé' };
+
 function deltaPill(pct, suffix = ' %') {
   if (pct == null) return '<span class="delta flat">—</span>';
   const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
@@ -413,8 +443,8 @@ function modal(title, bodyHtml, { confirm = 'Enregistrer', danger = false, onCon
 // ---------------------------------------------------------------------------
 
 const NAV = [
-  ['Pilotage', [['funnel', 'Funnel', 'funnel', true], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users'], ['recruteurs', 'Recruteurs', 'userPlus', true], ['classement', 'Classement', 'trophy']]],
-  ['Automatisations', [['suivi', 'Suivi', 'pulse', true]], true],
+  ['Pilotage', [['funnel', 'Funnel', 'funnel'], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users'], ['recruteurs', 'Recruteurs', 'userPlus'], ['classement', 'Classement', 'trophy']]],
+  ['Automatisations', [['suivi', 'Suivi', 'pulse']], true],
   ['Découvrir', [['inspiration', 'Inspiration', 'spark']]],
   ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['parametres', 'Paramètres', 'gear']]],
 ];
@@ -492,7 +522,7 @@ function loading() {
 
 async function pageAgence() {
   loading();
-  const d = await api(`/api/overview?${qs()}`);
+  const [d, cards] = await Promise.all([api(`/api/overview?${qs()}`), api(`/api/agency-cards?${qs()}`).catch(() => null)]);
   setAlertCount(d.alerts.length);
   const k = d.kpis;
   const scoreAvg = d.leaderboard.length ? Math.round(d.leaderboard.reduce((a, r) => a + r.score.total, 0) / d.leaderboard.length) : 0;
@@ -539,6 +569,14 @@ async function pageAgence() {
               : '<div class="empty">Aucune alerte 🎉</div>'
           }</div></div>
       </div>
+      ${cards ? `<div class="two-col">
+        <div class="card"><div class="card-head"><div><h2>Recrutement & progression</h2><p>Pipeline complet · toute l'agence · état actuel</p></div><a class="btn sm" href="#/funnel">Funnel</a></div>${pipeline(cards.funnel)}</div>
+        <div class="card"><div class="card-head"><div><h2>${icon('pulse').replace('<svg', '<svg width="16" style="vertical-align:-3px"')} Suivi & réactivité</h2><p>Temps de réponse du staff · salons privés</p></div></div>
+          <div class="card-pad" style="padding-top:0"><div class="k-value num" style="font-size:32px">${fmtDur(cards.response.avgMs)}
+          ${cards.response.avgMs != null && cards.response.prevAvgMs != null ? `<span class="delta ${cards.response.avgMs <= cards.response.prevAvgMs ? 'up' : 'down'}" style="font-size:12px;vertical-align:middle">${cards.response.avgMs <= cards.response.prevAvgMs ? '−' : '+'}${fmtDur(Math.abs(cards.response.avgMs - cards.response.prevAvgMs))}</span>` : ''}</div>
+          <p class="muted" style="margin:4px 0 0">${cards.response.prevAvgMs == null ? 'Pas de comparaison sur la période précédente' : cards.response.avgMs <= cards.response.prevAvgMs ? 'Plus réactif que la période précédente' : 'Moins réactif que la période précédente'}</p>
+          <p class="faint" style="margin:2px 0 0;font-size:12px">${cards.response.answered} sollicitation(s) répondue(s) sur la période</p></div></div>
+      </div>` : ''}
       <div class="card" id="lb"><div class="card-head"><div><h2>Classement des clippers</h2><p>${d.leaderboard.length} clippers · ${esc(periodLabel())}</p></div>
         <div class="actions"><span class="faint" style="font-size:12px">Trier par</span>${segTabs('sort', [['views', 'Vues'], ['posts', 'Posts'], ['score', 'Score']], 'views')}</div></div>
         <div id="lb-body">${leaderboardTable(d.leaderboard)}</div></div>
@@ -893,8 +931,40 @@ async function pageManagement() {
 }
 
 let REWARD_TAB = 'universal';
+let REWARD_MODE = 'clippers';
+
+async function payRecruteurs() {
+  loading();
+  const d = await api(`/api/recruiters?${qs({}, false)}`);
+  const total = d.rows.reduce((a, r) => a + r.pay, 0);
+  main().innerHTML = `<div class="page-head"><div><h1>Rémunération</h1><p>Recruteurs · payés à la recrue validée et confirmée</p></div><div class="actions">${periodPicker()}</div></div>
+    <div style="margin-bottom:14px">${segTabs('mode', [['clippers', 'Clippers'], ['recruteurs', 'Recruteurs']], 'recruteurs')}</div>
+    <div class="stack">
+      <div class="card payout"><header><div><h2 style="margin:0;font-size:15px">À verser aux recruteurs</h2><p class="faint" style="margin:2px 0 0;font-size:12px">${esc(periodLabel())}</p></div>
+        <div class="total"><div class="label">Total</div><b class="num">${euro(total)}</b></div></header></div>
+      <form class="card card-pad stack" id="rec-pay" style="max-width:760px;gap:10px"><b>Barème recruteurs</b>
+        <div class="grid-form"><label class="field"><span>Par test validé (€)</span><input class="input num" type="number" min="0" step="1" name="recruiterPerValidated" value="${d.settings.recruiterPerValidated}"><small>Recrue validée sur la période</small></label>
+        <label class="field"><span>Par recrue confirmée (€)</span><input class="input num" type="number" min="0" step="1" name="recruiterPerConfirmed" value="${d.settings.recruiterPerConfirmed}"><small>Recrue validée sur la période et aujourd'hui confirmée</small></label></div>
+        <div><button class="btn green">Sauvegarder</button></div></form>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Recruteur</th><th class="r">Validés</th><th class="r">Confirmés</th><th class="r">Total</th></tr></thead><tbody>
+        ${d.rows.map((r) => `<tr><td><div class="who">${avatar(r.name)}<b>${esc(r.name)}</b></div></td><td class="r num">${r.validated}</td><td class="r num">${r.confirmed}</td><td class="r num"><b>${euro(r.pay)}</b></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Aucun recruteur.</td></tr>'}
+      </tbody></table></div></div></div>`;
+  const root = main();
+  bindFilters(root, payRecruteurs);
+  onSeg(root, 'mode', (v) => {
+    REWARD_MODE = v;
+    pageRemuneration();
+  });
+  $('#rec-pay', root).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await api('/api/recruitment/settings', { method: 'PUT', body: Object.fromEntries(new FormData(e.target)) });
+    toast('Barème recruteurs sauvegardé ✅');
+    payRecruteurs();
+  });
+}
 let REWARD_TARGET = { client: null, clipper: null };
 async function pageRemuneration() {
+  if (REWARD_MODE === 'recruteurs') return payRecruteurs();
   loading();
   const [sum, people] = await Promise.all([api(`/api/remuneration?${qs()}`), api('/api/management')]);
   const targets = { client: META.clients, clipper: people.map((p) => ({ id: p.id, name: p.username })) };
@@ -923,6 +993,7 @@ async function pageRemuneration() {
   const tabLabel = { universal: 'Barème universel', client: 'Barème agence', clipper: 'Barème clippers' };
   main().innerHTML = `<div class="page-head"><div><h1>Rémunération</h1><p>Barème en cascade · universel → agence → clipper, le plus précis l'emporte</p></div>
     <div class="actions">${agencySelect()}${periodPicker()}</div></div>
+    <div style="margin-bottom:10px">${segTabs('mode', [['clippers', 'Clippers'], ['recruteurs', 'Recruteurs']], 'clippers')}</div>
     <p class="lock-note">${icon('lock')} Configuration réservée à l'admin : jamais visible côté clipper.</p>
     <div class="stack">
       <div class="card payout"><header><div><h2 style="margin:0;font-size:15px">À verser sur la période</h2><p class="faint" style="margin:2px 0 0;font-size:12px">${esc(periodLabel())} · recalculé en direct sur la performance réelle</p></div>
@@ -949,6 +1020,10 @@ async function pageRemuneration() {
   const root = main();
   bindFilters(root, pageRemuneration);
   bindRows($('table', root).closest('.card'));
+  onSeg(root, 'mode', (v) => {
+    REWARD_MODE = v;
+    pageRemuneration();
+  });
   onSeg(root, 'rtab', (v) => {
     REWARD_TAB = v;
     pageRemuneration();
@@ -1011,6 +1086,17 @@ async function pageRemuneration() {
 async function pageParametres() {
   loading();
   await loadMeta();
+  const [rs, roles, chans] = await Promise.all([
+    api('/api/recruitment/settings'),
+    api('/api/discord/roles').catch(() => null),
+    api('/api/discord/channels').catch(() => null),
+  ]);
+  const pick = (name, value, list, placeholder) =>
+    list
+      ? `<select class="select" name="${name}"><option value="">${placeholder}</option>${list.map((o) => `<option value="${o.id}" ${o.id === value ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select>`
+      : `<input class="input num" name="${name}" value="${esc(value)}" placeholder="ID Discord (bot hors ligne)">`;
+  const ofType = (type) => chans?.filter((c) => c.type === type) ?? null;
+  const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
   const s = META.settings;
   const b = META.status.bot;
   main().innerHTML = `<div class="page-head"><div><h1>Paramètres</h1><p>Objectifs, alertes et agences</p></div></div>
@@ -1023,6 +1109,32 @@ async function pageParametres() {
           <label class="field"><span>Baisse de vues (%)</span><input class="input num" type="number" min="0" max="100" name="dropThresholdPercent" value="${s.dropThresholdPercent}"><small>Seuil d'alerte vs période précédente</small></label>
           <label class="field"><span>Vues min. pour alerter</span><input class="input num" type="number" min="0" name="dropMinPreviousViews" value="${s.dropMinPreviousViews}"><small>Ignore les baisses sur petits volumes</small></label>
         </div><div><button class="btn green">Sauvegarder</button></div></form>
+      <form class="card card-pad stack" id="recruit"><div><h2 style="margin:0;font-size:15px">Discord & recrutement</h2>
+        <p class="faint" style="margin:2px 0 0;font-size:12px">Salons de test, rôles, calls et paliers de progression${roles ? '' : ' · connecte le bot pour choisir dans des listes'}</p></div>
+        <div class="grid-form">
+          <label class="field"><span>Rôle du staff</span>${pick('staffRoleId', rs.staffRoleId, roles, 'Admins du serveur uniquement')}<small>Voit les salons de test, ses réponses comptent</small></label>
+          <label class="field"><span>Rôle « Nouveau clipper »</span>${pick('newClipperRoleId', rs.newClipperRoleId, roles, 'Aucun')}<small>Donné quand un test est validé</small></label>
+          <label class="field"><span>Catégorie des salons de test</span>${pick('testCategoryId', rs.testCategoryId, ofType('category'), 'Aucune (en haut du serveur)')}</label>
+          <label class="field"><span>Lien des guidelines (Drive)</span><input class="input" name="guidelinesUrl" value="${esc(rs.guidelinesUrl)}" placeholder="https://drive.google.com/…"><small>Envoyé aux candidats</small></label>
+        </div>
+        <div class="grid-form">
+          <label class="field"><span>Salon vocal des calls</span>${pick('callChannelId', rs.callChannelId, ofType('voice'), 'Aucun (présence non suivie)')}</label>
+          <label class="field"><span>Jour du call</span><select class="select" name="callWeekday">${days.map((d, i) => `<option value="${i + 1}" ${rs.callWeekday === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select></label>
+          <label class="field"><span>Heure</span><input class="input num" type="number" min="0" max="23" name="callHour" value="${rs.callHour}"></label>
+          <label class="field"><span>Durée (min)</span><input class="input num" type="number" min="10" name="callDurationMin" value="${rs.callDurationMin}"></label>
+          <label class="field"><span>Présence validée à partir de (min)</span><input class="input num" type="number" min="1" name="callMinMinutes" value="${rs.callMinMinutes}"></label>
+        </div>
+        <div class="grid-form">
+          <label class="field"><span>Apprenti : vues cumulées</span><input class="input num" type="number" min="0" step="1000" name="apprentiViews" value="${rs.apprentiViews}"></label>
+          <label class="field"><span>Confirmé : vues / 7 jours</span><input class="input num" type="number" min="0" step="1000" name="confirmeWeeklyViews" value="${rs.confirmeWeeklyViews}"></label>
+          <label class="field"><span>« À relancer » après (jours sans analyse)</span><input class="input num" type="number" min="1" name="relanceAnalysisDays" value="${rs.relanceAnalysisDays}"></label>
+        </div>
+        <div><button class="btn green">Sauvegarder</button></div></form>
+      <div class="card card-pad stack" style="gap:10px"><div><h2 style="margin:0;font-size:15px">Message « Réalise ton test »</h2>
+        <p class="faint" style="margin:2px 0 0;font-size:12px">Publie les 4 étapes + le bouton « Envoyer mon test » dans le salon de ton choix (ex. #faire-test)</p></div>
+        <div class="actions">${chans ? `<select class="select" id="test-channel">${ofType('text').map((c) => `<option value="${c.id}">#${esc(c.name)}</option>`).join('')}</select>
+          <button class="btn dark" data-publish>${icon('discord')} Publier le message</button>` : '<span class="faint">Bot hors ligne</span>'}</div>
+        <p class="faint" style="margin:0;font-size:12px">Permissions nécessaires pour le bot : Gérer les salons, Gérer les rôles (son rôle doit être au-dessus de « Nouveau clipper »), Gérer le serveur (invitations).</p></div>
       <div class="card"><div class="card-head"><div><h2>Agences</h2><p>Chaque agence (client) a son salon COMPTES, son forfait et son barème</p></div><button class="btn dark" data-add-client>${icon('plus')} Nouvelle agence</button></div>
         <div class="table-wrap"><table><thead><tr><th>Agence</th><th>Salon COMPTES (ID)</th><th class="r">Forfait mensuel</th><th class="r">Actions</th></tr></thead><tbody>
         ${META.clients.map((c) => `<tr><td><div class="who">${avatar(c.name)}<div><b>${esc(c.name)}</b><small class="faint">${esc(c.slug)}</small></div></div></td>
@@ -1031,7 +1143,8 @@ async function pageParametres() {
         </tbody></table></div></div>
       <div class="card card-pad"><h2 style="margin:0 0 8px;font-size:15px">Bot Discord</h2>
         <div class="muted">État : <b>${{ ready: 'connecté', error: 'erreur', connecting: 'connexion…', disabled: 'désactivé' }[b.state]}</b>${b.tag ? ` · ${esc(b.tag)}` : ''}${b.error ? `<div style="color:var(--red)">${esc(b.error)}</div>` : ''}
-        ${b.messageContent === false ? '<div style="color:var(--red)">« Message Content Intent » désactivé : le salon COMPTES ne lit pas les liens.</div>' : ''}
+        ${b.messageContent === false ? '<div style="color:var(--red)">« Message Content Intent » désactivé : le salon COMPTES et les salons de test ne lisent pas les liens.</div>' : ''}
+        ${b.membersIntent === false ? '<div style="color:var(--orange)">« Server Members Intent » désactivé : les invitations (recruteurs) ne sont pas suivies.</div>' : ''}
         ${b.commandsRegistered ? `<div>${esc(b.commandsRegistered)}</div>` : ''}
         ${(META.status.lastErrors ?? []).length ? `<details style="margin-top:8px"><summary>${META.status.lastErrors.length} erreur(s) récente(s)</summary><ul>${META.status.lastErrors.map((e) => `<li>${ago(e.at)} : ${esc(e.message)}</li>`).join('')}</ul></details>` : ''}</div></div>
     </div>`;
@@ -1043,6 +1156,23 @@ async function pageParametres() {
       await api('/api/settings', { method: 'PUT', body });
       toast('Paramètres sauvegardés ✅');
       loadMeta();
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+  $('#recruit', root).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('/api/recruitment/settings', { method: 'PUT', body: Object.fromEntries(new FormData(e.target)) });
+      toast('Réglages Discord sauvegardés ✅');
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+  $('[data-publish]', root)?.addEventListener('click', async () => {
+    try {
+      await api('/api/discord/test-message', { method: 'POST', body: { channelId: $('#test-channel', root).value } });
+      toast('Message publié sur Discord ✅');
     } catch (err) {
       toast(err.message, true);
     }
@@ -1075,10 +1205,201 @@ async function pageParametres() {
   });
 }
 
-function pageSoon(title, text) {
+// --- Recrutement --------------------------------------------------------------------------
+
+async function pageFunnel() {
   loading();
-  main().innerHTML = `<div class="card placeholder">${icon('spark').replace('<svg', '<svg width="36" stroke="#16a34a"')}<h2>${title}</h2><p>${text}</p>
-    <p style="margin-top:12px"><span class="pill wait">Phase 2 · recrutement</span></p></div>`;
+  const d = await api(`/api/funnel?${qs({}, false)}`);
+  let filter = 'all';
+  const draw = () => {
+    const rows = d.people.filter((p) => filter === 'all' || p.stage === filter);
+    $('#people').innerHTML = rows.length
+      ? `<div class="table-wrap"><table><thead><tr><th>Personne</th><th>Étape</th><th>Niveau</th><th>Test</th><th>Recruteur</th><th>Arrivée</th><th class="r">Salon</th></tr></thead><tbody>
+        ${rows
+          .map(
+            (p) => `<tr ${p.stage === 'clipper' ? `class="link" data-clipper="${p.id}"` : ''}><td><div class="who">${avatar(p.username)}<b>${esc(p.username)}</b></div></td>
+          <td>${STAGE_PILL[p.stage]}</td><td>${p.level ? LEVEL_LABEL[p.level] : '<span class="faint">—</span>'}</td>
+          <td>${p.testStatus ? esc(TEST_LABEL[p.testStatus]) : '<span class="faint">—</span>'}</td><td>${p.recruiter ? esc(p.recruiter) : '<span class="faint">—</span>'}</td>
+          <td class="num faint">${dm(p.joinedAt)}</td><td class="r">${p.ticketUrl ? `<a class="btn sm" href="${esc(p.ticketUrl)}" target="_blank" rel="noopener">${icon('message')} Ticket</a>` : ''}</td></tr>`,
+          )
+          .join('')}</tbody></table></div>`
+      : '<div class="empty">Personne à cette étape.</div>';
+  };
+  main().innerHTML = `<div class="page-head"><div><h1>Funnel</h1><p>Parcours des candidats · ${esc(periodLabel())} (date d'arrivée)</p></div><div class="actions">${periodPicker()}</div></div>
+    <div class="stack"><div class="two-col"><div class="card"><div class="card-head"><div><h2>Recrutement & progression</h2><p>Invités → en test → nouveau → apprenti → confirmé</p></div></div>${pipeline(d.stages)}</div>
+      <div class="card card-pad"><h2 style="margin:0 0 10px;font-size:15px">Comment ça marche</h2><ol class="muted" style="margin:0;padding-left:18px;display:grid;gap:6px;font-size:13px">
+        <li><b>Invité</b> : a rejoint le serveur (via une invitation suivie).</li>
+        <li><b>En test</b> : a cliqué sur « Envoyer mon test », un salon privé s'est ouvert.</li>
+        <li><b>Nouveau</b> : test validé depuis la page Suivi.</li>
+        <li><b>Apprenti / Confirmé</b> : automatique selon les vues (seuils dans Paramètres).</li></ol></div></div>
+      <div class="card"><div class="card-head"><h2>Candidats & clippers</h2>${segTabs('stage', [['all', 'Tous'], ['invite', 'Invités'], ['test', 'En test'], ['clipper', 'Clippers'], ['refuse', 'Refusés']], 'all')}</div><div id="people"></div></div></div>`;
+  const root = main();
+  bindFilters(root, pageFunnel);
+  onSeg(root, 'stage', (v) => {
+    filter = v;
+    draw();
+  });
+  draw();
+  bindRows($('#people', root));
+}
+
+async function pageRecruteurs() {
+  loading();
+  const d = await api(`/api/recruiters?${qs({}, false)}`);
+  const missing = META.status.bot.state === 'ready' && META.status.bot.membersIntent === false;
+  main().innerHTML = `<div class="page-head"><div><h1>Recruteurs</h1><p>Invitations Discord suivies automatiquement · ${esc(periodLabel())}</p></div><div class="actions">${periodPicker()}</div></div>
+    ${missing ? '<div class="alert warn" style="margin-bottom:14px"><span class="dot"></span><div><b>Suivi des invitations désactivé</b><small>Active « Server Members Intent » dans le Developer Portal Discord (onglet Bot), puis redémarre le service.</small></div></div>' : ''}
+    <div class="card"><div class="table-wrap"><table><thead><tr><th>Recruteur</th><th class="r">Invités</th><th class="r">En test</th><th class="r">Validés</th><th class="r">Confirmés</th><th class="r">Conversion</th><th class="r">À verser</th><th class="r">Total recrues</th><th class="r"></th></tr></thead><tbody>
+    ${d.rows
+      .map(
+        (r) => `<tr><td><div class="who">${avatar(r.name)}<div><b>${esc(r.name)}</b>${r.active ? '' : '<small class="faint">désactivé</small>'}</div></div></td>
+      <td class="r num">${r.invited}</td><td class="r num">${r.inTest}</td><td class="r num">${r.validated}</td><td class="r num">${r.confirmed}</td>
+      <td class="r">${r.conversion == null ? '<span class="faint">—</span>' : `<b class="num">${r.conversion} %</b>`}</td><td class="r num">${euro(r.pay)}</td>
+      <td class="r num faint">${r.totalClippers} / ${r.totalRecruits}</td>
+      <td class="r"><button class="icon-btn" data-edit-rec="${r.id}" style="display:inline-grid" title="Modifier">${icon('edit')}</button> <button class="icon-btn" data-del-rec="${r.id}" style="display:inline-grid" title="Supprimer">${icon('trash')}</button></td></tr>`,
+      )
+      .join('') || '<tr><td colspan="9" class="empty">Aucun recruteur pour l\'instant. Chaque membre dont le lien d\'invitation fait rejoindre quelqu\'un apparaît ici automatiquement.</td></tr>'}
+    </tbody></table></div></div>
+    <p class="faint" style="font-size:12px;margin-top:10px">Rémunération des recruteurs : ${euro(d.settings.recruiterPerValidated)} par test validé, ${euro(d.settings.recruiterPerConfirmed)} par recrue confirmée (réglable dans Rémunération → Recruteurs).</p>`;
+  const root = main();
+  bindFilters(root, pageRecruteurs);
+  root.addEventListener('click', (e) => {
+    const ed = e.target.closest('[data-edit-rec]');
+    if (ed) {
+      const r = d.rows.find((x) => x.id === Number(ed.dataset.editRec));
+      modal(`Modifier ${r.name}`, `<label class="field"><span>Nom</span><input class="input" name="name" required value="${esc(r.name)}"></label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="active" ${r.active ? 'checked' : ''}> Actif</label>`, {
+        onConfirm: async (fd) => {
+          await api(`/api/recruiters/${r.id}`, { method: 'PATCH', body: { name: fd.get('name'), active: fd.get('active') === 'on' } });
+          pageRecruteurs();
+        },
+      });
+    }
+    const del = e.target.closest('[data-del-rec]');
+    if (del) {
+      const r = d.rows.find((x) => x.id === Number(del.dataset.delRec));
+      modal('Supprimer le recruteur', `<p style="margin:0">Supprimer <b>${esc(r.name)}</b> ? Ses recrues restent, sans recruteur.</p>`, {
+        confirm: 'Supprimer',
+        danger: true,
+        onConfirm: async () => {
+          await api(`/api/recruiters/${r.id}`, { method: 'DELETE' });
+          pageRecruteurs();
+        },
+      });
+    }
+  });
+}
+
+let SUIVI_TAB = 'tests';
+async function pageSuivi() {
+  loading();
+  const d = await api(`/api/suivi?${qs({}, false)}`);
+  const k = d.kpis;
+  const t = d.toTreat;
+  const counts = { tests: t.tests.length, inscriptions: t.inscriptions.length, avis: t.avis.length, messages: t.messages.length, relancer: t.relancer.length };
+  const ticketBtn = (url) => (url ? `<a class="btn sm" href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--blue);border-color:#c7cbff">${icon('message')} Ticket</a>` : '<span class="faint">—</span>');
+  const item = (name, sub, actions) => `<div class="todo">${avatar(name)}<div style="flex:1;min-width:0"><b>${esc(name)}</b><small class="faint" style="display:block;overflow:hidden;text-overflow:ellipsis">${sub}</small></div><div class="actions">${actions}</div></div>`;
+  const lists = {
+    tests: () => t.tests.map((x) => item(x.username, `Test déposé ${ago(x.submittedAt)}${x.attempts > 1 ? ` · essai n°${x.attempts}` : ''}`,
+      `${x.submissionUrl ? `<a class="btn sm" href="${esc(x.submissionUrl)}" target="_blank" rel="noopener">${icon('play')} Voir la vidéo</a>` : ''}${ticketBtn(x.ticketUrl)}
+       <button class="btn sm danger" data-refuse="${x.clipperId}">✕ Refuser</button><button class="btn sm green" data-validate="${x.clipperId}">${icon('check')} Valider</button>`)).join(''),
+    inscriptions: () => t.inscriptions.map((x) => item(x.username, ['tiktok', 'instagram', 'youtube', 'drive'].filter((p) => x.payload[p]).map((p) => `${p} : ${esc(x.payload[p])}`).join(' · ') || 'aucun lien',
+      `<a class="btn sm" href="#/clipper/${x.clipperId}">Voir le profil</a><button class="btn sm" data-done="${x.id}">${icon('check')} Vu</button>`)).join(''),
+    avis: () => t.avis.map((x) => item(x.username, `${esc(x.payload.url ?? '')}${x.payload.question ? ` · « ${esc(x.payload.question)} »` : ''} · ${ago(x.createdAt)}`,
+      `${x.payload.url ? `<a class="btn sm" href="${esc(x.payload.url)}" target="_blank" rel="noopener">${icon('play')} Voir</a>` : ''}<button class="btn sm" data-done="${x.id}">Ignorer</button><button class="btn sm blue" data-avis="${x.id}">${icon('message')} Faire un retour</button>`)).join(''),
+    messages: () => t.messages.map((x) => item(x.username, `Sans réponse depuis ${fmtDur(Date.now() - x.since)}`, ticketBtn(x.ticketUrl))).join(''),
+    relancer: () => t.relancer.map((x) => item(x.username, x.lastAnalysisAt ? `Dernière analyse ${ago(x.lastAnalysisAt)}` : 'Jamais analysé', `<a class="btn sm" href="#/clipper/${x.clipperId}">Analyser</a>`)).join(''),
+  };
+  const drawTodo = () => {
+    $('#todo').innerHTML = lists[SUIVI_TAB]() || '<div class="empty">Rien à traiter ici 🎉</div>';
+  };
+  const kpi = (label, value, sub, cls = '', ic = 'check') => `<div class="card kpi ${cls}"><div class="k-label" style="display:flex;justify-content:space-between">${label}<span class="kpi-ic">${icon(ic)}</span></div>
+    <div class="k-value num">${value}</div><div class="k-foot"><span>${sub}</span></div></div>`;
+  const tabNames = { tests: 'Tests', inscriptions: 'Inscriptions', avis: 'Avis', messages: 'Messages', relancer: 'À relancer' };
+  main().innerHTML = `<div class="page-head"><div><h1>Suivi</h1><p>Tests, demandes d'avis, messages & présence aux calls, remontés automatiquement par le bot Discord</p></div>
+    <div class="actions"><span class="pill ${META.status.bot.state === 'ready' ? 'ok' : 'gray'}">${icon('discord').replace('<svg', '<svg width="13"')} ${META.status.bot.state === 'ready' ? 'Synchronisé en temps réel' : 'Bot hors ligne'}</span>${periodPicker()}</div></div>
+    <div class="stack">
+      <div class="kpis">
+        ${kpi('Demandes en attente', k.pending, k.pending ? 'tests, inscriptions & avis' : 'aucune demande ouverte')}
+        ${kpi('Clippers actifs', k.activeClippers, `${k.activeClippers} clippers au total`, '', 'users')}
+        ${kpi('Présents au dernier call', k.lastCallPresent ?? '—', k.lastCallPresent == null ? 'aucun call enregistré' : 'présence validée', '', 'discord')}
+        ${kpi('À relancer', k.toRelance, `sans analyse depuis plus de ${d.relanceDays} j`, k.toRelance ? 'kpi-red' : '', 'bell')}
+        ${kpi('Messages sans réponse', k.unanswered, 'salons privés en attente', k.unanswered ? 'kpi-orange' : '', 'message')}
+      </div>
+      <div class="card"><div class="card-head"><div><h2>À traiter</h2><p>Recrutement & engagement · remontés par le bot Discord</p></div></div>
+        <div class="tabs-line" id="todo-tabs">${Object.entries(tabNames).map(([key, label]) => `<button data-tab="${key}" class="${key === SUIVI_TAB ? 'on' : ''}">${label} <span class="count">${counts[key]}</span></button>`).join('')}</div>
+        <div id="todo" class="todo-list"></div></div>
+      <div class="card"><div class="card-head"><div><h2>Suivi des clippers</h2><p>Triés par ancienneté d'analyse : priorité en haut de liste</p></div>
+        <div class="actions" style="font-size:12px"><span class="pill ko">Aucun retour depuis > ${d.relanceDays} j</span><span class="pill wait">Jamais analysé</span></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Clipper</th><th class="r">Analyses</th><th>Dernière analyse</th><th>Feedback</th><th>Calls présent</th><th>Dernier call</th><th class="r">En attente</th><th class="r">Messages</th></tr></thead><tbody>
+        ${d.rows.map((r) => {
+          const stale = r.lastAnalysisAt === null || Date.now() - r.lastAnalysisAt > d.relanceDays * 86_400_000;
+          return `<tr class="link ${stale ? 'row-alert' : ''}" data-clipper="${r.id}"><td><div class="who">${avatar(r.username)}<div><b>${esc(r.username)}</b><span class="status-dot"><span class="dot"></span>Actif</span></div></div></td>
+          <td class="r num"><b>${r.analyses}</b></td><td>${r.lastAnalysisAt ? `<span class="${stale ? 'pill ko' : 'faint'}">${dm(r.lastAnalysisAt)}</span>` : '<span class="pill wait">Jamais analysé</span>'}</td>
+          <td class="faint" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${esc(r.lastFeedback ?? '—')}</td>
+          <td><b class="num">${r.callsPresent} / ${r.callsTotal}</b><div class="bar" style="width:60px;margin-top:4px"><i style="width:${r.callsTotal ? (r.callsPresent / r.callsTotal) * 100 : 0}%;background:var(--accent)"></i></div></td>
+          <td>${r.lastCallPresent === null ? '<span class="faint">—</span>' : r.lastCallPresent ? '<span class="pill ok">Présent</span>' : '<span class="pill ko">Absent</span>'}</td>
+          <td class="r num">${r.pending || '<span class="faint">—</span>'}</td><td class="r">${ticketBtn(r.ticketUrl)}</td></tr>`;
+        }).join('') || '<tr><td colspan="8" class="empty">Aucun clipper.</td></tr>'}</tbody></table></div></div>
+      <div class="card"><div class="card-head"><div><h2>Historique des calls</h2><p>${esc(d.callLabel)}</p></div><a class="btn sm" href="#/parametres">Régler</a></div>
+        <div class="table-wrap"><table><thead><tr><th>Call</th><th class="r">Participants</th><th class="r">Validés</th><th class="r">Taux</th></tr></thead><tbody>
+        ${d.calls.map((c) => `<tr><td>${new Date(c.start).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</td>
+          <td class="r num">${c.participants}</td><td class="r num"><b>${c.validated}</b></td><td class="r num">${c.expected ? Math.round((c.validated / c.expected) * 100) : 0} %</td></tr>`).join('') ||
+          '<tr><td colspan="4" class="empty">Aucun call enregistré. Choisis le salon vocal des calls dans Paramètres.</td></tr>'}</tbody></table></div></div>
+    </div>`;
+  const root = main();
+  bindFilters(root, pageSuivi);
+  drawTodo();
+  bindRows($('table', root).closest('.card'));
+  $('#todo-tabs', root).addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tab]');
+    if (!b) return;
+    SUIVI_TAB = b.dataset.tab;
+    $$('#todo-tabs button', root).forEach((x) => x.classList.toggle('on', x === b));
+    drawTodo();
+  });
+  const done = (r) => {
+    (r?.warnings ?? []).forEach((w) => toast(w, true));
+    pageSuivi();
+  };
+  $('#todo', root).addEventListener('click', async (e) => {
+    const v = e.target.closest('[data-validate]');
+    if (v) {
+      const x = t.tests.find((y) => y.clipperId === Number(v.dataset.validate));
+      modal(`Valider le test de ${x.username} ?`, '<p style="margin:0" class="muted">Le bot le félicite dans son salon, lui donne le rôle « Nouveau clipper » et l\'invite à faire /inscription.</p>', {
+        confirm: 'Valider',
+        onConfirm: async () => {
+          const r = await api(`/api/tests/${x.clipperId}/validate`, { method: 'POST', body: {} });
+          toast(`${x.username} est maintenant clipper 🎉`);
+          done(r);
+        },
+      });
+    }
+    const rf = e.target.closest('[data-refuse]');
+    if (rf) {
+      const x = t.tests.find((y) => y.clipperId === Number(rf.dataset.refuse));
+      modal(`Retour sur le test de ${x.username}`, `<label class="field"><span>Ce qu'il faut corriger</span><textarea class="input" name="note" rows="4" placeholder="Hook trop long, sous-titres illisibles…"></textarea></label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="final"> Refus définitif (sinon il peut renvoyer un nouveau test)</label>`, {
+        confirm: 'Envoyer',
+        danger: true,
+        onConfirm: async (fd) => done(await api(`/api/tests/${x.clipperId}/review`, { method: 'POST', body: { note: fd.get('note'), final: fd.get('final') === 'on' } })),
+      });
+    }
+    const dn = e.target.closest('[data-done]');
+    if (dn) done(await api(`/api/requests/${dn.dataset.done}/done`, { method: 'POST', body: {} }));
+    const av = e.target.closest('[data-avis]');
+    if (av) {
+      const x = t.avis.find((y) => y.id === Number(av.dataset.avis));
+      modal(`Retour à ${x.username}`, `${x.payload.question ? `<p class="muted" style="margin:0">« ${esc(x.payload.question)} »</p>` : ''}<label class="field"><span>Ton retour</span><textarea class="input" name="message" rows="5" required></textarea><small>Envoyé dans son salon privé (sinon en DM) et compté comme une analyse.</small></label>`, {
+        confirm: 'Envoyer',
+        onConfirm: async (fd) => {
+          const r = await api(`/api/requests/${x.id}/feedback`, { method: 'POST', body: { message: fd.get('message') } });
+          toast(r.sent ? 'Retour envoyé ✅' : 'Retour enregistré (non envoyé sur Discord)', !r.sent);
+          pageSuivi();
+        },
+      });
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1094,9 +1415,9 @@ const ROUTES = {
   management: pageManagement,
   remuneration: pageRemuneration,
   parametres: pageParametres,
-  funnel: () => pageSoon('Funnel', "Parcours complet des candidats : invités → en test → nouveau → apprenti → confirmé, avec les taux de passage d'une étape à l'autre."),
-  recruteurs: () => pageSoon('Recruteurs', 'Suivi des recruteurs : candidats invités, tests validés, clippers confirmés et leur rémunération.'),
-  suivi: () => pageSoon('Suivi', 'Tests à valider depuis le dashboard, tickets, messages sans réponse, présence aux calls du lundi et clippers à relancer, remontés automatiquement par le bot Discord.'),
+  funnel: pageFunnel,
+  recruteurs: pageRecruteurs,
+  suivi: pageSuivi,
 };
 
 async function router() {

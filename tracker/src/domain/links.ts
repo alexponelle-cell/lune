@@ -80,3 +80,16 @@ export function parseAccountLinks(text: string): AccountLink[] {
   }
   return [...found.values()];
 }
+
+/** "@pseudo", "pseudo" ou lien de profil → compte de la plateforme attendue (null si invalide). */
+export function parseAccountInput(platform: Platform, value: string): AccountLink | null {
+  const v = value.trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) {
+    const parsed = parseAccountUrl(v);
+    return parsed && parsed.platform === platform ? parsed : null;
+  }
+  const handle = v.replace(/^@/, '').toLowerCase();
+  if (!/^[a-z0-9._-]{1,30}$/.test(handle)) return null;
+  return { platform, handle, url: canonicalUrl(platform, handle) };
+}
