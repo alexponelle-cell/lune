@@ -1485,7 +1485,7 @@ async function pageBoutique() {
         <p class="faint" style="margin:2px 0 0;font-size:12px">Bot Neptune : <b>${d.neptuneKey ? 'relié (clé NEPTUNE_API_KEY configurée)' : nep.state === 'ready' ? `connecté (${esc(nep.tag)})` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'non configuré (les commandes /site et /points sont sur le bot principal)'}</b> · Jeu Roblox : <b>${d.robloxKey ? 'clé configurée' : 'ROBLOX_API_KEY manquante'}</b></p></div>
         <div class="grid-form">
           <label class="field"><span>Titre du site</span><input class="input" name="programName" value="${esc(s.programName)}"><small>Nom de la boutique (ex. BEONE REWARDS)</small></label>
-          <label class="field"><span>Agence des fans</span><select class="select" name="clientId"><option value="">Aucune</option>${d.clients.map((c) => `<option value="${c.id}" ${c.id === s.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><small>Les fans qui font /site y sont rattachés (ex. BeOne)</small></label>
+          <label class="field"><span>Agence des fans</span><select class="select" name="clientId"><option value="">Aucune</option>${d.clients.map((c) => `<option value="${c.id}" ${c.id === s.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><small>Les fans qui se connectent y sont rattachés (ex. BeOne)</small></label>
           <label class="field"><span>Coins pour 1 000 vues</span><input class="input num" type="number" min="0" step="0.1" name="pointsPer1000" value="${s.pointsPer1000}"></label>
         </div>
         <div class="grid-form">
@@ -1493,6 +1493,15 @@ async function pageBoutique() {
           <label class="field"><span>Image / vidéo de fond (lien)</span><input class="input" name="heroMediaUrl" value="${esc(s.heroMediaUrl)}" placeholder="https://… .jpg / .png / .mp4"><small>Remplace le fond jaune de l'accueil (optionnel)</small></label>
         </div>
         <div><button class="btn green">Sauvegarder</button> <a class="btn" href="/fan" target="_blank" rel="noopener">Voir le site</a></div></form>
+
+      ${(() => {
+        const toLink = d.fans.filter((f) => !f.accounts.length).sort((a, b) => b.joinedAt - a.joinedAt);
+        return `<div class="card"><div class="card-head"><div><h2>Fans à relier ${toLink.length ? `<span class="pill wait" style="margin-left:6px">${toLink.length}</span>` : ''}</h2><p>Nouveaux fans connectés sans compte suivi : ajoute leurs TikTok / Insta / YouTube pour que leurs vues rapportent des coins</p></div></div>
+          ${toLink.length ? `<div class="table-wrap"><table><thead><tr><th>Fan</th><th>Arrivé le</th><th>Roblox</th><th class="r"></th></tr></thead><tbody>
+          ${toLink.map((f) => `<tr><td><div class="who">${f.avatar ? `<img src="${esc(f.avatar)}" alt="" style="width:30px;height:30px;border-radius:9px">` : avatar(f.username)}<b>${esc(f.username)}</b></div></td><td class="num faint">${dm(f.joinedAt)}</td><td>${esc(f.roblox ?? '—')}</td>
+            <td class="r"><button class="btn sm dark" data-link-fan="${f.id}">Relier ses comptes</button></td></tr>`).join('')}</tbody></table></div>`
+          : '<div class="empty">Tous les fans ont au moins un compte relié 🎉</div>'}</div>`;
+      })()}
 
       <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence = ce que le jeu comprend (ID du gamepass, nom de l'objet…)</p></div><button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div>
         <div class="table-wrap"><table><thead><tr><th>Objet</th><th>Type</th><th>Référence jeu</th><th class="r">Prix</th><th class="r">Stock</th><th>État</th><th class="r"></th></tr></thead><tbody>
@@ -1508,8 +1517,9 @@ async function pageBoutique() {
         </tbody></table></div></div>
 
       <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues depuis leur inscription</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Roblox</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th></tr></thead><tbody>
-        ${d.fans.map((f) => `<tr class="link" data-clipper="${f.id}"><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td></tr>`).join('') || `<tr><td colspan="6" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
+        <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Comptes</th><th>Roblox</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th><th class="r"></th></tr></thead><tbody>
+        ${d.fans.map((f) => `<tr><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td class="faint">${f.accounts.map((a) => `${{ tiktok: 'TT', instagram: 'IG', youtube: 'YT' }[a.platform]} @${esc(a.handle)}`).join(' · ') || '<span class="pill wait">à relier</span>'}</td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td>
+          <td class="r"><button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
         </tbody></table></div></div>
     </div>`;
   const root = main();
@@ -1566,6 +1576,22 @@ async function pageBoutique() {
         danger: true,
         onConfirm: async () => { await api(`/api/shop/items/${i.id}`, { method: 'DELETE' }); pageBoutique(); },
       });
+    }
+    const lk = e.target.closest('[data-link-fan]');
+    if (lk) {
+      const f = d.fans.find((x) => x.id === Number(lk.dataset.linkFan));
+      const cur = (p) => f.accounts.find((a) => a.platform === p)?.handle ?? '';
+      modal(`Comptes de ${f.username}`, `<p class="faint" style="margin:0;font-size:13px">Lien du profil ou @pseudo. Laisse vide pour ne pas suivre cette plateforme. Seules les vues faites à partir de maintenant rapportent des coins.</p>
+        ${['tiktok', 'instagram', 'youtube'].map((p) => `<label class="field"><span>${{ tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }[p]}</span><input class="input" name="${p}" value="${esc(cur(p) ? '@' + cur(p) : '')}" placeholder="${p === 'youtube' ? 'https://youtube.com/@…' : '@pseudo'}"></label>`).join('')}`, {
+        confirm: 'Relier',
+        onConfirm: async (fd) => {
+          const r = await api(`/api/clippers/${f.id}`, { method: 'PATCH', body: { accounts: { tiktok: fd.get('tiktok'), instagram: fd.get('instagram'), youtube: fd.get('youtube') } } });
+          (r.warnings ?? []).forEach((w) => toast(w, true));
+          if (!(r.warnings ?? []).length) toast(`Comptes de ${f.username} reliés ✅`);
+          pageBoutique();
+        },
+      });
+      return;
     }
     const act = e.target.closest('[data-delivered], [data-refund]');
     if (act) {

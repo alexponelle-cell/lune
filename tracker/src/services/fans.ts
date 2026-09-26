@@ -251,7 +251,8 @@ export class FanService {
         const v = views.get(c.id) ?? 0;
         const earned = this.points(v);
         const sp = spent.get(c.id) ?? 0;
-        return { id: c.id, username: c.username, roblox: this.fans.roblox(c.id).username, views: v, earned, spent: sp, balance: earned - sp };
+        const accounts = this.repo.listAccountsForClipper(c.id).map((a) => ({ platform: a.platform, handle: a.handle }));
+        return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.fans.roblox(c.id).username, accounts, views: v, earned, spent: sp, balance: earned - sp };
       })
       .sort((a, b) => b.views - a.views);
     const names = new Map(clippers.map((c) => [c.id, c.username]));
