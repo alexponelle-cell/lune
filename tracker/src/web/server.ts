@@ -80,8 +80,9 @@ async function discordIdentity(code: string, o: { clientId: string; clientSecret
   const { access_token } = (await token.json()) as { access_token: string };
   const me = await fetch('https://discord.com/api/users/@me', { headers: { authorization: `Bearer ${access_token}` }, signal: AbortSignal.timeout(10_000) });
   if (!me.ok) throw new Error(`Profil Discord illisible (HTTP ${me.status})`);
-  const u = (await me.json()) as { id: string; username: string; global_name?: string | null };
-  return { id: u.id, name: u.global_name || u.username };
+  const u = (await me.json()) as { id: string; username: string; global_name?: string | null; avatar?: string | null };
+  const avatar = u.avatar && /^(a_)?[0-9a-f]{32}$/.test(u.avatar) ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=128` : null;
+  return { id: u.id, name: u.global_name || u.username, avatar };
 }
 
 const ClientBody = z.object({
@@ -145,7 +146,7 @@ export function createApp(deps: WebDeps): Hono {
     if (!o || !code || !state || c.req.query('state') !== state) return fanError(c, 'Connexion annulée ou expirée, réessaie.');
     try {
       const user = await discordIdentity(code, o);
-      return startSession(c, fans.loginDiscordUser(user.id, user.name));
+      return startSession(c, fans.loginDiscordUser(user.id, user.name, Date.now(), user.avatar));
     } catch (err) {
       return fanError(c, err instanceof Error ? err.message : String(err));
     }

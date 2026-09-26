@@ -131,6 +131,41 @@ export class FanRepo {
     return r ? r.id : null;
   }
 
+  avatar(clipperId: number): string | null {
+    const r = this.db.prepare('SELECT avatar_url FROM clippers WHERE id = ?').get(clipperId) as Row | undefined;
+    return r?.avatar_url ?? null;
+  }
+
+  avatars(ids: readonly number[]): Map<number, string | null> {
+    if (!ids.length) return new Map();
+    const rows = this.db.prepare(`SELECT id, avatar_url FROM clippers WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids) as Row[];
+    return new Map(rows.map((r) => [r.id, r.avatar_url]));
+  }
+
+  setAvatar(clipperId: number, url: string | null): void {
+    this.db.prepare('UPDATE clippers SET avatar_url = ? WHERE id = ?').run(url, clipperId);
+  }
+
+  /** Clips détectés sur les comptes du fan, avec les vues gagnées depuis le début du suivi. */
+  clips(clipperId: number, limit = 40): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null }> {
+    return (
+      this.db
+        .prepare(
+          `SELECT a.platform, v.url, v.title, v.thumbnail_url, v.views, MAX(v.views - v.baseline_views, 0) AS gained, COALESCE(v.published_at, v.first_seen_at) AS at
+           FROM videos v JOIN accounts a ON a.id = v.account_id
+           WHERE a.clipper_id = ? AND a.active = 1 ORDER BY at DESC LIMIT ?`,
+        )
+        .all(clipperId, limit) as Row[]
+    ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at }));
+  }
+
+  clipCount(clipperId: number): number {
+    const r = this.db
+      .prepare('SELECT COUNT(*) AS n FROM videos v JOIN accounts a ON a.id = v.account_id WHERE a.clipper_id = ? AND a.active = 1')
+      .get(clipperId) as Row;
+    return r.n;
+  }
+
   // --- Boutique ----------------------------------------------------------------------
 
   items(opts: { activeOnly?: boolean } = {}): ShopItem[] {

@@ -1484,17 +1484,14 @@ async function pageBoutique() {
       <form class="card card-pad stack" id="fan-settings"><div><h2 style="margin:0;font-size:15px">Réglages</h2>
         <p class="faint" style="margin:2px 0 0;font-size:12px">Bot Neptune : <b>${d.neptuneKey ? 'relié (clé NEPTUNE_API_KEY configurée)' : nep.state === 'ready' ? `connecté (${esc(nep.tag)})` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'non configuré (les commandes /site et /points sont sur le bot principal)'}</b> · Jeu Roblox : <b>${d.robloxKey ? 'clé configurée' : 'ROBLOX_API_KEY manquante'}</b></p></div>
         <div class="grid-form">
-          <label class="field"><span>Titre du site</span><input class="input" name="programName" value="${esc(s.programName)}"><small>Gros titre de la page d'accueil (ex. BE ONE POURCENT)</small></label>
+          <label class="field"><span>Titre du site</span><input class="input" name="programName" value="${esc(s.programName)}"><small>Nom de la boutique (ex. BEONE REWARDS)</small></label>
           <label class="field"><span>Agence des fans</span><select class="select" name="clientId"><option value="">Aucune</option>${d.clients.map((c) => `<option value="${c.id}" ${c.id === s.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><small>Les fans qui font /site y sont rattachés (ex. BeOne)</small></label>
           <label class="field"><span>Coins pour 1 000 vues</span><input class="input num" type="number" min="0" step="0.1" name="pointsPer1000" value="${s.pointsPer1000}"></label>
         </div>
         <div class="grid-form">
-          <label class="field"><span>Accroche</span><input class="input" name="tagline" maxlength="160" value="${esc(s.tagline)}"></label>
           <label class="field"><span>Invitation Discord</span><input class="input" name="discordInviteUrl" value="${esc(s.discordInviteUrl)}" placeholder="https://discord.gg/…"><small>Bouton « Rejoindre la communauté »</small></label>
-          <label class="field"><span>Image / vidéo de fond (lien)</span><input class="input" name="heroMediaUrl" value="${esc(s.heroMediaUrl)}" placeholder="https://… .jpg / .png / .mp4"></label>
+          <label class="field"><span>Image / vidéo de fond (lien)</span><input class="input" name="heroMediaUrl" value="${esc(s.heroMediaUrl)}" placeholder="https://… .jpg / .png / .mp4"><small>Remplace le fond jaune de l'accueil (optionnel)</small></label>
         </div>
-        <label class="field"><span>Contenus mis en avant</span><textarea class="input" name="featured" rows="5" placeholder="video | Ma dernière vidéo | https://youtube.com/watch?v=…&#10;podcast | Interview chez X | https://youtube.com/watch?v=…&#10;best | Le meilleur moment | https://youtube.com/watch?v=…">${esc(s.featured)}</textarea>
-          <small>Une ligne par contenu : type (video, podcast ou best) | titre | lien. La miniature YouTube s'affiche toute seule. Les clips des fans s'ajoutent automatiquement.</small></label>
         <div><button class="btn green">Sauvegarder</button> <a class="btn" href="/fan" target="_blank" rel="noopener">Voir le site</a></div></form>
 
       <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence = ce que le jeu comprend (ID du gamepass, nom de l'objet…)</p></div><button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div>
@@ -1525,10 +1522,8 @@ async function pageBoutique() {
           programName: fd.get('programName'),
           clientId: fd.get('clientId') ? Number(fd.get('clientId')) : null,
           pointsPer1000: Number(fd.get('pointsPer1000')),
-          tagline: fd.get('tagline'),
           discordInviteUrl: fd.get('discordInviteUrl'),
           heroMediaUrl: fd.get('heroMediaUrl'),
-          featured: fd.get('featured'),
         } });
       toast('Réglages sauvegardés ✅');
       pageBoutique();

@@ -24,8 +24,8 @@ export interface FanSettings {
 export const DEFAULT_FANS: FanSettings = {
   clientId: null,
   pointsPer1000: 10,
-  programName: 'BE ONE POURCENT',
-  tagline: 'La communauté de ceux qui veulent aller plus loin.',
+  programName: 'BEONE REWARDS',
+  tagline: 'Fais des vues. Gagne des Coins.',
   heroMediaUrl: '',
   discordInviteUrl: '',
   featured: '',
@@ -106,8 +106,9 @@ export class FanService {
   }
 
   /** Connexion « Se connecter avec Discord » : crée le fan au besoin et ouvre une session. */
-  loginDiscordUser(discordId: string, username: string, now = Date.now()): string {
+  loginDiscordUser(discordId: string, username: string, now = Date.now(), avatarUrl: string | null = null): string {
     const fan = this.ensureFan(discordId, username, now);
+    if (avatarUrl) this.fans.setAvatar(fan.id, avatarUrl);
     return this.fans.createToken(fan.id, 'session', SESSION_TTL, now);
   }
 
@@ -138,9 +139,27 @@ export class FanService {
 
   // --- Espace fan --------------------------------------------------------------------
 
+  /** Classement de la semaine (7 derniers jours) : pseudo, avatar, vues, coins gagnés. */
+  leaderboard(now = Date.now(), limit = 10) {
+    const s = this.settings();
+    if (!s.clientId) return [];
+    const rows = this.agency
+      .ranked(this.agency.range({ preset: '7d' }, now), s.clientId, now)
+      .filter((r) => r.views > 0)
+      .slice(0, limit);
+    const avatars = this.fans.avatars(rows.map((r) => r.clipper.id));
+    return rows.map((r, i) => ({ rank: i + 1, id: r.clipper.id, name: r.clipper.username, avatar: avatars.get(r.clipper.id) ?? null, views: r.views, coins: this.points(r.views) }));
+  }
+
   me(clipper: Clipper, now = Date.now()) {
     const s = this.settings();
+    const clips = this.fans.clips(clipper.id).map((c) => ({ ...c, coins: this.points(c.gained) }));
     return {
+      id: clipper.id,
+      avatar: this.fans.avatar(clipper.id),
+      clips,
+      clipCount: this.fans.clipCount(clipper.id),
+      weekRank: this.leaderboard(now, 100).find((r) => r.id === clipper.id)?.rank ?? null,
       programName: s.programName,
       pointsPer1000: s.pointsPer1000,
       username: clipper.username,
@@ -216,6 +235,7 @@ export class FanService {
       featured: parseFeatured(s.featured),
       clips,
       items: this.fans.items({ activeOnly: true }),
+      leaderboard: this.leaderboard(now).map(({ id: _id, ...r }) => r),
     };
   }
 

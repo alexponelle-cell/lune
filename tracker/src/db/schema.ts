@@ -306,4 +306,7 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   );
   CREATE INDEX shop_orders_clipper ON shop_orders(clipper_id, status);
   `,
+
+  // v7 : avatar Discord des fans (classement, profil)
+  `ALTER TABLE clippers ADD COLUMN avatar_url TEXT;`,
 ];
