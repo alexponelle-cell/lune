@@ -446,13 +446,13 @@ function bindBuy(root) {
     const item = (ME?.items ?? PUB.items).find((i) => i.id === Number(b.dataset.buy));
     if (!ME.roblox.userId) return robloxModal(() => b.click());
     modal(`${mascot('gift', 'mascot bob')}<h3>${esc(item.name)}</h3><p>Échanger <b>${fmt(item.price)} coins</b> contre cette récompense ? Tu la reçois dans le jeu à ta prochaine connexion.</p>
-      <div class="actions"><button class="btn yellow big" data-ok>Oui, j'échange !</button><button class="btn white" data-close>Pas maintenant</button></div>`, (bg, close) => {
+      <div class="actions"><button class="btn yellow big" data-ok>Oui, j'échange !</button><button class="btn white" data-close>Pas maintenant</button></div>`, (bg, close) => {
       $('[data-ok]', bg).onclick = async (e) => {
         e.target.disabled = true;
         try {
           await api('/api/fan/orders', { method: 'POST', body: { itemId: item.id } });
           close(); confetti(); coinRain(24);
-          modal(`${mascot('trophy', 'mascot bob')}<h3>Récompense débloquée !</h3><p><b>${esc(item.name)}</b> arrive dans le jeu à ta prochaine connexion avec <b>${esc(ME.roblox.username)}</b> 🎉</p><div class="actions"><button class="btn yellow" data-close>Trop bien !</button></div>`);
+          modal(`${mascot('trophy', 'mascot bob')}<h3>Récompense débloquée !</h3><p><b>${esc(item.name)}</b> arrive dans le jeu à ta prochaine connexion avec <b>${esc(ME.roblox.username)}</b> 🎉</p><div class="actions"><button class="btn yellow" data-close>Trop bien !</button></div>`);
           await refresh();
         } catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
       };
@@ -510,16 +510,16 @@ function pageHome() {
 
   <section>
     <div class="head-row reveal"><div><span class="eyebrow">🏆 Cette semaine</span><h2>Top clippeurs</h2></div><a class="btn white" href="#/classement">Classement →</a></div>
-    ${lb.length ? podium(lb) : '<div class="card empty reveal"><div class="e">🏁</div>Le classement de la semaine démarre. Sois le premier !</div>'}
+    ${lb.length ? podium(lb) : '<div class="card empty reveal"><div class="e">🏁</div>Le classement de la semaine démarre. Sois le premier !</div>'}
   </section>
 
   <section>
-    <div class="banner reveal"><div><h3>Prêt à rejoindre le 1% ?</h3><p>Chaque vue compte. Ton premier clip peut te rapporter tes premiers coins dès aujourd'hui.</p>
+    <div class="banner reveal"><div><h3>Prêt à rejoindre le 1% ?</h3><p>Chaque vue compte. Ton premier clip peut te rapporter tes premiers coins dès aujourd'hui.</p>
       <div class="ctas" style="display:flex;gap:12px;flex-wrap:wrap">${ME ? '<a class="btn yellow big" href="#/clipper">Mes clips</a>' : '<a class="btn yellow big" href="/fan/auth/discord">Je commence</a>'}${PUB.discordInviteUrl ? `<a class="btn white big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord</a>` : ''}</div></div>
       ${mascot('camera', 'mascot bob')}</div>
   </section>`;
 }
-const emptyShop = () => `<div class="card empty reveal" style="grid-column:1/-1"><div class="e">🎁</div>Les premières récompenses arrivent très bientôt !</div>`;
+const emptyShop = () => `<div class="card empty reveal" style="grid-column:1/-1"><div class="e">🎁</div>Les premières récompenses arrivent très bientôt !</div>`;
 
 let FILTER = 'all';
 function pageShop() {
@@ -547,7 +547,7 @@ function pageClip() {
   return `<section>${head}${steps}
     <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${ME.accounts.length
       ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, plusieurs fois par jour.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
-      : `<h3>Presque prêt !</h3><p>L'équipe relie tes comptes TikTok, Insta ou YouTube à ton profil. Dès que c'est fait, chaque vue te rapporte des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Contacter l'équipe sur Discord</a>` : ''}`}</div></div>
+      : `<h3>Presque prêt !</h3><p>L'équipe relie tes comptes TikTok, Insta ou YouTube à ton profil. Dès que c'est fait, chaque vue te rapporte des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Contacter l'équipe sur Discord</a>` : ''}`}</div></div>
   </section>
   <section>
     <div class="head-row reveal"><div><span class="eyebrow">📈 Tes clips</span><h2>Mes clips</h2></div><div class="coin-pill">${coin('coin')}${fmt(ME.clipCount)}<small>CLIPS</small></div></div>
@@ -566,7 +566,7 @@ function pageRanking() {
   const myName = ME?.username;
   return `<section style="margin-top:34px">
     <div class="head-row reveal"><div><span class="eyebrow">🏆 7 derniers jours</span><h2>Classement</h2><p class="sub">Les clippeurs qui ont fait le plus de vues cette semaine.</p></div>${ME?.weekRank ? `<div class="coin-pill">🏅 Tu es #${ME.weekRank}</div>` : ''}</div>
-    ${lb.length ? podium(lb) : '<div class="card empty reveal"><div class="e">🏁</div>Le classement démarre. Poste ton premier clip pour y apparaître !</div>'}
+    ${lb.length ? podium(lb) : '<div class="card empty reveal"><div class="e">🏁</div>Le classement démarre. Poste ton premier clip pour y apparaître !</div>'}
     <div class="ranks">${lb.slice(3).map((r) => `<div class="card rank-row reveal ${r.name === myName ? 'me' : ''}"><span class="n">#${r.rank}</span>${avatar(r.name, r.avatar)}<span class="who"><b>${esc(r.name)}</b><small>👀 ${compact(r.views)} vues</small></span><span class="price" style="font-size:20px">+${fmt(r.coins)} ${coin('coin')}</span></div>`).join('')}</div>
   </section>`;
 }
@@ -629,7 +629,7 @@ function celebrate() {
   const li = levelOf(ME.views);
   if (Number.isFinite(lastLevel) && li > lastLevel) {
     confetti(); coinRain(30);
-    modal(`${mascot('trophy', 'mascot bob')}<h3>Niveau supérieur !</h3><p>Tu passes <b>${LEVELS[li].emoji} ${LEVELS[li].name}</b>. Continue comme ça !</p><div class="actions"><button class="btn yellow" data-close>Let's go 🔥</button></div>`);
+    modal(`${mascot('trophy', 'mascot bob')}<h3>Niveau supérieur !</h3><p>Tu passes <b>${LEVELS[li].emoji} ${LEVELS[li].name}</b>. Continue comme ça !</p><div class="actions"><button class="btn yellow" data-close>Let's go 🔥</button></div>`);
   } else if (Number.isFinite(lastCoins) && ME.earned > lastCoins) {
     coinRain(Math.min(30, 8 + Math.round((ME.earned - lastCoins) / 20)));
     toast(`+${fmt(ME.earned - lastCoins)} coins depuis ta dernière visite 🎉`, 'ok');
