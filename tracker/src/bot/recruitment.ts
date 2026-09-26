@@ -218,7 +218,7 @@ export function attachRecruitment(
       PermissionFlagsBits.EmbedLinks,
     ];
     const channel = await g.channels.create({
-      name: `${slug}-test`,
+      name: `test-${slug}`,
       type: ChannelType.GuildText,
       parent: s.testCategoryId || undefined,
       permissionOverwrites: [

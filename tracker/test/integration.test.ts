@@ -36,6 +36,7 @@ const fakeBridge = () => ({
   publishTestMessage: async () => {},
   channels: async () => [],
   ticketUrl: () => null,
+  publishStartMessage: async () => {},
   publishCandidatureMessage: async () => {},
   decideCandidature: async () => [],
 });

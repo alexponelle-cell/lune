@@ -54,12 +54,14 @@ function createClient(
       GatewayIntentBits.DirectMessages,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildInvites,
+      // Réaction ✅ dans start-here (débloque les salons)
+      GatewayIntentBits.GuildMessageReactions,
       // Message Content : lire les liens du salon COMPTES et des salons de test.
       ...(privileged.messageContent ? [GatewayIntentBits.MessageContent] : []),
       // Server Members : savoir qui rejoint le serveur (suivi des invitations / recruteurs).
       ...(privileged.members ? [GatewayIntentBits.GuildMembers] : []),
     ],
-    partials: [Partials.Channel],
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
   });
 
   discord.once(Events.ClientReady, (c) => {

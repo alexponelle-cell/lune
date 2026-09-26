@@ -50,6 +50,7 @@ const DEPART_REASONS = [
 ];
 
 export interface CommunityBridge {
+  publishStartMessage(channelId: string): Promise<void>;
   publishCandidatureMessage(channelId: string): Promise<void>;
   decideCandidature(id: number, accept: boolean, by: string): Promise<string[]>;
 }
@@ -97,12 +98,29 @@ export function attachCommunity(
           '',
           'Pour commencer :',
           `1. Lis ${mention(settings.welcomeChannelId, '#start-here')}`,
-          `2. Postule dans ${mention(settings.candidatureChannelId, '#candidature')}`,
+          '2. Valide avec ✅ pour débloquer les autres salons',
           '',
           'À très vite 🚀',
         ].join('\n'),
       )
       .catch(() => {}); // DM fermés : pas grave
+  });
+
+  // --- start-here : réagir ✅ débloque les salons (rôle Test), comme chez Micka -----------------
+  discord.on(Events.MessageReactionAdd, async (reaction, user) => {
+    if (user.bot || reaction.emoji.name !== '✅') return;
+    const settings = s();
+    if (!settings.welcomeChannelId || reaction.message.channelId !== settings.welcomeChannelId || !reaction.message.guildId) return;
+    try {
+      const g = await discord.guilds.fetch(reaction.message.guildId);
+      const member = await g.members.fetch(user.id);
+      if (settings.testRoleId && !member.roles.cache.has(settings.testRoleId)) await member.roles.add(settings.testRoleId, 'Règles validées (✅ dans start-here)');
+      if (settings.arrivantRoleId && member.roles.cache.has(settings.arrivantRoleId)) await member.roles.remove(settings.arrivantRoleId);
+      rec.upsertCandidate({ discordId: member.id, username: member.displayName, stage: 'invite', joinedAt: member.joinedTimestamp });
+      log.info(`${member.user.username} a validé start-here`);
+    } catch (err) {
+      log.warn(`rôle start-here non donné à ${user.username} (rôle du bot trop bas ?) : ${String(err)}`);
+    }
   });
 
   // --- Départs : DM best-effort + log fiable --------------------------------------------------
@@ -366,6 +384,26 @@ export function attachCommunity(
   });
 
   return {
+    async publishStartMessage(channelId) {
+      const settings = s();
+      const g = await guild();
+      const msg = await send(channelId, {
+        content: [
+          `Bienvenue sur **${g.name}** 👋`,
+          '',
+          'Ce que tu dois retenir :',
+          '',
+          '1. Valide ce message pour accéder aux autres salons avec ce smiley : ✅',
+          `2. Va dans ${mention(settings.testChannelId, '#faire-test')}, regarde les tutos et prépare ta première vidéo`,
+          '3. Clique sur **Envoyer mon test** : un salon privé s’ouvre, envoie ton clip dedans',
+          '4. Test validé → tu deviens **Nouveau** clipper 🎬',
+          '5. On a une DA précise : uniquement des talks illustrés, pas de contenu type citations ou autre',
+        ].join('\n'),
+        allowedMentions: { parse: [] },
+      });
+      if (!msg) throw new Error('Salon introuvable ou non accessible au bot');
+      await msg.react('✅');
+    },
     async publishCandidatureMessage(channelId) {
       const embed = new EmbedBuilder()
         .setColor(EMBED_COLOR)

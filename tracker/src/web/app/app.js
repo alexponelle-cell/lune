@@ -1132,8 +1132,8 @@ async function pageParametres() {
         <div><h3 style="margin:6px 0 0;font-size:13px">Accueil & candidatures</h3></div>
         <div class="grid-form">
           <label class="field"><span>Rôle à l'arrivée</span>${pick('arrivantRoleId', rs.arrivantRoleId, roles, 'Aucun')}<small>Donné automatiquement en rejoignant le serveur</small></label>
-          <label class="field"><span>Rôle « Test »</span>${pick('testRoleId', rs.testRoleId, roles, 'Aucun')}<small>Donné quand une candidature est acceptée, retiré à la validation du test</small></label>
-          <label class="field"><span>Salon start-here</span>${pick('welcomeChannelId', rs.welcomeChannelId, ofType('text'), 'Aucun')}<small>Cité dans le DM de bienvenue</small></label>
+          <label class="field"><span>Rôle « Test »</span>${pick('testRoleId', rs.testRoleId, roles, 'Aucun')}<small>Donné par la réaction ✅ dans start-here, retiré à la validation du test</small></label>
+          <label class="field"><span>Salon start-here</span>${pick('welcomeChannelId', rs.welcomeChannelId, ofType('text'), 'Aucun')}<small>Réagir ✅ ici donne le rôle « Test » (débloque les salons)</small></label>
           <label class="field"><span>Catégorie des tickets de candidature</span>${pick('ticketCategoryId', rs.ticketCategoryId, ofType('category'), 'Aucune (en haut du serveur)')}</label>
           <label class="field"><span>Salon staff des candidatures</span>${pick('staffChannelId', rs.staffChannelId, ofType('text'), 'Aucun')}<small>Les formulaires arrivent ici avec Accepter / Refuser</small></label>
           <label class="field"><span>Salon des départs</span>${pick('departuresChannelId', rs.departuresChannelId, ofType('text'), 'Aucun')}</label>
@@ -1148,7 +1148,11 @@ async function pageParametres() {
         <div class="actions">${chans ? `<select class="select" id="test-channel">${ofType('text').map((c) => `<option value="${c.id}" ${c.id === rs.testChannelId ? 'selected' : ''}>#${esc(c.name)}</option>`).join('')}</select>
           <button class="btn dark" data-publish>${icon('discord')} Publier le message</button>` : '<span class="faint">Bot hors ligne</span>'}</div>
         <p class="faint" style="margin:0;font-size:12px">Permissions nécessaires pour le bot : Gérer les salons, Gérer les rôles (son rôle doit être au-dessus de « Nouveau clipper »), Gérer le serveur (invitations).</p></div>
-      <div class="card card-pad stack" style="gap:10px"><div><h2 style="margin:0;font-size:15px">Message « Postuler »</h2>
+      <div class="card card-pad stack" style="gap:10px"><div><h2 style="margin:0;font-size:15px">Message start-here</h2>
+        <p class="faint" style="margin:2px 0 0;font-size:12px">Publie les règles + la réaction ✅ : ceux qui réagissent reçoivent le rôle « Test » et débloquent les salons (faire-test, tutos…). Tu peux aussi écrire ton propre message : tout ✅ dans ce salon compte.</p></div>
+        <div class="actions">${chans ? `<select class="select" id="start-channel">${ofType('text').map((c) => `<option value="${c.id}" ${c.id === rs.welcomeChannelId ? 'selected' : ''}>#${esc(c.name)}</option>`).join('')}</select>
+          <button class="btn dark" data-publish-start>${icon('discord')} Publier le message</button>` : '<span class="faint">Bot hors ligne</span>'}</div></div>
+      <div class="card card-pad stack" style="gap:10px"><div><h2 style="margin:0;font-size:15px">Message « Postuler » (optionnel)</h2>
         <p class="faint" style="margin:2px 0 0;font-size:12px">Publie le bouton « Postuler » (ouvre un ticket + formulaire) dans le salon de ton choix (ex. #candidature)</p></div>
         <div class="actions">${chans ? `<select class="select" id="cand-channel">${ofType('text').map((c) => `<option value="${c.id}" ${c.id === rs.candidatureChannelId ? 'selected' : ''}>#${esc(c.name)}</option>`).join('')}</select>
           <button class="btn dark" data-publish-cand>${icon('discord')} Publier le message</button>` : '<span class="faint">Bot hors ligne</span>'}</div></div>
@@ -1190,6 +1194,14 @@ async function pageParametres() {
     try {
       await api('/api/discord/test-message', { method: 'POST', body: { channelId: $('#test-channel', root).value } });
       toast('Message publié sur Discord ✅');
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+  $('[data-publish-start]', root)?.addEventListener('click', async () => {
+    try {
+      await api('/api/discord/start-message', { method: 'POST', body: { channelId: $('#start-channel', root).value } });
+      toast('Message start-here publié ✅');
     } catch (err) {
       toast(err.message, true);
     }

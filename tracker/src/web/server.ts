@@ -415,6 +415,14 @@ export function createApp(deps: WebDeps): Hono {
     return c.json({ ok: true });
   });
 
+  app.post('/api/discord/start-message', async (c) => {
+    if (!deps.bot.current) return c.json({ error: 'Bot Discord non connecté' }, 503);
+    const { channelId } = z.object({ channelId: z.string().regex(/^\d+$/) }).parse(await c.req.json());
+    await deps.bot.current.publishStartMessage(channelId);
+    recruitment.saveSettings({ welcomeChannelId: channelId });
+    return c.json({ ok: true });
+  });
+
   app.post('/api/discord/candidature-message', async (c) => {
     if (!deps.bot.current) return c.json({ error: 'Bot Discord non connecté' }, 503);
     const { channelId } = z.object({ channelId: z.string().regex(/^\d+$/) }).parse(await c.req.json());
