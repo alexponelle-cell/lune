@@ -19,6 +19,13 @@ const schema = z.object({
   NEPTUNE_GUILD_ID: optionalString,
   /** Clé partagée avec le bot Neptune (Python) : il demande les liens /site et les points. */
   NEPTUNE_API_KEY: optionalString,
+  /**
+   * Connexion « Se connecter avec Discord » de la boutique fans (OAuth2).
+   * App Discord utilisée (ex. celle de Neptune) : son Client ID + Client Secret,
+   * et l'URL de redirection <PUBLIC_URL>/fan/auth/callback ajoutée dans le portail (OAuth2 > Redirects).
+   */
+  OAUTH_CLIENT_ID: optionalString,
+  OAUTH_CLIENT_SECRET: optionalString,
   /** Clé partagée avec le jeu Roblox pour livrer les achats de la boutique. */
   ROBLOX_API_KEY: optionalString,
 

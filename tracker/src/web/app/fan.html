@@ -50,6 +50,8 @@
   .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
   .pending { color: var(--warn); } .delivered { color: var(--ok); } .refunded { color: var(--muted); }
   .center { text-align: center; padding: 60px 16px; }
+  .discord-btn { display: inline-flex; align-items: center; gap: 10px; background: #5865f2; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 20px; border-radius: 12px; }
+  .discord-btn:hover { background: #4752c4; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; max-width: calc(100% - 32px); }
   .toast.err { background: var(--bad); color: #fff; }
   @media (max-width: 520px) { .stats { grid-template-columns: 1fr 1fr; } .stat.main { grid-column: 1 / -1; } }
@@ -80,9 +82,11 @@ async function api(path, opts = {}) {
 }
 
 function loggedOut() {
-  const expired = new URLSearchParams(location.search).has('expired');
-  $app.innerHTML = `<div class="card center"><h1>${expired ? 'Lien expiré' : 'Connecte-toi'}</h1>
-    <p class="muted">${expired ? 'Ce lien a déjà servi ou a expiré.' : ''} Tape <b>/site</b> sur Discord pour recevoir ton lien de connexion perso.</p></div>`;
+    const error = new URLSearchParams(location.search).get('error');
+  $app.innerHTML = `<div class="card center"><h1>Boutique</h1>
+    <p class="muted" style="margin:0 0 18px">Gagne des coins avec les vues de tes clips et échange-les contre des objets en jeu.</p>
+    ${error ? `<p class="small" style="color:var(--bad)">${esc(error)}</p>` : ''}
+    <a href="/fan/auth/discord" class="discord-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.6 1.3a18.4 18.4 0 0 0-5.6 0L8.6 3a19.7 19.7 0 0 0-4.9 1.4C.6 9.1-.3 13.6.1 18.1a19.9 19.9 0 0 0 6 3l1.3-2.1a12.9 12.9 0 0 1-2-1l.5-.4a14.2 14.2 0 0 0 12.2 0l.5.4c-.6.4-1.3.7-2 1l1.3 2.1a19.8 19.8 0 0 0 6-3c.5-5.2-.8-9.7-3.6-13.7zM8 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4z"/></svg>Se connecter avec Discord</a></div>`;
 }
 
 async function render() {
@@ -99,11 +103,11 @@ async function render() {
   $app.innerHTML = `
     <header><div><h1>${esc(d.programName)}</h1><div class="muted small">Salut ${esc(d.username)} 👋</div></div><button id="logout">Déconnexion</button></header>
     <div class="stats">
-      <div class="stat main"><span class="muted small">Mes points</span><b>${fmt(d.balance)}</b></div>
+      <div class="stat main"><span class="muted small">Mes coins</span><b>${fmt(d.balance)}</b></div>
       <div class="stat"><span class="muted small">Vues</span><b>${fmt(d.views)}</b></div>
       <div class="stat"><span class="muted small">Dépensés</span><b>${fmt(d.spent)}</b></div>
     </div>
-    <p class="muted small" style="margin:-4px 0 14px">${fmt(d.pointsPer1000)} points pour 1 000 vues · les vues sont mises à jour plusieurs fois par jour. Seules les vues faites après l'ajout d'un compte comptent.</p>
+    <p class="muted small" style="margin:-4px 0 14px">${fmt(d.pointsPer1000)} coins pour 1 000 vues · les vues sont mises à jour plusieurs fois par jour. Seules les vues faites après l'ajout d'un compte comptent.</p>
 
     <div class="card"><h2>🎮 Mon compte Roblox</h2>
       ${d.roblox.username ? `<p style="margin:0 0 10px">Relié à <b>${esc(d.roblox.username)}</b> : tes achats arrivent en jeu à ta prochaine connexion.</p>` : '<p class="muted small" style="margin:0 0 10px">Obligatoire pour recevoir tes achats dans le jeu.</p>'}
@@ -116,20 +120,20 @@ async function render() {
     </div>
 
     <div class="card"><h2>🛒 Boutique</h2>
-      ${canBuy ? '' : '<p class="small" style="margin:0 0 10px;color:var(--warn)">Relie ton compte Roblox pour pouvoir échanger tes points.</p>'}
+      ${canBuy ? '' : '<p class="small" style="margin:0 0 10px;color:var(--warn)">Relie ton compte Roblox pour pouvoir échanger tes coins.</p>'}
       <div class="shop">${d.items.map((i) => {
         const soldOut = i.stock !== null && i.stock <= 0;
         const ok = canBuy && !soldOut && d.balance >= i.price;
         return `<div class="product">${i.imageUrl ? `<img src="${esc(i.imageUrl)}" alt="" loading="lazy">` : ''}
           <span class="tag">${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</span><b>${esc(i.name)}</b>
           ${i.description ? `<span class="muted small">${esc(i.description)}</span>` : ''}
-          <span class="price">${fmt(i.price)} pts</span>${i.stock !== null ? `<span class="muted small">${soldOut ? 'Rupture' : `${i.stock} restant(s)`}</span>` : ''}
-          <button class="primary" data-buy="${i.id}" ${ok ? '' : 'disabled'}>${soldOut ? 'Rupture' : d.balance < i.price ? `Encore ${fmt(i.price - d.balance)} pts` : 'Échanger'}</button></div>`;
+          <span class="price">${fmt(i.price)} coins</span>${i.stock !== null ? `<span class="muted small">${soldOut ? 'Rupture' : `${i.stock} restant(s)`}</span>` : ''}
+          <button class="primary" data-buy="${i.id}" ${ok ? '' : 'disabled'}>${soldOut ? 'Rupture' : d.balance < i.price ? `Encore ${fmt(i.price - d.balance)} coins` : 'Échanger'}</button></div>`;
       }).join('') || '<p class="muted small" style="margin:0">La boutique arrive bientôt.</p>'}</div>
     </div>
 
     <div class="card"><h2>📦 Mes achats</h2>
-      <div class="list">${d.orders.map((o) => `<div class="item-row"><span><b>${esc(o.itemName)}</b> · ${fmt(o.price)} pts</span><span class="pill ${o.status}">${STATUS[o.status]}</span></div>`).join('') || '<p class="muted small" style="margin:0">Aucun achat.</p>'}</div>
+      <div class="list">${d.orders.map((o) => `<div class="item-row"><span><b>${esc(o.itemName)}</b> · ${fmt(o.price)} coins</span><span class="pill ${o.status}">${STATUS[o.status]}</span></div>`).join('') || '<p class="muted small" style="margin:0">Aucun achat.</p>'}</div>
     </div>`;
 
   document.getElementById('logout').onclick = async () => { await api('/fan/logout', { method: 'POST' }).catch(() => {}); loggedOut(); };
@@ -152,7 +156,7 @@ async function render() {
   });
   $app.querySelectorAll('[data-buy]').forEach((b) => b.onclick = async () => {
     const item = d.items.find((i) => i.id === Number(b.dataset.buy));
-    if (!confirm(`Échanger ${fmt(item.price)} points contre « ${item.name} » ?`)) return;
+    if (!confirm(`Échanger ${fmt(item.price)} coins contre « ${item.name} » ?`)) return;
     try { await api('/api/fan/orders', { method: 'POST', body: { itemId: item.id } }); toast('Achat validé ✅ Connecte-toi au jeu pour le recevoir'); render(); } catch (err) { toast(err.message, true); }
   });
 }

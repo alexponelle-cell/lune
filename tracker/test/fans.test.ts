@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FanRepo } from '../src/db/fans.js';
 import { openDatabase } from '../src/db/index.js';
 import { Repo } from '../src/db/repo.js';
@@ -98,7 +98,7 @@ describe('programme fans (Neptune)', () => {
     const login = await app.request(`/fan/login?t=${token}`);
     expect(login.status).toBe(302);
     const cookie = login.headers.get('set-cookie')!.split(';')[0]!;
-    expect((await app.request(`/fan/login?t=${token}`)).headers.get('location')).toBe('/fan?expired=1');
+    expect((await app.request(`/fan/login?t=${token}`)).headers.get('location')).toContain('/fan?error=');
 
     const me = (await (await app.request('/api/fan/me', { headers: { cookie } })).json()) as { balance: number; roblox: { username: string } };
     expect(me).toMatchObject({ balance: 50, roblox: { username: 'PaulRbx' } });
@@ -126,5 +126,39 @@ describe('programme fans (Neptune)', () => {
     const overview = (await (await app.request('/api/fans', { headers: auth })).json()) as { fans: Array<{ balance: number }>; orders: Array<{ status: string }> };
     expect(overview.fans[0]?.balance).toBe(40);
     expect(overview.orders[0]?.status).toBe('delivered');
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('« Se connecter avec Discord » : state vérifié, fan créé, session ouverte', async () => {
+    const app = createApp({
+      repo,
+      agency,
+      recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency),
+      fans,
+      discordOAuth: { clientId: 'cid', clientSecret: 'sec', redirectUri: 'https://site.test/fan/auth/callback' },
+      bot: {},
+    });
+    const start = await app.request('/fan/auth/discord');
+    const authorize = new URL(start.headers.get('location')!);
+    expect(authorize.hostname).toBe('discord.com');
+    expect(authorize.searchParams.get('scope')).toBe('identify');
+    const state = authorize.searchParams.get('state')!;
+    const stateCookie = start.headers.get('set-cookie')!.split(';')[0]!;
+
+    // Mauvais state : refusé
+    expect((await app.request(`/fan/auth/callback?code=x&state=faux`, { headers: { cookie: stateCookie } })).headers.get('location')).toContain('error=');
+
+    vi.stubGlobal('fetch', async (url: string) =>
+      String(url).endsWith('/oauth2/token')
+        ? Response.json({ access_token: 'at' })
+        : Response.json({ id: '777777', username: 'zoe', global_name: 'Zoé' }),
+    );
+    const cb = await app.request(`/fan/auth/callback?code=ok&state=${state}`, { headers: { cookie: stateCookie } });
+    expect(cb.headers.get('location')).toBe('/fan');
+    const session = cb.headers.get('set-cookie')!.match(/fan_session=([^;]+)/)![1]!;
+    const me = (await (await app.request('/api/fan/me', { headers: { cookie: `fan_session=${session}` } })).json()) as { username: string };
+    expect(me.username).toBe('Zoé');
+    expect(repo.getClipperByDiscordId('777777')?.clientId).toBe(fans.settings().clientId);
   });
 });

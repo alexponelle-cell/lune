@@ -39,7 +39,16 @@ const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl);
 const botHolder: { current?: Bot['bridge'] } = {};
 
 const stopWeb = startWeb(
-  createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY, bot: botHolder }),
+  createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
+    discordOAuth:
+      config.OAUTH_CLIENT_SECRET && (config.OAUTH_CLIENT_ID ?? config.DISCORD_CLIENT_ID)
+        ? {
+            clientId: (config.OAUTH_CLIENT_ID ?? config.DISCORD_CLIENT_ID)!,
+            clientSecret: config.OAUTH_CLIENT_SECRET,
+            redirectUri: `${dashboardUrl.replace(/\/$/, '')}/fan/auth/callback`,
+          }
+        : undefined,
+    bot: botHolder }),
   config.WEB_PORT,
 );
 log.info(`dashboard sur ${dashboardUrl} (données : ${config.FETCHER_MODE})`);

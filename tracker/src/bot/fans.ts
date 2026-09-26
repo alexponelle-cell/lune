@@ -15,7 +15,7 @@ import { status } from '../status.js';
 /** Commandes du programme fans : sur le bot Neptune (serveur du créateur), ou sur le bot principal s'il n'y a pas de Neptune. */
 export const fanCommandDefinitions = [
   new SlashCommandBuilder().setName('site').setDescription('Reçois ton lien de connexion à ton espace (vues, points, boutique)').toJSON(),
-  new SlashCommandBuilder().setName('points').setDescription('Tes vues et tes points').toJSON(),
+  new SlashCommandBuilder().setName('coins').setDescription('Tes vues et tes coins').toJSON(),
 ];
 export const FAN_COMMANDS = new Set(fanCommandDefinitions.map((c) => c.name));
 
@@ -30,7 +30,7 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
       if (interaction.commandName === 'site') {
         const url = fans.loginUrl(fan.id);
         await interaction.reply({
-          content: `🔐 **Ton lien de connexion perso** (valable 10 min, ne le partage pas) :\n${url}\n\nTu y ajoutes tes comptes TikTok / Insta / YouTube et ton pseudo Roblox, tu suis tes points et tu dépenses dans la boutique.`,
+          content: `🔐 **Ton lien de connexion perso** (valable 10 min, ne le partage pas) :\n${url}\n\nTu y ajoutes tes comptes TikTok / Insta / YouTube et ton pseudo Roblox, tu suis tes coins et tu dépenses dans la boutique.`,
           flags: MessageFlags.Ephemeral,
         });
       } else {
@@ -43,10 +43,10 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
               .setTitle(`⭐ ${name}`)
               .addFields(
                 { name: 'Vues', value: fmt(b.views), inline: true },
-                { name: 'Points', value: fmt(b.balance), inline: true },
+                { name: 'Coins', value: fmt(b.balance), inline: true },
                 { name: 'Dépensés', value: fmt(b.spent), inline: true },
               )
-              .setFooter({ text: `${s.pointsPer1000} points pour 1 000 vues · /site pour la boutique` }),
+              .setFooter({ text: `${s.pointsPer1000} coins pour 1 000 vues · /site pour la boutique` }),
           ],
           flags: MessageFlags.Ephemeral,
         });

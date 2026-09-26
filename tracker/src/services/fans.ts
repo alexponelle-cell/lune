@@ -64,6 +64,12 @@ export class FanService {
     return clipperId === null ? null : this.fans.createToken(clipperId, 'session', SESSION_TTL, now);
   }
 
+  /** Connexion « Se connecter avec Discord » : crée le fan au besoin et ouvre une session. */
+  loginDiscordUser(discordId: string, username: string, now = Date.now()): string {
+    const fan = this.ensureFan(discordId, username, now);
+    return this.fans.createToken(fan.id, 'session', SESSION_TTL, now);
+  }
+
   clipperFromSession(token: string | undefined, now = Date.now()): Clipper | null {
     if (!token) return null;
     const id = this.fans.sessionClipper(token, now);

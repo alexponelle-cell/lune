@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { serve } from '@hono/node-server';
 import { type Context, Hono } from 'hono';
@@ -36,6 +37,8 @@ export interface WebDeps {
   robloxApiKey?: string;
   /** Clé partagée avec le bot Neptune (Python). */
   neptuneApiKey?: string;
+  /** « Se connecter avec Discord » sur la boutique fans. */
+  discordOAuth?: { clientId: string; clientSecret: string; redirectUri: string };
   /** Rempli quand le bot est connecté (sinon les actions Discord sont indisponibles). */
   bot: { current?: BotBridge };
 }
@@ -63,6 +66,23 @@ const ItemBody = z.object({
 });
 
 const FAN_COOKIE = 'fan_session';
+const OAUTH_STATE_COOKIE = 'fan_oauth_state';
+
+/** Échange le code OAuth2 Discord contre l'identité du membre. */
+async function discordIdentity(code: string, o: { clientId: string; clientSecret: string; redirectUri: string }) {
+  const token = await fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: o.redirectUri, client_id: o.clientId, client_secret: o.clientSecret }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!token.ok) throw new Error(`Discord a refusé la connexion (HTTP ${token.status})`);
+  const { access_token } = (await token.json()) as { access_token: string };
+  const me = await fetch('https://discord.com/api/users/@me', { headers: { authorization: `Bearer ${access_token}` }, signal: AbortSignal.timeout(10_000) });
+  if (!me.ok) throw new Error(`Profil Discord illisible (HTTP ${me.status})`);
+  const u = (await me.json()) as { id: string; username: string; global_name?: string | null };
+  return { id: u.id, name: u.global_name || u.username };
+}
 
 const ClientBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -94,17 +114,41 @@ export function createApp(deps: WebDeps): Hono {
   };
 
   app.get('/fan', (c) => c.html(ASSETS.fan));
+  const isHttps = (c: Context) => c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:');
+  const startSession = (c: Context, session: string) => {
+    setCookie(c, FAN_COOKIE, session, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/', maxAge: 30 * 86_400 });
+    return c.redirect('/fan');
+  };
+  const fanError = (c: Context, message: string) => c.redirect(`/fan?error=${encodeURIComponent(message)}`);
+
+  // Lien /site (Discord) : usage unique, 10 min
   app.get('/fan/login', (c) => {
     const session = fans.login(c.req.query('t') ?? '');
-    if (!session) return c.redirect('/fan?expired=1');
-    setCookie(c, FAN_COOKIE, session, {
-      httpOnly: true,
-      sameSite: 'Lax',
-      secure: c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:'),
-      path: '/',
-      maxAge: 30 * 86_400,
-    });
-    return c.redirect('/fan');
+    return session ? startSession(c, session) : fanError(c, 'Ce lien a expiré, reconnecte-toi.');
+  });
+
+  // « Se connecter avec Discord » (OAuth2, scope identify)
+  app.get('/fan/auth/discord', (c) => {
+    const o = deps.discordOAuth;
+    if (!o) return fanError(c, 'Connexion Discord pas encore configurée : utilise /site sur Discord.');
+    const state = randomBytes(16).toString('base64url');
+    setCookie(c, OAUTH_STATE_COOKIE, state, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/fan', maxAge: 600 });
+    const url = new URL('https://discord.com/oauth2/authorize');
+    url.search = new URLSearchParams({ client_id: o.clientId, response_type: 'code', redirect_uri: o.redirectUri, scope: 'identify', state, prompt: 'none' }).toString();
+    return c.redirect(url.toString());
+  });
+  app.get('/fan/auth/callback', async (c) => {
+    const o = deps.discordOAuth;
+    const state = getCookie(c, OAUTH_STATE_COOKIE);
+    deleteCookie(c, OAUTH_STATE_COOKIE, { path: '/fan' });
+    const code = c.req.query('code');
+    if (!o || !code || !state || c.req.query('state') !== state) return fanError(c, 'Connexion annulée ou expirée, réessaie.');
+    try {
+      const user = await discordIdentity(code, o);
+      return startSession(c, fans.loginDiscordUser(user.id, user.name));
+    } catch (err) {
+      return fanError(c, err instanceof Error ? err.message : String(err));
+    }
   });
   app.post('/fan/logout', (c) => {
     const token = getCookie(c, FAN_COOKIE);

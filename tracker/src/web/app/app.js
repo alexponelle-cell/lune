@@ -1478,7 +1478,7 @@ async function pageBoutique() {
   const s = d.settings;
   const n = (x) => Number(x).toLocaleString('fr-FR');
   const nep = d.neptune;
-  main().innerHTML = `<div class="page-head"><div><h1>Boutique fans</h1><p>Les fans clippent, gagnent des points avec leurs vues et les échangent contre des objets en jeu</p></div>
+  main().innerHTML = `<div class="page-head"><div><h1>Boutique fans</h1><p>Les fans clippent, gagnent des coins avec leurs vues et les échangent contre des objets en jeu</p></div>
     <div class="actions"><a class="btn" href="/fan" target="_blank" rel="noopener">Voir l'espace fan</a></div></div>
     <div class="stack">
       <form class="card card-pad stack" id="fan-settings"><div><h2 style="margin:0;font-size:15px">Réglages</h2>
@@ -1486,13 +1486,13 @@ async function pageBoutique() {
         <div class="grid-form">
           <label class="field"><span>Nom du programme</span><input class="input" name="programName" value="${esc(s.programName)}"><small>Affiché sur l'espace fan</small></label>
           <label class="field"><span>Agence des fans</span><select class="select" name="clientId"><option value="">Aucune</option>${d.clients.map((c) => `<option value="${c.id}" ${c.id === s.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><small>Les fans qui font /site y sont rattachés (ex. BeOne)</small></label>
-          <label class="field"><span>Points pour 1 000 vues</span><input class="input num" type="number" min="0" step="0.1" name="pointsPer1000" value="${s.pointsPer1000}"></label>
+          <label class="field"><span>Coins pour 1 000 vues</span><input class="input num" type="number" min="0" step="0.1" name="pointsPer1000" value="${s.pointsPer1000}"></label>
         </div><div><button class="btn green">Sauvegarder</button></div></form>
 
       <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence = ce que le jeu comprend (ID du gamepass, nom de l'objet…)</p></div><button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div>
         <div class="table-wrap"><table><thead><tr><th>Objet</th><th>Type</th><th>Référence jeu</th><th class="r">Prix</th><th class="r">Stock</th><th>État</th><th class="r"></th></tr></thead><tbody>
         ${d.items.map((i) => `<tr><td><b>${esc(i.name)}</b>${i.description ? `<small class="faint" style="display:block">${esc(i.description)}</small>` : ''}</td><td>${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</td>
-          <td class="num">${esc(i.ref)}</td><td class="r num">${n(i.price)} pts</td><td class="r num">${i.stock ?? '∞'}</td><td>${i.active ? '<span class="pill ok">En vente</span>' : '<span class="pill gray">Masqué</span>'}</td>
+          <td class="num">${esc(i.ref)}</td><td class="r num">${n(i.price)} coins</td><td class="r num">${i.stock ?? '∞'}</td><td>${i.active ? '<span class="pill ok">En vente</span>' : '<span class="pill gray">Masqué</span>'}</td>
           <td class="r"><button class="icon-btn" data-edit-item="${i.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-item="${i.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucun objet. Ajoute le premier gamepass ou objet.</td></tr>'}
         </tbody></table></div></div>
 
@@ -1504,7 +1504,7 @@ async function pageBoutique() {
 
       <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues depuis leur inscription</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Roblox</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th></tr></thead><tbody>
-        ${d.fans.map((f) => `<tr class="link" data-clipper="${f.id}"><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td></tr>`).join('') || `<tr><td colspan="6" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent quand ils font /site sur Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
+        ${d.fans.map((f) => `<tr class="link" data-clipper="${f.id}"><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td></tr>`).join('') || `<tr><td colspan="6" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
         </tbody></table></div></div>
     </div>`;
   const root = main();
@@ -1524,7 +1524,7 @@ async function pageBoutique() {
     <label class="field"><span>Description</span><input class="input" name="description" maxlength="300" value="${esc(i.description ?? '')}"></label>
     <label class="field"><span>Type</span><select class="select" name="kind"><option value="gamepass" ${i.kind === 'gamepass' ? 'selected' : ''}>Gamepass</option><option value="item" ${i.kind === 'item' ? 'selected' : ''}>Objet</option></select></label>
     <label class="field"><span>Référence jeu</span><input class="input num" name="ref" required maxlength="100" value="${esc(i.ref ?? '')}" placeholder="ID du gamepass ou nom de l'objet"><small>Transmis tel quel au jeu</small></label>
-    <label class="field"><span>Prix (points)</span><input class="input num" type="number" min="1" name="price" required value="${i.price ?? ''}"></label>
+    <label class="field"><span>Prix (coins)</span><input class="input num" type="number" min="1" name="price" required value="${i.price ?? ''}"></label>
     <label class="field"><span>Stock</span><input class="input num" type="number" min="0" name="stock" value="${i.stock ?? ''}" placeholder="Vide = illimité"></label>
     <label class="field"><span>Image (lien)</span><input class="input" name="imageUrl" value="${esc(i.imageUrl ?? '')}" placeholder="https://…"></label>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="active" ${i.active === false ? '' : 'checked'}> En vente</label>`;
@@ -1562,7 +1562,7 @@ async function pageBoutique() {
       const id = refund ? act.dataset.refund : act.dataset.delivered;
       try {
         await api(`/api/shop/orders/${id}/${refund ? 'refund' : 'delivered'}`, { method: 'POST' });
-        toast(refund ? 'Commande remboursée : points rendus' : 'Commande marquée livrée');
+        toast(refund ? 'Commande remboursée : coins rendus' : 'Commande marquée livrée');
         pageBoutique();
       } catch (err) {
         toast(err.message, true);
