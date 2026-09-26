@@ -1,0 +1,46 @@
+<section class="section" style="padding-top:{{ section.settings.padding_top }}px">
+  <div class="container">
+    <div class="perks">
+      {%- for block in section.blocks -%}
+        <div class="perk" style="--c: {{ block.settings.color }}" {{ block.shopify_attributes }}>
+          <div class="ic">{% render 'icon', name: block.settings.icon %}</div>
+          <b>{{ block.settings.title }}</b><small>{{ block.settings.text }}</small>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Avantages",
+  "max_blocks": 8,
+  "settings": [
+    { "type": "range", "id": "padding_top", "label": "Espace au-dessus", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 0 }
+  ],
+  "blocks": [
+    {
+      "type": "perk",
+      "name": "Avantage",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icône", "default": "truck", "options": [
+          { "value": "truck", "label": "Camion" }, { "value": "gift", "label": "Cadeau" }, { "value": "return", "label": "Retour" },
+          { "value": "lock", "label": "Cadenas" }, { "value": "chat", "label": "Message" }, { "value": "star", "label": "Étoile" }, { "value": "bolt", "label": "Éclair" }
+        ] },
+        { "type": "color", "id": "color", "label": "Couleur", "default": "#22D3EE" },
+        { "type": "text", "id": "title", "label": "Titre", "default": "Livraison offerte" },
+        { "type": "text", "id": "text", "label": "Texte", "default": "dès 60 € · suivi inclus" }
+      ]
+    }
+  ],
+  "presets": [{
+    "name": "Avantages",
+    "blocks": [
+      { "type": "perk", "settings": { "icon": "truck", "color": "#22D3EE", "title": "Livraison offerte", "text": "dès 60 € · suivi inclus" } },
+      { "type": "perk", "settings": { "icon": "gift", "color": "#F472B6", "title": "-15 % dès 2 articles", "text": "appliqué automatiquement" } },
+      { "type": "perk", "settings": { "icon": "return", "color": "#34D399", "title": "Retours 30 jours", "text": "satisfait ou remboursé" } },
+      { "type": "perk", "settings": { "icon": "lock", "color": "#A78BFA", "title": "Paiement sécurisé", "text": "CB, PayPal, Apple Pay" } }
+    ]
+  }]
+}
+{% endschema %}

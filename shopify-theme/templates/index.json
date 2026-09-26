@@ -1,0 +1,193 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "settings": {}
+    },
+    "marquee": {
+      "type": "marquee",
+      "blocks": {
+        "item_1": {
+          "type": "item",
+          "settings": {
+            "text": "Livraison offerte dès 60 €"
+          }
+        },
+        "item_2": {
+          "type": "item",
+          "settings": {
+            "text": "-15 % dès 2 articles"
+          }
+        },
+        "item_3": {
+          "type": "item",
+          "settings": {
+            "text": "Expédié sous 48 h"
+          }
+        },
+        "item_4": {
+          "type": "item",
+          "settings": {
+            "text": "Retours gratuits 30 jours"
+          }
+        },
+        "item_5": {
+          "type": "item",
+          "settings": {
+            "text": "Paiement 100 % sécurisé"
+          }
+        },
+        "item_6": {
+          "type": "item",
+          "settings": {
+            "text": "Support 7j/7"
+          }
+        }
+      },
+      "block_order": [
+        "item_1",
+        "item_2",
+        "item_3",
+        "item_4",
+        "item_5",
+        "item_6"
+      ]
+    },
+    "products": {
+      "type": "featured-collection",
+      "settings": {}
+    },
+    "highlight": {
+      "type": "product-highlight",
+      "blocks": {
+        "point_1": {
+          "type": "point",
+          "settings": {
+            "text": "Sans chaleur, sans douleur, tous types de peau"
+          }
+        },
+        "point_2": {
+          "type": "point",
+          "settings": {
+            "text": "Sans fil, rechargeable, minuterie 10 min"
+          }
+        },
+        "point_3": {
+          "type": "point",
+          "settings": {
+            "text": "Retour gratuit sous 30 jours"
+          }
+        }
+      },
+      "block_order": [
+        "point_1",
+        "point_2",
+        "point_3"
+      ]
+    },
+    "perks": {
+      "type": "perks",
+      "blocks": {
+        "perk_1": {
+          "type": "perk",
+          "settings": {
+            "icon": "truck",
+            "color": "#22D3EE",
+            "title": "Livraison offerte",
+            "text": "dès 60 € · suivi inclus"
+          }
+        },
+        "perk_2": {
+          "type": "perk",
+          "settings": {
+            "icon": "gift",
+            "color": "#F472B6",
+            "title": "-15 % dès 2 articles",
+            "text": "appliqué automatiquement"
+          }
+        },
+        "perk_3": {
+          "type": "perk",
+          "settings": {
+            "icon": "return",
+            "color": "#34D399",
+            "title": "Retours 30 jours",
+            "text": "satisfait ou remboursé"
+          }
+        },
+        "perk_4": {
+          "type": "perk",
+          "settings": {
+            "icon": "lock",
+            "color": "#A78BFA",
+            "title": "Paiement sécurisé",
+            "text": "CB, PayPal, Apple Pay"
+          }
+        }
+      },
+      "block_order": [
+        "perk_1",
+        "perk_2",
+        "perk_3",
+        "perk_4"
+      ]
+    },
+    "reviews": {
+      "type": "reviews",
+      "settings": {}
+    },
+    "faq": {
+      "type": "faq",
+      "blocks": {
+        "question_1": {
+          "type": "question",
+          "settings": {
+            "question": "Quels sont les délais de livraison ?",
+            "answer": "<p>Les commandes sont préparées sous 24 à 48 h ouvrées. Comptez ensuite 5 à 10 jours ouvrés, avec un numéro de suivi envoyé par e-mail.</p>"
+          }
+        },
+        "question_2": {
+          "type": "question",
+          "settings": {
+            "question": "Comment fonctionne la remise -15 % ?",
+            "answer": "<p>Dès 2 articles dans votre panier, 15 % sont déduits automatiquement. Aucun code à saisir.</p>"
+          }
+        },
+        "question_3": {
+          "type": "question",
+          "settings": {
+            "question": "Puis-je retourner un produit ?",
+            "answer": "<p>Oui, vous disposez de 30 jours après réception pour nous retourner un article non utilisé. Le remboursement est effectué sous 5 jours après réception.</p>"
+          }
+        },
+        "question_4": {
+          "type": "question",
+          "settings": {
+            "question": "Le paiement est-il sécurisé ?",
+            "answer": "<p>Tous les paiements passent par Shopify Payments et PayPal (SSL, 3-D Secure). Nous ne voyons jamais vos données bancaires.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "question_1",
+        "question_2",
+        "question_3",
+        "question_4"
+      ]
+    },
+    "newsletter": {
+      "type": "newsletter",
+      "settings": {}
+    }
+  },
+  "order": [
+    "hero",
+    "marquee",
+    "products",
+    "highlight",
+    "perks",
+    "reviews",
+    "faq",
+    "newsletter"
+  ]
+}

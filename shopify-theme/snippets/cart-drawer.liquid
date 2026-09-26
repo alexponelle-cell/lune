@@ -1,0 +1,25 @@
+{%- comment -%} Panier coulissant, rempli par assets/nocta.js via l'API panier de Shopify. {%- endcomment -%}
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer" aria-label="Panier" aria-hidden="true">
+  <div class="drawer-head">
+    <h3>Votre panier</h3>
+    <button class="icon-btn" type="button" data-close aria-label="Fermer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="ship-bar" id="ship-bar"></div>
+  <div class="drawer-items" id="cart-items"></div>
+  <div class="drawer-foot">
+    <div class="row"><span>Sous-total</span><span id="cart-sub">{{ cart.items_subtotal_price | money }}</span></div>
+    <div class="row discount" id="cart-discount-row"{% if cart.total_discount == 0 %} style="display:none"{% endif %}>
+      <span id="cart-discount-label">Remise</span><span id="cart-discount">-{{ cart.total_discount | money }}</span>
+    </div>
+    <div class="total"><span>Total</span><b id="cart-total">{{ cart.total_price | money }}</b></div>
+    <form action="{{ routes.cart_url }}" method="post">
+      <button class="btn btn-primary btn-block" type="submit" name="checkout" id="checkout"{% if cart.item_count == 0 %} disabled style="opacity:.4"{% endif %}>
+        Commander maintenant <span class="arrow">→</span>
+      </button>
+    </form>
+    <small>🔒 Paiement sécurisé · Taxes incluses · Frais de port calculés au paiement</small>
+  </div>
+</aside>

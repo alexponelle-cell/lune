@@ -1,0 +1,13 @@
+{
+  "general": {
+    "password_page": {
+      "login_form_heading": "Accès propriétaire"
+    }
+  },
+  "gift_cards": {
+    "issued": {
+      "title": "Votre carte cadeau {{ shop }}",
+      "copy_code": "Copier le code"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{%- if section.blocks.size > 0 -%}
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        {%- if section.settings.eyebrow != blank -%}<span class="eyebrow">{{ section.settings.eyebrow }}</span>{%- endif -%}
+        <h2>{{ section.settings.heading }}</h2>
+      </div>
+    </div>
+    <div class="reviews">
+      {%- assign colors = '#7C3AED,#0891B2,#DB2777,#EA580C,#059669,#CA8A04' | split: ',' -%}
+      {%- for block in section.blocks -%}
+        {%- assign ci = forloop.index0 | modulo: colors.size -%}
+        <article class="review" {{ block.shopify_attributes }}>
+          <span class="stars" aria-label="{{ block.settings.stars }} sur 5">
+            {%- for i in (1..block.settings.stars) -%}★{%- endfor -%}
+            {%- assign rest = 5 | minus: block.settings.stars -%}{%- if rest > 0 -%}{%- for i in (1..rest) -%}☆{%- endfor -%}{%- endif -%}
+          </span>
+          <p>« {{ block.settings.text }} »</p>
+          <footer>
+            <span class="avatar" style="background: {{ colors[ci] }}">{{ block.settings.author | slice: 0 | upcase }}</span>
+            <div>{{ block.settings.author }}<small>{{ block.settings.meta }}</small></div>
+          </footer>
+        </article>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Avis clients",
+  "settings": [
+    { "type": "paragraph", "content": "N'ajoutez que de vrais avis clients (les faux avis sont interdits en France). Au lancement, retirez cette section ou utilisez une appli d'avis." },
+    { "type": "text", "id": "eyebrow", "label": "Surtitre", "default": "Ils en parlent" },
+    { "type": "text", "id": "heading", "label": "Titre", "default": "Ce que disent nos clients" }
+  ],
+  "blocks": [
+    {
+      "type": "review",
+      "name": "Avis",
+      "settings": [
+        { "type": "range", "id": "stars", "label": "Étoiles", "min": 1, "max": 5, "step": 1, "default": 5 },
+        { "type": "textarea", "id": "text", "label": "Avis" },
+        { "type": "text", "id": "author", "label": "Prénom + initiale", "default": "Camille L." },
+        { "type": "text", "id": "meta", "label": "Détail", "default": "Achat vérifié" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Avis clients" }]
+}
+{% endschema %}

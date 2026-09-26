@@ -1,0 +1,106 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "title_1": {
+          "type": "title",
+          "settings": {}
+        },
+        "price_2": {
+          "type": "price",
+          "settings": {}
+        },
+        "deal_3": {
+          "type": "deal",
+          "settings": {
+            "text": "<strong>-15 % dès 2 articles</strong> · livraison offerte dès 60 €"
+          }
+        },
+        "buy_4": {
+          "type": "buy",
+          "settings": {
+            "shipping_note": "expédié sous 48 h",
+            "show_dynamic_checkout": true
+          }
+        },
+        "description_5": {
+          "type": "description",
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "title_1",
+        "price_2",
+        "deal_3",
+        "buy_4",
+        "description_5"
+      ]
+    },
+    "perks": {
+      "type": "perks",
+      "settings": {
+        "padding_top": 0
+      },
+      "blocks": {
+        "perk_1": {
+          "type": "perk",
+          "settings": {
+            "icon": "truck",
+            "color": "#22D3EE",
+            "title": "Livraison offerte",
+            "text": "dès 60 € · suivi inclus"
+          }
+        },
+        "perk_2": {
+          "type": "perk",
+          "settings": {
+            "icon": "gift",
+            "color": "#F472B6",
+            "title": "-15 % dès 2 articles",
+            "text": "appliqué automatiquement"
+          }
+        },
+        "perk_3": {
+          "type": "perk",
+          "settings": {
+            "icon": "return",
+            "color": "#34D399",
+            "title": "Retours 30 jours",
+            "text": "satisfait ou remboursé"
+          }
+        },
+        "perk_4": {
+          "type": "perk",
+          "settings": {
+            "icon": "lock",
+            "color": "#A78BFA",
+            "title": "Paiement sécurisé",
+            "text": "CB, PayPal, Apple Pay"
+          }
+        }
+      },
+      "block_order": [
+        "perk_1",
+        "perk_2",
+        "perk_3",
+        "perk_4"
+      ]
+    },
+    "related": {
+      "type": "featured-collection",
+      "settings": {
+        "eyebrow": "Vous aimerez aussi",
+        "heading": "Les autres",
+        "heading_accent": "best-sellers",
+        "limit": 4,
+        "show_filters": false
+      }
+    }
+  },
+  "order": [
+    "main",
+    "perks",
+    "related"
+  ]
+}

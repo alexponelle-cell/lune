@@ -1,0 +1,66 @@
+{%- comment -%} Carte produit. Paramètres : product {%- endcomment -%}
+{%- liquid
+  capture color
+    render 'category-color', type: product.type
+  endcapture
+  assign variant = product.selected_or_first_available_variant
+  assign low = false
+  if variant.inventory_management == 'shopify' and variant.inventory_quantity > 0 and variant.inventory_quantity <= settings.low_stock_threshold
+    assign low = true
+  endif
+  assign badge = blank
+  for tag in product.tags
+    assign t = tag | downcase
+    if t == 'best-seller' or t == 'bestseller'
+      assign badge = 'Best-seller'
+      assign badge_class = ''
+    elsif t == 'viral'
+      assign badge = 'Viral'
+      assign badge_class = ' viral'
+    elsif t == 'nouveau' or t == 'new'
+      assign badge = 'Nouveau'
+      assign badge_class = ' new'
+    elsif t == 'tendance'
+      assign badge = 'Tendance'
+      assign badge_class = ''
+    endif
+  endfor
+-%}
+<article class="card" style="--c: {{ color }}" data-type="{{ product.type | escape }}">
+  <div class="media-wrap">
+    <a class="card-media" href="{{ product.url }}" tabindex="-1" aria-hidden="true">
+      {%- if badge != blank -%}<span class="tag{{ badge_class }}">{{ badge }}</span>{%- endif -%}
+      {%- if product.compare_at_price > product.price -%}
+        {%- assign off = product.compare_at_price | minus: product.price | times: 100 | divided_by: product.compare_at_price -%}
+        <span class="off-badge">-{{ off }}%</span>
+      {%- endif -%}
+      {%- if product.featured_media -%}
+        {{ product.featured_media | image_url: width: 800 | image_tag: loading: 'lazy', widths: '300, 450, 600, 800', sizes: '(min-width: 900px) 25vw, 50vw' }}
+      {%- else -%}
+        {{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}
+      {%- endif -%}
+    </a>
+    {%- if product.available -%}
+      {%- if product.has_only_default_variant -%}
+        <button class="quick-add" type="button" data-quick-add="{{ variant.id }}" aria-label="Ajouter {{ product.title | escape }} au panier">+ Ajout rapide</button>
+      {%- else -%}
+        <a class="quick-add" href="{{ product.url }}" style="display:grid;place-items:center">Choisir une option</a>
+      {%- endif -%}
+    {%- endif -%}
+  </div>
+  <a class="card-link" href="{{ product.url }}">
+    <span class="card-body">
+      {%- if product.type != blank -%}<span class="card-cat">{{ product.type }}</span>{%- endif -%}
+      <span class="card-title">{{ product.title }}</span>
+      {% render 'rating', product: product %}
+      {% render 'price', product: product %}
+      {%- unless product.available -%}
+        <span class="stock-bar" style="color:var(--muted)">Épuisé</span>
+      {%- endunless -%}
+      {%- if low -%}
+        {%- assign pct = variant.inventory_quantity | times: 100 | divided_by: 40 | at_least: 8 | at_most: 100 -%}
+        <span class="stock-bar">🔥 Plus que {{ variant.inventory_quantity }} en stock<span class="progress" style="display:block"><i style="width: {{ pct }}%"></i></span></span>
+      {%- endif -%}
+    </span>
+  </a>
+</article>

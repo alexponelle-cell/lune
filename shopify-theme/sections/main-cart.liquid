@@ -1,0 +1,59 @@
+<div class="container cart-page">
+  <div class="page-head" style="padding-top:16px">
+    <h1>Votre panier</h1>
+  </div>
+
+  {%- if cart.item_count > 0 -%}
+    <form action="{{ routes.cart_url }}" method="post" class="cart-layout">
+      <div class="cart-lines">
+        {%- for item in cart.items -%}
+          <div class="cart-line">
+            <a href="{{ item.url }}">
+              {%- if item.image -%}{{ item.image | image_url: width: 200 | image_tag: loading: 'lazy', alt: item.product.title }}{%- endif -%}
+            </a>
+            <div>
+              <a href="{{ item.url }}" class="line-title">{{ item.product.title }}</a>
+              {%- unless item.product.has_only_default_variant -%}<div class="line-price">{{ item.variant.title }}</div>{%- endunless -%}
+              <div class="line-price">{{ item.final_price | money }}</div>
+              {%- for d in item.line_level_discount_allocations -%}
+                <div class="line-price" style="color:var(--success)">{{ d.discount_application.title }} (-{{ d.amount | money }})</div>
+              {%- endfor -%}
+              <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+                <label class="visually-hidden" for="qty-{{ item.key }}">Quantité</label>
+                <input type="number" id="qty-{{ item.key }}" name="updates[]" value="{{ item.quantity }}" min="0">
+                <a class="remove" href="{{ item.url_to_remove }}">Retirer</a>
+              </div>
+            </div>
+            <b>{{ item.final_line_price | money }}</b>
+          </div>
+        {%- endfor -%}
+      </div>
+
+      <aside class="cart-summary">
+        <div class="row"><span>Sous-total</span><span>{{ cart.items_subtotal_price | money }}</span></div>
+        {%- for d in cart.cart_level_discount_applications -%}
+          <div class="row discount"><span>{{ d.title }}</span><span>-{{ d.total_allocated_amount | money }}</span></div>
+        {%- endfor -%}
+        <div class="total"><span>Total</span><b>{{ cart.total_price | money }}</b></div>
+        {%- if settings.show_cart_note -%}
+          <div class="cart-note">
+            <label for="cart-note" style="font-size:13px;font-weight:600">Note pour la commande</label>
+            <textarea id="cart-note" name="note">{{ cart.note }}</textarea>
+          </div>
+        {%- endif -%}
+        <button class="btn btn-ghost btn-block" type="submit" name="update">Mettre à jour</button>
+        <button class="btn btn-primary btn-block" type="submit" name="checkout">Commander maintenant <span class="arrow">→</span></button>
+        <small style="color:var(--muted);text-align:center;font-size:12px">Taxes incluses. Frais de port calculés au paiement.</small>
+      </aside>
+    </form>
+  {%- else -%}
+    <div class="empty" style="padding-bottom:100px">
+      <p>Votre panier est vide.</p>
+      <a class="btn btn-primary" href="{{ routes.all_products_collection_url }}">Voir les produits <span class="arrow">→</span></a>
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{ "name": "Panier" }
+{% endschema %}

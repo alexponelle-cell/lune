@@ -1,0 +1,20 @@
+{%- comment -%}
+  Renvoie la couleur associée à un type de produit (réglage « Couleurs par catégorie »).
+  Usage : {%- capture c -%}{% render 'category-color', type: product.type %}{%- endcapture -%}
+{%- endcomment -%}
+{%- liquid
+  assign found = settings.accent_fallback
+  assign lines = settings.category_colors | newline_to_br | split: '<br />'
+  for line in lines
+    assign pair = line | strip | split: '='
+    if pair.size == 2
+      assign key = pair[0] | strip | downcase
+      assign wanted = type | strip | downcase
+      if key == wanted
+        assign found = pair[1] | strip
+        break
+      endif
+    endif
+  endfor
+  echo found
+-%}

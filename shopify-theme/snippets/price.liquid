@@ -1,0 +1,14 @@
+{%- comment -%} Prix + prix barré + % d'économie. Paramètres : product, variant (optionnel), show_saving {%- endcomment -%}
+{%- liquid
+  assign target = variant | default: product.selected_or_first_available_variant
+  assign compare = target.compare_at_price
+-%}
+<span class="price" data-price>
+  <b>{{ target.price | money }}</b>
+  {%- if compare > target.price -%}
+    <s>{{ compare | money }}</s>
+    {%- if show_saving -%}
+      <span class="save">Vous économisez {{ compare | minus: target.price | money }}</span>
+    {%- endif -%}
+  {%- endif -%}
+</span>

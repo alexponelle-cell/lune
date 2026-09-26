@@ -1,0 +1,61 @@
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        {%- assign name = shop.name | upcase -%}
+        {%- assign last = name | slice: -1 -%}
+        <a href="{{ routes.root_url }}" class="logo" style="color:var(--text)">{{ name | remove_last: last }}<span>{{ last }}</span></a>
+        {%- if section.settings.text != blank -%}
+          <p style="margin-top:14px;max-width:300px">{{ section.settings.text }}</p>
+        {%- endif -%}
+      </div>
+      {%- for block in section.blocks -%}
+        <div {{ block.shopify_attributes }}>
+          <h4>{{ block.settings.title | default: block.settings.menu.title }}</h4>
+          <ul>
+            {%- for link in block.settings.menu.links -%}
+              <li><a href="{{ link.url }}">{{ link.title }}</a></li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endfor -%}
+    </div>
+    <div class="footer-bottom">
+      <span>
+        © {{ 'now' | date: '%Y' }} {{ shop.name | link_to: routes.root_url }}.
+        {%- for policy in shop.policies -%} · <a href="{{ policy.url }}">{{ policy.title }}</a>{%- endfor -%}
+      </span>
+      {%- if section.settings.show_payment_icons -%}
+        <div class="pay" aria-label="Moyens de paiement acceptés">
+          {%- for type in shop.enabled_payment_types -%}{{ type | payment_type_svg_tag }}{%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Pied de page",
+  "max_blocks": 4,
+  "settings": [
+    { "type": "textarea", "id": "text", "label": "Texte de présentation", "default": "Des objets malins pour la maison, la tech et le bien-être. Sélectionnés, testés, expédiés rapidement." },
+    { "type": "checkbox", "id": "show_payment_icons", "label": "Afficher les moyens de paiement", "default": true }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "Colonne de liens",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Titre" },
+        { "type": "link_list", "id": "menu", "label": "Menu", "default": "footer" }
+      ]
+    }
+  ],
+  "default": {
+    "blocks": [
+      { "type": "menu", "settings": { "title": "Aide", "menu": "footer" } }
+    ]
+  }
+}
+{% endschema %}

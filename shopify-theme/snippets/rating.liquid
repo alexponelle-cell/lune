@@ -1,0 +1,21 @@
+{%- comment -%}
+  Note produit issue des métachamps standards reviews.rating / reviews.rating_count
+  (remplis automatiquement par les applis d'avis : Judge.me, Loox, Shopify Product Reviews…).
+  Rien n'est affiché si le produit n'a pas encore d'avis.
+{%- endcomment -%}
+{%- if product.metafields.reviews.rating.value != blank -%}
+  {%- liquid
+    assign r = product.metafields.reviews.rating.value.rating | round: 1
+    assign full = r | round
+    assign rest = 5 | minus: full
+  -%}
+  <span class="rating">
+    <span class="stars" aria-hidden="true">
+      {%- for i in (1..full) -%}★{%- endfor -%}
+      {%- if rest > 0 -%}{%- for i in (1..rest) -%}☆{%- endfor -%}{%- endif -%}
+    </span>
+    <span class="visually-hidden">Note : {{ r }} sur 5</span>
+    {{ r }}
+    {%- if product.metafields.reviews.rating_count.value %} ({{ product.metafields.reviews.rating_count.value }}{% if long %} avis{% endif %}){% endif -%}
+  </span>
+{%- endif -%}

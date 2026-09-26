@@ -1,0 +1,50 @@
+{%- paginate collection.products by section.settings.per_page -%}
+<div class="container">
+  <div class="page-head">
+    <span class="eyebrow">Collection</span>
+    <h1>{{ collection.title }}</h1>
+    {%- if collection.description != blank -%}<div class="rte" style="margin-top:12px">{{ collection.description }}</div>{%- endif -%}
+  </div>
+
+  {%- if collection.all_types.size > 1 -%}
+    <div class="filters" role="group" aria-label="Filtrer par catégorie" data-filters="{{ section.id }}" style="margin-bottom:28px">
+      <button class="chip active" type="button" data-cat="*">Tout</button>
+      {%- for type in collection.all_types -%}
+        {%- if type != blank -%}
+          {%- capture c -%}{% render 'category-color', type: type %}{%- endcapture -%}
+          <button class="chip" type="button" data-cat="{{ type | escape }}" style="--c: {{ c }}"><i></i>{{ type }}</button>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+
+  <div class="grid" id="grid-{{ section.id }}" style="margin-bottom:24px">
+    {%- for product in collection.products -%}
+      {% render 'product-card', product: product %}
+    {%- else -%}
+      <p style="color:var(--muted)">Aucun produit dans cette collection pour le moment.</p>
+    {%- endfor -%}
+  </div>
+
+  {%- if paginate.pages > 1 -%}
+    <nav class="pagination" aria-label="Pagination" style="margin-bottom:80px">
+      {%- for part in paginate.parts -%}
+        {%- if part.is_link -%}<a href="{{ part.url }}">{{ part.title }}</a>
+        {%- elsif part.title == paginate.current_page -%}<span class="current" aria-current="page">{{ part.title }}</span>
+        {%- else -%}<span>{{ part.title }}</span>{%- endif -%}
+      {%- endfor -%}
+    </nav>
+  {%- else -%}
+    <div style="height:56px"></div>
+  {%- endif -%}
+</div>
+{%- endpaginate -%}
+
+{% schema %}
+{
+  "name": "Collection",
+  "settings": [
+    { "type": "range", "id": "per_page", "label": "Produits par page", "min": 8, "max": 48, "step": 4, "default": 24 }
+  ]
+}
+{% endschema %}

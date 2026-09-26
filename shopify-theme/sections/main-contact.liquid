@@ -1,0 +1,23 @@
+<div class="container" style="padding-bottom:80px">
+  <div class="page-head"><h1>{{ page.title }}</h1></div>
+  {%- if page.content != blank -%}<div class="rte" style="margin-bottom:28px">{{ page.content }}</div>{%- endif -%}
+  {%- form 'contact', style: 'display:grid;gap:12px;max-width:560px' -%}
+    {%- if form.posted_successfully? -%}
+      <p style="color:var(--success);font-weight:600">Merci ! Nous vous répondons sous 24 h.</p>
+    {%- endif -%}
+    {%- if form.errors -%}<p class="form-error">{{ form.errors | default_errors }}</p>{%- endif -%}
+    <label class="visually-hidden" for="c-name">Nom</label>
+    <input class="field" id="c-name" type="text" name="contact[name]" placeholder="Votre nom" autocomplete="name" value="{{ form.name }}">
+    <label class="visually-hidden" for="c-email">E-mail</label>
+    <input class="field" id="c-email" type="email" name="contact[email]" placeholder="Votre e-mail" autocomplete="email" required value="{{ form.email }}">
+    <label class="visually-hidden" for="c-order">Numéro de commande</label>
+    <input class="field" id="c-order" type="text" name="contact[order]" placeholder="N° de commande (facultatif)">
+    <label class="visually-hidden" for="c-body">Message</label>
+    <textarea id="c-body" name="contact[body]" required placeholder="Votre message" style="min-height:160px;border-radius:20px;padding:14px 20px;background:var(--input-bg);border:1px solid var(--border-strong);font:inherit;color:inherit">{{ form.body }}</textarea>
+    <button class="btn btn-primary" type="submit">Envoyer</button>
+  {%- endform -%}
+</div>
+
+{% schema %}
+{ "name": "Formulaire de contact" }
+{% endschema %}

@@ -1,0 +1,20 @@
+<div class="container" style="padding-bottom:80px">
+  <div class="page-head"><h1>{{ blog.title }}</h1></div>
+  {%- paginate blog.articles by 12 -%}
+    <div class="reviews">
+      {%- for article in blog.articles -%}
+        <a class="review" href="{{ article.url }}">
+          {%- if article.image -%}{{ article.image | image_url: width: 700 | image_tag: loading: 'lazy', style: 'border-radius:12px;margin-bottom:14px;aspect-ratio:16/10;object-fit:cover;width:100%' }}{%- endif -%}
+          <small style="color:var(--muted)">{{ article.published_at | date: '%d/%m/%Y' }}</small>
+          <h3 style="margin-top:6px">{{ article.title }}</h3>
+          <p>{{ article.excerpt_or_content | strip_html | truncatewords: 24 }}</p>
+        </a>
+      {%- endfor -%}
+    </div>
+    {%- if paginate.pages > 1 -%}<div class="pagination">{{ paginate | default_pagination }}</div>{%- endif -%}
+  {%- endpaginate -%}
+</div>
+
+{% schema %}
+{ "name": "Blog" }
+{% endschema %}

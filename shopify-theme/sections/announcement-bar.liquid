@@ -1,0 +1,27 @@
+{%- if section.settings.show -%}
+<div class="announce">
+  {%- if section.settings.text != blank -%}
+    <span>
+      {%- if section.settings.link != blank -%}<a href="{{ section.settings.link }}">{{ section.settings.text }}</a>{%- else -%}{{ section.settings.text }}{%- endif -%}
+    </span>
+  {%- endif -%}
+  {%- if section.settings.countdown_end != blank -%}
+    <span data-sale>{{ section.settings.countdown_label }} <span class="timer" data-timer data-end="{{ section.settings.countdown_end | escape }}"></span></span>
+  {%- endif -%}
+</div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Bandeau d'annonce",
+  "settings": [
+    { "type": "checkbox", "id": "show", "label": "Afficher le bandeau", "default": true },
+    { "type": "inline_richtext", "id": "text", "label": "Texte", "default": "🎁 <strong>-15 % dès 2 articles</strong> · Livraison offerte dès 60 €" },
+    { "type": "url", "id": "link", "label": "Lien (facultatif)" },
+    { "type": "header", "content": "Compte à rebours" },
+    { "type": "paragraph", "content": "Date de fin réelle de votre promotion, au format 2026-10-05T23:59:59. Le compteur disparaît automatiquement à la fin. Laissez vide pour ne pas l'afficher. En France, un faux compte à rebours est une pratique commerciale trompeuse." },
+    { "type": "text", "id": "countdown_end", "label": "Fin de la promo" },
+    { "type": "text", "id": "countdown_label", "label": "Libellé", "default": "Promo de lancement : fin dans" }
+  ]
+}
+{% endschema %}

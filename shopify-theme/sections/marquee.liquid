@@ -1,0 +1,29 @@
+{%- if section.blocks.size > 0 -%}
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    {%- for i in (1..2) -%}
+      {%- for block in section.blocks -%}<span {% if i == 1 %}{{ block.shopify_attributes }}{% endif %}>{{ block.settings.text }}</span>{%- endfor -%}
+    {%- endfor -%}
+  </div>
+</div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Bandeau défilant",
+  "blocks": [
+    { "type": "item", "name": "Message", "settings": [ { "type": "text", "id": "text", "label": "Texte", "default": "Livraison offerte dès 60 €" } ] }
+  ],
+  "presets": [{
+    "name": "Bandeau défilant",
+    "blocks": [
+      { "type": "item", "settings": { "text": "Livraison offerte dès 60 €" } },
+      { "type": "item", "settings": { "text": "-15 % dès 2 articles" } },
+      { "type": "item", "settings": { "text": "Expédié sous 24 h" } },
+      { "type": "item", "settings": { "text": "Retours gratuits 30 jours" } },
+      { "type": "item", "settings": { "text": "Paiement 100 % sécurisé" } },
+      { "type": "item", "settings": { "text": "Support 7j/7" } }
+    ]
+  }]
+}
+{% endschema %}

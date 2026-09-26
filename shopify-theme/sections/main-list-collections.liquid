@@ -1,0 +1,21 @@
+<div class="container" style="padding-bottom:80px">
+  <div class="page-head"><h1>Collections</h1></div>
+  <div class="grid">
+    {%- for collection in collections -%}
+      <a class="card" href="{{ collection.url }}" style="--c: {{ settings.accent_fallback }}">
+        <div class="card-media">
+          {%- if collection.featured_image -%}
+            {{ collection.featured_image | image_url: width: 600 | image_tag: loading: 'lazy', alt: collection.title }}
+          {%- else -%}
+            {{ 'collection-1' | placeholder_svg_tag: 'placeholder-svg' }}
+          {%- endif -%}
+        </div>
+        <div class="card-body"><span class="card-title">{{ collection.title }}</span><span class="rating">{{ collection.products_count }} produits</span></div>
+      </a>
+    {%- endfor -%}
+  </div>
+</div>
+
+{% schema %}
+{ "name": "Liste des collections" }
+{% endschema %}

@@ -1,0 +1,62 @@
+{%- liquid
+  assign collection = section.settings.collection
+  if collection == blank
+    assign collection = collections['all']
+  endif
+-%}
+<section class="section" id="shop-{{ section.id }}">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        {%- if section.settings.eyebrow != blank -%}<span class="eyebrow">{{ section.settings.eyebrow }}</span>{%- endif -%}
+        <h2>{{ section.settings.heading }}{% if section.settings.heading_accent != blank %} <span class="grad-text">{{ section.settings.heading_accent }}</span>{% endif %}</h2>
+      </div>
+      {%- if section.settings.show_filters and collection.all_types.size > 1 -%}
+        <div class="filters" role="group" aria-label="Filtrer par catégorie" data-filters="{{ section.id }}">
+          <button class="chip active" type="button" data-cat="*">Tout</button>
+          {%- for type in collection.all_types -%}
+            {%- if type != blank -%}
+              {%- capture c -%}{% render 'category-color', type: type %}{%- endcapture -%}
+              <button class="chip" type="button" data-cat="{{ type | escape }}" style="--c: {{ c }}"><i></i>{{ type }}</button>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="grid" id="grid-{{ section.id }}">
+      {%- for product in collection.products limit: section.settings.limit -%}
+        {% render 'product-card', product: product %}
+      {%- else -%}
+        {%- for i in (1..4) -%}
+          <article class="card" style="--c: {{ settings.accent_fallback }}">
+            <div class="card-media">{{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}</div>
+            <div class="card-body"><span class="card-title">Votre produit</span><span class="price"><b>49,00 €</b></span></div>
+          </article>
+        {%- endfor -%}
+      {%- endfor -%}
+    </div>
+
+    {%- if section.settings.show_view_all and collection.products_count > section.settings.limit -%}
+      <div style="text-align:center;margin-top:36px">
+        <a class="btn btn-ghost" href="{{ collection.url }}">Voir tous les produits <span class="arrow">→</span></a>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Grille de produits",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Surtitre", "default": "La sélection" },
+    { "type": "text", "id": "heading", "label": "Titre", "default": "Les produits" },
+    { "type": "text", "id": "heading_accent", "label": "Mot en dégradé", "default": "tendance" },
+    { "type": "collection", "id": "collection", "label": "Collection", "info": "Par défaut : tous les produits." },
+    { "type": "range", "id": "limit", "label": "Nombre de produits", "min": 2, "max": 24, "step": 1, "default": 12 },
+    { "type": "checkbox", "id": "show_filters", "label": "Filtres par catégorie (type de produit)", "default": true },
+    { "type": "checkbox", "id": "show_view_all", "label": "Bouton « Voir tout »", "default": true }
+  ],
+  "presets": [{ "name": "Grille de produits" }]
+}
+{% endschema %}

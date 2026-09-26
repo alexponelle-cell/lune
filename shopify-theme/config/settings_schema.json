@@ -1,0 +1,127 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "NOCTA",
+    "theme_version": "1.0.0",
+    "theme_author": "NOCTA",
+    "theme_documentation_url": "https://help.shopify.com/manual/online-store/themes",
+    "theme_support_url": "https://help.shopify.com"
+  },
+  {
+    "name": "Couleurs",
+    "settings": [
+      {
+        "type": "select",
+        "id": "default_theme",
+        "label": "Thème par défaut",
+        "default": "light",
+        "options": [
+          {
+            "value": "light",
+            "label": "Clair"
+          },
+          {
+            "value": "dark",
+            "label": "Sombre"
+          }
+        ],
+        "info": "Les visiteurs peuvent changer avec le bouton lune / soleil."
+      },
+      {
+        "type": "color",
+        "id": "cta_start",
+        "label": "Boutons — début du dégradé",
+        "default": "#7C3AED"
+      },
+      {
+        "type": "color",
+        "id": "cta_end",
+        "label": "Boutons — fin du dégradé (et accent)",
+        "default": "#DB2777"
+      },
+      {
+        "type": "color",
+        "id": "accent_fallback",
+        "label": "Couleur par défaut des produits",
+        "default": "#A78BFA"
+      },
+      {
+        "type": "textarea",
+        "id": "category_colors",
+        "label": "Couleurs par catégorie",
+        "info": "Une ligne par type de produit : Type=#couleur (le « Type » est celui défini dans chaque fiche produit).",
+        "default": "Beauté=#F472B6\nTech=#22D3EE\nMaison=#A78BFA\nVoyage=#FB923C\nBien-être=#34D399\nCuisine=#FBBF24\nAnimaux=#A3E635"
+      }
+    ]
+  },
+  {
+    "name": "Panier",
+    "settings": [
+      {
+        "type": "select",
+        "id": "cart_type",
+        "label": "Type de panier",
+        "default": "drawer",
+        "options": [
+          {
+            "value": "drawer",
+            "label": "Panier coulissant"
+          },
+          {
+            "value": "page",
+            "label": "Page panier"
+          }
+        ]
+      },
+      {
+        "type": "number",
+        "id": "free_shipping_threshold",
+        "label": "Livraison offerte dès (€)",
+        "default": 60,
+        "info": "Doit correspondre à votre tarif d'expédition gratuit (Paramètres → Expédition). 0 pour masquer la jauge."
+      },
+      {
+        "type": "number",
+        "id": "bundle_min",
+        "label": "Remise : nombre d'articles minimum",
+        "default": 2,
+        "info": "Doit correspondre à votre réduction automatique (Réductions). 0 pour masquer la jauge."
+      },
+      {
+        "type": "number",
+        "id": "bundle_pct",
+        "label": "Remise : pourcentage",
+        "default": 15
+      },
+      {
+        "type": "checkbox",
+        "id": "show_cart_note",
+        "label": "Note de commande sur la page panier",
+        "default": false
+      }
+    ]
+  },
+  {
+    "name": "Produits",
+    "settings": [
+      {
+        "type": "number",
+        "id": "low_stock_threshold",
+        "label": "Afficher « Plus que N en stock » sous",
+        "default": 15,
+        "info": "Utilise votre vrai stock Shopify (le suivi de stock doit être activé sur la variante)."
+      }
+    ]
+  },
+  {
+    "name": "Favicon",
+    "settings": [
+      {
+        "type": "image_picker",
+        "id": "favicon",
+        "label": "Favicon",
+        "info": "32 × 32 px"
+      }
+    ]
+  }
+]

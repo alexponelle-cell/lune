@@ -1,0 +1,89 @@
+{%- liquid
+  assign featured = section.settings.featured_product
+-%}
+<section class="hero">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="container hero-grid">
+    <div>
+      {%- if section.settings.pill_text != blank -%}
+        <span class="pill">{% if section.settings.pill_badge != blank %}<b>{{ section.settings.pill_badge }}</b>{% endif %} {{ section.settings.pill_text }}</span>
+      {%- endif -%}
+      <h1>
+        {{ section.settings.heading_before }}
+        {% if section.settings.heading_accent != blank %}<em>{{ section.settings.heading_accent }}</em>{% endif %}
+        {{ section.settings.heading_after }}
+      </h1>
+      {%- if section.settings.text != blank -%}<p class="lead">{{ section.settings.text }}</p>{%- endif -%}
+      <div class="hero-cta">
+        {%- if section.settings.button_label != blank -%}
+          <a href="{{ section.settings.button_link | default: routes.all_products_collection_url }}" class="btn btn-primary">{{ section.settings.button_label }} <span class="arrow">→</span></a>
+        {%- endif -%}
+        {%- if section.settings.button2_label != blank -%}
+          <a href="{{ section.settings.button2_link | default: featured.url }}" class="btn btn-ghost">{{ section.settings.button2_label }}</a>
+        {%- endif -%}
+      </div>
+      {%- if section.settings.proof_text != blank -%}
+        <div class="proof">
+          <div class="faces" aria-hidden="true">
+            <span style="background:#7C3AED">★</span><span style="background:#DB2777">★</span><span style="background:#EA580C">★</span>
+          </div>
+          <div>{{ section.settings.proof_text }}</div>
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="showcase">
+      <div class="show-main">
+        <div>
+          {%- if section.settings.image != blank -%}
+            {{ section.settings.image | image_url: width: 1200 | image_tag: widths: '400, 600, 800, 1200', sizes: '(min-width: 900px) 45vw, 90vw', style: 'width:100%;height:100%;object-fit:cover', fetchpriority: 'high' }}
+          {%- elsif featured.featured_media -%}
+            {{ featured.featured_media | image_url: width: 1200 | image_tag: widths: '400, 600, 800, 1200', sizes: '(min-width: 900px) 45vw, 90vw', style: 'width:100%;height:100%;object-fit:cover', fetchpriority: 'high' }}
+          {%- else -%}
+            {{ 'lifestyle-1' | placeholder_svg_tag: 'placeholder-svg' }}
+          {%- endif -%}
+          {%- if featured != blank -%}
+            <div class="show-label" style="background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:12px 14px;backdrop-filter:blur(8px)">
+              <div><small>{{ section.settings.featured_label }}</small><b>{{ featured.title }}</b></div>
+              <a class="btn btn-primary" style="height:40px;padding:0 18px;font-size:13px" href="{{ featured.url }}">{{ featured.price | money }} →</a>
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+      {%- for p in section.settings.float_products limit: 2 -%}
+        {%- capture c -%}{% render 'category-color', type: p.type %}{%- endcapture -%}
+        <a class="float-card fc-{{ forloop.index }}" style="--c: {{ c }}" href="{{ p.url }}">
+          <span class="ic" style="overflow:hidden">
+            {%- if p.featured_media -%}{{ p.featured_media | image_url: width: 120 | image_tag: loading: 'lazy', style: 'width:100%;height:100%;object-fit:cover' }}{%- endif -%}
+          </span>
+          <span><small>{{ p.title | truncate: 28 }}</small><b>{{ p.price | money }}</b>{% if p.compare_at_price > p.price %} <s style="color:var(--muted)">{{ p.compare_at_price | money }}</s>{% endif %}</span>
+        </a>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Bannière NOCTA",
+  "settings": [
+    { "type": "text", "id": "pill_badge", "label": "Pastille — badge", "default": "Nouveau" },
+    { "type": "text", "id": "pill_text", "label": "Pastille — texte", "default": "La collection est en ligne" },
+    { "type": "text", "id": "heading_before", "label": "Titre — début", "default": "Les objets qui font" },
+    { "type": "text", "id": "heading_accent", "label": "Titre — mot en dégradé", "default": "« waouh »" },
+    { "type": "text", "id": "heading_after", "label": "Titre — fin", "default": "chez vous." },
+    { "type": "textarea", "id": "text", "label": "Texte", "default": "Tech, maison, beauté : les produits les plus partagés du moment, sélectionnés par notre équipe et expédiés rapidement." },
+    { "type": "text", "id": "button_label", "label": "Bouton principal", "default": "Je découvre la boutique" },
+    { "type": "url", "id": "button_link", "label": "Lien du bouton principal" },
+    { "type": "text", "id": "button2_label", "label": "Bouton secondaire", "default": "Voir le best-seller" },
+    { "type": "url", "id": "button2_link", "label": "Lien du bouton secondaire", "info": "Par défaut : le produit mis en avant." },
+    { "type": "inline_richtext", "id": "proof_text", "label": "Preuve sociale", "info": "Uniquement des chiffres réels (ex. votre vraie note moyenne). Laissez vide au lancement." },
+    { "type": "header", "content": "Vitrine" },
+    { "type": "product", "id": "featured_product", "label": "Produit mis en avant" },
+    { "type": "text", "id": "featured_label", "label": "Étiquette du produit", "default": "Notre best-seller" },
+    { "type": "image_picker", "id": "image", "label": "Image (facultatif)", "info": "Par défaut : la photo du produit mis en avant. Format carré conseillé." },
+    { "type": "product_list", "id": "float_products", "label": "Petites cartes flottantes", "limit": 2 }
+  ],
+  "presets": [{ "name": "Bannière NOCTA" }]
+}
+{% endschema %}

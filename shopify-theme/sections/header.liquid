@@ -1,0 +1,57 @@
+<header class="header">
+  <div class="container header-inner">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="icon-btn menu-btn" type="button" id="menu-open" aria-label="Ouvrir le menu" aria-controls="mobile-nav">{% render 'icon', name: 'menu' %}</button>
+      <a href="{{ routes.root_url }}" class="logo">
+        {%- if section.settings.logo != blank -%}
+          {{ section.settings.logo | image_url: width: 320 | image_tag: alt: shop.name, height: 40 }}
+        {%- else -%}
+          {%- assign name = shop.name | upcase -%}
+          {%- assign last = name | slice: -1 -%}
+          {%- assign first = name | remove_last: last -%}
+          {{ first }}<span>{{ last }}</span>
+        {%- endif -%}
+      </a>
+    </div>
+
+    <nav class="nav" aria-label="Navigation principale">
+      {%- for link in section.settings.menu.links -%}
+        <a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title }}</a>
+      {%- endfor -%}
+    </nav>
+
+    <div class="header-actions">
+      {%- if section.settings.show_theme_toggle -%}
+        <button class="theme-btn" type="button" id="theme-toggle" aria-label="Changer de thème (clair / sombre)">
+          {% render 'icon', name: 'moon' %}{% render 'icon', name: 'sun' %}
+        </button>
+      {%- endif -%}
+      <a class="cart-btn" id="cart-open" href="{{ routes.cart_url }}" aria-label="Ouvrir le panier">
+        {% render 'icon', name: 'cart' %}
+        <span class="nav-label">Panier</span> <span class="cart-count" id="cart-count">{{ cart.item_count }}</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<nav class="mobile-nav" id="mobile-nav" aria-label="Menu mobile" aria-hidden="true">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <span class="logo" style="font-size:18px">{{ shop.name | upcase }}</span>
+    <button class="icon-btn" type="button" data-close aria-label="Fermer le menu">{% render 'icon', name: 'close' %}</button>
+  </div>
+  {%- for link in section.settings.menu.links -%}
+    <a href="{{ link.url }}">{{ link.title }}</a>
+  {%- endfor -%}
+  <a href="{{ routes.search_url }}">Rechercher</a>
+</nav>
+
+{% schema %}
+{
+  "name": "En-tête",
+  "settings": [
+    { "type": "image_picker", "id": "logo", "label": "Logo (facultatif)", "info": "Sans logo, le nom de la boutique s'affiche avec la dernière lettre en dégradé." },
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" },
+    { "type": "checkbox", "id": "show_theme_toggle", "label": "Bouton clair / sombre", "default": true }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,67 @@
+{%- assign product = section.settings.product -%}
+{%- capture color -%}{% render 'category-color', type: product.type %}{%- endcapture -%}
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="feature-wrap">
+      <div class="feature" style="--c: {{ color }}">
+        <div>
+          {%- if section.settings.eyebrow != blank -%}<span class="eyebrow">{{ section.settings.eyebrow }}</span>{%- endif -%}
+          <h2>{{ section.settings.heading }}{% if section.settings.heading_accent != blank %} <span class="grad-text">{{ section.settings.heading_accent }}</span>{% endif %}</h2>
+          {%- if section.settings.text != blank -%}<div class="rte" style="margin-top:4px">{{ section.settings.text }}</div>{%- endif -%}
+          {%- if section.blocks.size > 0 -%}
+            <ul>
+              {%- for block in section.blocks -%}<li {{ block.shopify_attributes }}>{{ block.settings.text }}</li>{%- endfor -%}
+            </ul>
+          {%- endif -%}
+          {%- if product != blank -%}
+            <div class="feature-price">
+              <b>{{ product.price | money }}</b>
+              {%- if product.compare_at_price > product.price -%}
+                <s>{{ product.compare_at_price | money }}</s>
+                {%- assign off = product.compare_at_price | minus: product.price | times: 100 | divided_by: product.compare_at_price -%}
+                <span class="price"><span class="save">-{{ off }} %</span></span>
+              {%- endif -%}
+            </div>
+            <div class="hero-cta" style="margin-top:18px">
+              <a class="btn btn-primary" href="{{ product.url }}">{{ section.settings.button_label }} <span class="arrow">→</span></a>
+            </div>
+          {%- endif -%}
+        </div>
+        <div class="feature-visual" style="overflow:hidden">
+          {%- assign img = section.settings.image | default: product.featured_media -%}
+          {%- if img != blank -%}
+            {{ img | image_url: width: 1200 | image_tag: loading: 'lazy', widths: '400, 600, 900, 1200', sizes: '(min-width: 900px) 45vw, 90vw', style: 'width:100%;height:100%;object-fit:cover' }}
+          {%- else -%}
+            <span class="ring"></span>{{ 'product-2' | placeholder_svg_tag: 'placeholder-svg' }}
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Produit phare",
+  "settings": [
+    { "type": "product", "id": "product", "label": "Produit" },
+    { "type": "text", "id": "eyebrow", "label": "Surtitre", "default": "Produit phare" },
+    { "type": "text", "id": "heading", "label": "Titre", "default": "Le soin visage des instituts," },
+    { "type": "text", "id": "heading_accent", "label": "Fin du titre en dégradé", "default": "chez vous." },
+    { "type": "richtext", "id": "text", "label": "Texte", "default": "<p>7 longueurs d'onde pour un teint plus éclatant. Dix minutes par jour, sans fil, pendant que vous regardez votre série.</p>" },
+    { "type": "image_picker", "id": "image", "label": "Image (facultatif)", "info": "Par défaut : la photo du produit." },
+    { "type": "text", "id": "button_label", "label": "Texte du bouton", "default": "Je le veux" }
+  ],
+  "blocks": [
+    { "type": "point", "name": "Point fort", "settings": [ { "type": "text", "id": "text", "label": "Texte", "default": "Sans chaleur, sans douleur" } ] }
+  ],
+  "presets": [{
+    "name": "Produit phare",
+    "blocks": [
+      { "type": "point", "settings": { "text": "Sans chaleur, sans douleur, tous types de peau" } },
+      { "type": "point", "settings": { "text": "Sans fil, rechargeable, minuterie 10 min" } },
+      { "type": "point", "settings": { "text": "Retour gratuit sous 30 jours" } }
+    ]
+  }]
+}
+{% endschema %}

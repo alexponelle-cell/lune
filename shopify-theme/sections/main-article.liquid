@@ -1,0 +1,14 @@
+<article class="container" style="padding-bottom:80px">
+  <div class="page-head">
+    <small style="color:var(--muted)">{{ article.published_at | date: '%d/%m/%Y' }}</small>
+    <h1>{{ article.title }}</h1>
+  </div>
+  {%- if article.image -%}
+    {{ article.image | image_url: width: 1400 | image_tag: widths: '600, 1000, 1400', style: 'border-radius:20px;margin-bottom:32px;width:100%;height:auto' }}
+  {%- endif -%}
+  <div class="rte">{{ article.content }}</div>
+</article>
+
+{% schema %}
+{ "name": "Article" }
+{% endschema %}

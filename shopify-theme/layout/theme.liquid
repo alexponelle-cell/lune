@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}"{% if settings.default_theme == 'dark' %} data-theme="dark"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="{% if settings.default_theme == 'dark' %}#09090B{% else %}#F7F7FA{% endif %}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  {%- if settings.favicon != blank -%}
+    <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 64, height: 64 }}">
+  {%- endif -%}
+
+  <title>
+    {{ page_title }}
+    {%- if current_tags %} &ndash; {{ current_tags | join: ', ' }}{% endif -%}
+    {%- if current_page != 1 %} &ndash; page {{ current_page }}{% endif -%}
+    {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+  </title>
+  {%- if page_description -%}
+    <meta name="description" content="{{ page_description | escape }}">
+  {%- endif -%}
+  {% render 'meta-tags' %}
+
+  <script>
+    // Thème par défaut défini dans l'éditeur ; le choix du visiteur est mémorisé.
+    try {
+      var t = localStorage.getItem('nocta-theme');
+      if (t === 'dark') document.documentElement.dataset.theme = 'dark';
+      if (t === 'light') delete document.documentElement.dataset.theme;
+    } catch (e) {}
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  {{ 'nocta.css' | asset_url | stylesheet_tag }}
+
+  {%- comment -%} Couleurs des boutons réglables dans l'éditeur de thème {%- endcomment -%}
+  {% style %}
+    :root {
+      --cta: linear-gradient(135deg, {{ settings.cta_start }} 0%, {{ settings.cta_end }} 100%);
+      --accent: {{ settings.cta_end }};
+    }
+  {% endstyle %}
+
+  {{ content_for_header }}
+</head>
+
+<body>
+  <a class="skip-link" href="#MainContent">Aller au contenu</a>
+
+  {% section 'announcement-bar' %}
+  {% section 'header' %}
+
+  <main id="MainContent" role="main" tabindex="-1">
+    {{ content_for_layout }}
+  </main>
+
+  {% section 'footer' %}
+
+  {% render 'cart-drawer' %}
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    window.NOCTA = {
+      routes: {
+        cart: {{ routes.cart_url | json }},
+        cartAdd: {{ routes.cart_add_url | append: '.js' | json }},
+        cartChange: {{ routes.cart_change_url | append: '.js' | json }},
+        cartJs: {{ routes.cart_url | append: '.js' | json }},
+        allProducts: {{ routes.all_products_collection_url | json }}
+      },
+      currency: {{ cart.currency.iso_code | json }},
+      locale: {{ request.locale.iso_code | json }},
+      freeShipping: {{ settings.free_shipping_threshold | times: 100 | json }},
+      bundleMin: {{ settings.bundle_min | json }},
+      bundlePct: {{ settings.bundle_pct | json }},
+      cartType: {{ settings.cart_type | json }}
+    };
+  </script>
+  <script src="{{ 'nocta.js' | asset_url }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{%- layout none -%}
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carte cadeau {{ shop.name }}</title>
+  {{ 'nocta.css' | asset_url | stylesheet_tag }}
+  {{ content_for_header }}
+</head>
+<body>
+  <main class="container" style="max-width:520px;text-align:center;padding:64px 16px">
+    <span class="eyebrow">{{ shop.name }}</span>
+    <h1 style="font-size:36px;font-weight:900;margin:12px 0">Votre carte cadeau</h1>
+    <div class="newsletter-box" style="padding:40px 20px">
+      <p style="font-size:44px;font-weight:900;margin:0">{{ gift_card.balance | money }}</p>
+      {%- if gift_card.balance != gift_card.initial_value -%}<p>Valeur initiale : {{ gift_card.initial_value | money }}</p>{%- endif -%}
+      <p style="font-family:monospace;font-size:20px;letter-spacing:.1em;margin:16px 0">{{ gift_card.code | format_code }}</p>
+      {%- if gift_card.expired or gift_card.enabled == false -%}
+        <p class="form-error">Cette carte cadeau n'est plus valable.</p>
+      {%- elsif gift_card.expires_on -%}
+        <p style="color:var(--muted)">Valable jusqu'au {{ gift_card.expires_on | date: '%d/%m/%Y' }}</p>
+      {%- endif -%}
+    </div>
+    <div class="hero-cta" style="justify-content:center">
+      <a class="btn btn-primary" href="{{ shop.url }}">Utiliser sur la boutique</a>
+      <button class="btn btn-ghost" type="button" onclick="window.print()">Imprimer</button>
+    </div>
+  </main>
+</body>
+</html>
