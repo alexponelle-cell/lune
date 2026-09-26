@@ -115,22 +115,22 @@ CATEGORIES = [
         ChannelSpec("clippers", "👤 | clippers 0 → 60", "voice", locked_voice=True),
     ]),
     CategorySpec("welcome", "——— | Welcome | ———", "public", [
-        ChannelSpec("start", "✅ | start-here", readonly=True, topic="Lis tout avant de commencer 👇"),
-        ChannelSpec("candidature", "📝 | candidature", readonly=True, topic="Clique sur Postuler pour rejoindre l'équipe"),
+        ChannelSpec("start", "✅│start-here", readonly=True, topic="Lis tout avant de commencer 👇"),
+        ChannelSpec("candidature", "📝│candidature", readonly=True, topic="Clique sur Postuler pour rejoindre l'équipe"),
     ]),
     CategorySpec("clipping", f"——— | {SERVER_NAME.title()} | ———", "test", [
-        ChannelSpec("remuneration", "💳 | rémunération", access="test", readonly=True),
+        ChannelSpec("remuneration", "💳│rémunération", access="test", readonly=True),
     ]),
     CategorySpec("formation", "——— | Formation | ———", "test", [
-        ChannelSpec("fairetest", "🧪 | faire-test", access="test", readonly=True,
+        ChannelSpec("fairetest", "🧪│faire-test", access="test", readonly=True,
                     topic="Le bouton « Envoyer mon test » est publié ici depuis le dashboard"),
-        ChannelSpec("tutos", "👨‍🏫 | tutos", "forum", access="test", readonly=True,
+        ChannelSpec("tutos", "👨‍🏫│tutos", "forum", access="test", readonly=True,
                     tags=["CapCut PC", "CapCut Mobile", "Transitions", "Sous-titres", "Exemple tuto vidéo", "Astuces"]),
         ChannelSpec("coaching", "📈 | coaching", "voice", access="test"),
     ]),
     CategorySpec("clippersCat", "——— | Clippers | ———", "clippers", [
-        ChannelSpec("general", "💬 | général", access="clippers"),
-        ChannelSpec("comptes", "📊 | comptes", access="clippers",
+        ChannelSpec("general", "💬│général", access="clippers"),
+        ChannelSpec("comptes", "📊│comptes", access="clippers",
                     topic="Poste ici tes liens TikTok / Insta / YouTube : le bot suit tes vues"),
         ChannelSpec("call", "🎙️ | call", "voice", access="clippers"),
     ]),
@@ -139,9 +139,9 @@ CATEGORIES = [
     # Tickets de candidature créés par ce bot
     CategorySpec("tickets", "——— | Tickets | ———", "staff", [], dynamic=True),
     CategorySpec("staff", "——— | Staff | ———", "staff", [
-        ChannelSpec("candstaff", "📥 | candidatures-staff", access="staff"),
-        ChannelSpec("departs", "🚪 | départs", access="staff"),
-        ChannelSpec("logs", "🧾 | logs", access="staff"),
+        ChannelSpec("candstaff", "📥│candidatures-staff", access="staff"),
+        ChannelSpec("departs", "🚪│départs", access="staff"),
+        ChannelSpec("logs", "🧾│logs", access="staff"),
     ]),
 ]
 
@@ -317,11 +317,17 @@ def overwrites_for(ctx: Ctx, access: str, readonly: bool = False, locked_voice: 
         ow[member] = discord.PermissionOverwrite(
             view_channel=True, send_messages=True, read_message_history=True, attach_files=True, embed_links=True,
         )
-    me = g.me
-    ow[me] = discord.PermissionOverwrite(
+    bot_access = dict(
         view_channel=True, send_messages=True, read_message_history=True, manage_channels=True,
-        manage_messages=True, embed_links=True, connect=True, manage_permissions=True,
+        manage_messages=True, embed_links=True, attach_files=True, add_reactions=True, connect=True,
+        manage_permissions=True,
     )
+    ow[g.me] = discord.PermissionOverwrite(**bot_access)
+    # Les autres bots du serveur (ex. Clipping Tracker, qui suit #comptes et crée les salons de test)
+    # gardent l'accès à tous les salons, même privés : on autorise leur rôle intégré.
+    for role in g.roles:
+        if role.is_bot_managed() and role.tags and role.tags.bot_id != g.me.id:
+            ow[role] = discord.PermissionOverwrite(**bot_access)
     return ow
 
 
@@ -430,7 +436,7 @@ async def ensure_channels(ctx: Ctx) -> None:
                 if not same_overwrites(ch.overwrites, ow):
                     changes["overwrites"] = ow
                 # Les compteurs (vues, clics…) gardent leur nom mis à jour par /stats
-                if not cs.locked_voice and core(ch.name) == core(cs.name) and ch.name != cs.name and ch.type != discord.ChannelType.text:
+                if not cs.locked_voice and ch.name != cs.name:
                     changes["name"] = cs.name
                 if cs.topic and isinstance(ch, discord.TextChannel) and ch.topic != cs.topic:
                     changes["topic"] = cs.topic
