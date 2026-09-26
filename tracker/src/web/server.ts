@@ -163,15 +163,7 @@ export function createApp(deps: WebDeps): Hono {
     const fan = fanOf(c);
     return fan ? c.json(fans.me(fan)) : c.json({ error: 'not_logged_in' }, 401);
   });
-  app.post('/api/fan/accounts', async (c) => {
-    const fan = requireFan(c);
-    const { text } = z.object({ text: z.string().max(2000) }).parse(await c.req.json());
-    return c.json(fans.addAccounts(fan, text));
-  });
-  app.delete('/api/fan/accounts/:id', (c) => {
-    fans.removeAccount(requireFan(c), Number(c.req.param('id')));
-    return c.json({ ok: true });
-  });
+  // Les comptes TikTok / Insta / YouTube des fans sont reliés par le staff (Management), pas par les fans.
   app.put('/api/fan/roblox', async (c) => {
     const fan = requireFan(c);
     const { username } = z.object({ username: z.string().trim().min(3).max(20) }).parse(await c.req.json());

@@ -30,7 +30,7 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
       if (interaction.commandName === 'site') {
         const url = fans.loginUrl(fan.id);
         await interaction.reply({
-          content: `🔐 **Ton lien de connexion perso** (valable 10 min, ne le partage pas) :\n${url}\n\nTu y ajoutes tes comptes TikTok / Insta / YouTube et ton pseudo Roblox, tu suis tes coins et tu dépenses dans la boutique.`,
+          content: `🔐 **Ton lien de connexion perso** (valable 10 min, ne le partage pas) :\n${url}\n\nTu y suis tes clips, tes vues et tes coins, et tu les échanges dans la boutique.`,
           flags: MessageFlags.Ephemeral,
         });
       } else {

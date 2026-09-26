@@ -515,7 +515,7 @@ function pageHome() {
 
   <section>
     <div class="banner reveal"><div><h3>Prêt à rejoindre le 1% ?</h3><p>Chaque vue compte. Ton premier clip peut te rapporter tes premiers coins dès aujourd'hui.</p>
-      <div class="ctas" style="display:flex;gap:12px;flex-wrap:wrap">${ME ? '<a class="btn yellow big" href="#/clipper">Envoyer mon clip</a>' : '<a class="btn yellow big" href="/fan/auth/discord">Je commence</a>'}${PUB.discordInviteUrl ? `<a class="btn white big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord</a>` : ''}</div></div>
+      <div class="ctas" style="display:flex;gap:12px;flex-wrap:wrap">${ME ? '<a class="btn yellow big" href="#/clipper">Mes clips</a>' : '<a class="btn yellow big" href="/fan/auth/discord">Je commence</a>'}${PUB.discordInviteUrl ? `<a class="btn white big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord</a>` : ''}</div></div>
       ${mascot('camera', 'mascot bob')}</div>
   </section>`;
 }
@@ -539,40 +539,24 @@ function pageClip() {
   const steps = `<div class="steps">
     <div class="card wiggle reveal"><div class="n">1</div><div class="emo">🎬</div><b>Crée ton clip</b></div>
     <div class="card wiggle reveal"><div class="n">2</div><div class="emo">📱</div><b>Poste-le</b></div>
-    <div class="card wiggle reveal"><div class="n">3</div><div class="emo">🔗</div><b>Envoie ton lien</b></div>
+    <div class="card wiggle reveal"><div class="n">3</div><div class="emo">👀</div><b>On suit tes vues</b></div>
     <div class="card wiggle reveal"><div class="n">4</div><div class="emo">🪙</div><b>Gagne des coins</b></div></div>`;
-  const head = `<div class="head-row reveal" style="margin-top:34px"><div><span class="eyebrow">🎬 Clipper</span><h2>Clippe & gagne</h2><p class="sub">Poste des clips de BeOnePourcent sur TikTok, Insta ou YouTube. Chaque vue te rapporte des coins.</p></div></div>`;
-  if (!ME) return `<section>${head}${steps}<div style="margin-top:22px">${loginCard('Envoie ton premier clip', 'Connecte-toi avec Discord pour envoyer tes clips et gagner tes premiers coins.', 'camera')}</div></section>`;
+  const head = `<div class="head-row reveal" style="margin-top:34px"><div><span class="eyebrow">🎬 Clipper</span><h2>Clippe & gagne</h2><p class="sub">Poste des clips de BeOnePourcent sur TikTok, Insta ou YouTube. On suit tes vues, chaque vue te rapporte des coins.</p></div></div>`;
+  if (!ME) return `<section>${head}${steps}<div style="margin-top:22px">${loginCard('Suis tes clips', 'Connecte-toi avec Discord pour voir tes clips, tes vues et tes coins.', 'camera')}</div></section>`;
   const clips = ME.clips;
   return `<section>${head}${steps}
-    <div class="card send reveal">${mascot('camera', 'mascot bob')}<div><h3>Ton clip est en ligne ?</h3><p>Envoie le lien de ton compte : on suit tes vues automatiquement, plusieurs fois par jour.</p><button class="btn yellow big" id="send">Envoyer mon clip</button></div></div>
-    ${ME.accounts.length ? `<div style="margin-top:18px" class="accounts">${ME.accounts.map((a) => `<span class="acc">${PLATFORM[a.platform]} @${esc(a.handle)} <button data-del="${a.id}" aria-label="Retirer">×</button></span>`).join('')}</div>` : ''}
+    <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${ME.accounts.length
+      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, plusieurs fois par jour.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
+      : `<h3>Presque prêt !</h3><p>L'équipe relie tes comptes TikTok, Insta ou YouTube à ton profil. Dès que c'est fait, chaque vue te rapporte des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Contacter l'équipe sur Discord</a>` : ''}`}</div></div>
   </section>
   <section>
     <div class="head-row reveal"><div><span class="eyebrow">📈 Tes clips</span><h2>Mes clips</h2></div><div class="coin-pill">${coin('coin')}${fmt(ME.clipCount)}<small>CLIPS</small></div></div>
     <div class="clips">${clips.map((c) => `<a class="card clip wiggle reveal" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
       <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : '🎬'}<span class="pf">${PLATFORM[c.platform]}</span><span class="earn">+${fmt(c.coins)} ${coin('coin')}</span></div>
       <div class="meta"><b>${esc(c.title || 'Mon clip')}</b><small>👀 ${compact(c.views)} vues</small></div></a>`).join('')
-      || '<div class="card empty reveal" style="grid-column:1/-1"><div class="e">📭</div>Pas encore de clip détecté. Envoie ton lien : tes clips apparaissent ici après la prochaine mise à jour.</div>'}</div>
+      || '<div class="card empty reveal" style="grid-column:1/-1"><div class="e">📭</div>Pas encore de clip détecté. Tes clips apparaissent ici dès que tes comptes sont suivis.</div>'}</div>
   </section>`;
 }
-function sendModal() {
-  modal(`${mascot('camera', 'mascot bob')}<h3>Envoyer mon clip</h3><p>Colle le lien de ton compte TikTok, Instagram ou YouTube (ou d'une vidéo TikTok).</p>
-    <form><textarea name="text" rows="2" placeholder="https://www.tiktok.com/@tonpseudo" required></textarea><button class="btn yellow full big">Envoyer</button></form>`, (bg, close) => {
-    $('textarea', bg).focus();
-    $('form', bg).onsubmit = async (e) => {
-      e.preventDefault();
-      try {
-        const r = await api('/api/fan/accounts', { method: 'POST', body: { text: new FormData(e.target).get('text') } });
-        if (r.conflicts.length && !r.added.length) return toast(`Ce compte est déjà à quelqu'un d'autre : ${r.conflicts.map((c) => '@' + c.handle).join(', ')}`, 'err');
-        close(); coinRain(12);
-        toast('C\'est parti ! On suit tes vues 🚀', 'ok');
-        await refresh();
-      } catch (err) { toast(err.message.includes('Colle un lien') ? 'Ce lien n\'est pas reconnu : colle le lien de ton profil (ex. tiktok.com/@tonpseudo).' : err.message, 'err'); }
-    };
-  });
-}
-
 function podium(lb) {
   const spot = (r, cls, medal) => r ? `<div class="spot ${cls} reveal">${avatar(r.name, r.avatar)}<div class="name">${esc(r.name)}</div><div class="block"><div>${medal}<small>${compact(r.views)} vues</small><small>+${fmt(r.coins)} 🪙</small></div></div></div>` : '<div></div>';
   return `<div class="podium">${spot(lb[1], 'second', '🥈')}${spot(lb[0], 'first', '🥇')}${spot(lb[2], 'third', '🥉')}</div>`;
@@ -630,11 +614,6 @@ function route() {
   observe();
   bindBuy(app);
   app.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { FILTER = b.dataset.f; route(); }));
-  $('#send')?.addEventListener('click', sendModal);
-  app.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
-    if (!confirm('Retirer ce compte ? Ses nouvelles vues ne compteront plus.')) return;
-    try { await api(`/api/fan/accounts/${b.dataset.del}`, { method: 'DELETE' }); await refresh(); } catch (err) { toast(err.message, 'err'); }
-  }));
   const rf = $('#roblox');
   if (rf) rf.onsubmit = async (e) => {
     e.preventDefault();
