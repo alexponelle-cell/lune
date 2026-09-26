@@ -1482,7 +1482,7 @@ async function pageBoutique() {
     <div class="actions"><a class="btn" href="/fan" target="_blank" rel="noopener">Voir l'espace fan</a></div></div>
     <div class="stack">
       <form class="card card-pad stack" id="fan-settings"><div><h2 style="margin:0;font-size:15px">Réglages</h2>
-        <p class="faint" style="margin:2px 0 0;font-size:12px">Bot Neptune : <b>${nep.state === 'ready' ? `connecté (${esc(nep.tag)})` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'non configuré (les commandes /site et /points sont sur le bot principal)'}</b> · Jeu Roblox : <b>${d.robloxKey ? 'clé configurée' : 'ROBLOX_API_KEY manquante'}</b></p></div>
+        <p class="faint" style="margin:2px 0 0;font-size:12px">Bot Neptune : <b>${d.neptuneKey ? 'relié (clé NEPTUNE_API_KEY configurée)' : nep.state === 'ready' ? `connecté (${esc(nep.tag)})` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'non configuré (les commandes /site et /points sont sur le bot principal)'}</b> · Jeu Roblox : <b>${d.robloxKey ? 'clé configurée' : 'ROBLOX_API_KEY manquante'}</b></p></div>
         <div class="grid-form">
           <label class="field"><span>Nom du programme</span><input class="input" name="programName" value="${esc(s.programName)}"><small>Affiché sur l'espace fan</small></label>
           <label class="field"><span>Agence des fans</span><select class="select" name="clientId"><option value="">Aucune</option>${d.clients.map((c) => `<option value="${c.id}" ${c.id === s.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><small>Les fans qui font /site y sont rattachés (ex. BeOne)</small></label>
