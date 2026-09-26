@@ -202,6 +202,15 @@
     toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
   }
 
+  // ---------- Thème clair / sombre ----------
+  function toggleTheme() {
+    const root = document.documentElement;
+    const dark = root.dataset.theme !== "dark";
+    if (dark) root.dataset.theme = "dark"; else delete root.dataset.theme;
+    document.querySelector('meta[name="theme-color"]').content = dark ? "#09090B" : "#F7F7FA";
+    try { localStorage.setItem("nocta-theme", dark ? "dark" : "light"); } catch {}
+  }
+
   // ---------- Événements ----------
   document.addEventListener("click", (e) => {
     const t = e.target.closest("button, a");
@@ -215,6 +224,7 @@
     else if (d.q) setQty(d.q, (cart[d.q] || 0) + Number(d.d));
     else if (d.rm) setQty(d.rm, 0);
     else if (t.id === "cart-open") show("drawer");
+    else if (t.id === "theme-toggle") toggleTheme();
     else if (d.close !== undefined) hideAll();
     else if (t.id === "checkout") toast("Démo : le paiement sera branché sur Shopify Checkout");
   });
