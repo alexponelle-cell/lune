@@ -17,6 +17,8 @@ const schema = z.object({
   NEPTUNE_TOKEN: optionalString,
   NEPTUNE_CLIENT_ID: optionalString,
   NEPTUNE_GUILD_ID: optionalString,
+  /** Clé partagée avec le bot Neptune (Python) : il demande les liens /site et les points. */
+  NEPTUNE_API_KEY: optionalString,
   /** Clé partagée avec le jeu Roblox pour livrer les achats de la boutique. */
   ROBLOX_API_KEY: optionalString,
 

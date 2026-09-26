@@ -34,6 +34,8 @@ export interface WebDeps {
   password?: string;
   /** Clé partagée avec le jeu Roblox (livraison des achats). */
   robloxApiKey?: string;
+  /** Clé partagée avec le bot Neptune (Python). */
+  neptuneApiKey?: string;
   /** Rempli quand le bot est connecté (sinon les actions Discord sont indisponibles). */
   bot: { current?: BotBridge };
 }
@@ -133,6 +135,25 @@ export function createApp(deps: WebDeps): Hono {
     const fan = requireFan(c);
     const { itemId } = z.object({ itemId: z.number().int().positive() }).parse(await c.req.json());
     return c.json(fans.buy(fan, itemId));
+  });
+
+  // Le bot Neptune (Python, service séparé) demande un lien /site ou les points d'un membre.
+  const NeptuneBody = z.object({ discordId: z.string().regex(/^\d{5,25}$/), username: z.string().trim().min(1).max(80) });
+  const requireNeptune = (c: Context) => {
+    if (!deps.neptuneApiKey) throw new HTTPException(503, { res: Response.json({ error: 'NEPTUNE_API_KEY non configurée' }, { status: 503 }) });
+    if (c.req.header('x-api-key') !== deps.neptuneApiKey) throw new HTTPException(401, { res: Response.json({ error: 'Clé invalide' }, { status: 401 }) });
+  };
+  app.post('/api/neptune/link', async (c) => {
+    requireNeptune(c);
+    const body = NeptuneBody.parse(await c.req.json());
+    const fan = fans.ensureFan(body.discordId, body.username);
+    return c.json({ url: fans.loginUrl(fan.id) });
+  });
+  app.post('/api/neptune/points', async (c) => {
+    requireNeptune(c);
+    const body = NeptuneBody.parse(await c.req.json());
+    const fan = fans.ensureFan(body.discordId, body.username);
+    return c.json({ ...fans.balance(fan.id), pointsPer1000: fans.settings().pointsPer1000 });
   });
 
   // Le jeu Roblox demande les achats à livrer puis confirme la livraison (clé partagée).

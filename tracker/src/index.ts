@@ -39,7 +39,7 @@ const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl);
 const botHolder: { current?: Bot['bridge'] } = {};
 
 const stopWeb = startWeb(
-  createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, bot: botHolder }),
+  createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY, bot: botHolder }),
   config.WEB_PORT,
 );
 log.info(`dashboard sur ${dashboardUrl} (données : ${config.FETCHER_MODE})`);
@@ -53,7 +53,7 @@ if (config.DISCORD_TOKEN) {
         token: config.DISCORD_TOKEN,
         clientId: config.DISCORD_CLIENT_ID,
         guildId: config.DISCORD_GUILD_ID,
-        withFans: !config.NEPTUNE_TOKEN,
+        withFans: !config.NEPTUNE_TOKEN && !config.NEPTUNE_API_KEY,
       });
       status.bot.commandsRegistered = result;
       log.info(result);
@@ -72,7 +72,7 @@ if (config.DISCORD_TOKEN) {
       recruitment,
       dashboardUrl,
       guildId: config.DISCORD_GUILD_ID,
-      fans: config.NEPTUNE_TOKEN ? undefined : fans,
+      fans: config.NEPTUNE_TOKEN || config.NEPTUNE_API_KEY ? undefined : fans,
     });
     botHolder.current = bot.bridge;
   } catch (err) {

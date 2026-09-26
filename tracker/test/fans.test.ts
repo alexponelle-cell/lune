@@ -82,7 +82,7 @@ describe('programme fans (Neptune)', () => {
     await fans.linkRoblox(fan, 'paulrbx');
     const item = fans.saveItem(null, { name: 'Épée', price: 10, kind: 'item', ref: 'sword' });
     const recruitment = new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency);
-    const app = createApp({ repo, agency, recruitment, fans, password: 'secret', robloxApiKey: 'k3y', bot: {} });
+    const app = createApp({ repo, agency, recruitment, fans, password: 'secret', robloxApiKey: 'k3y', neptuneApiKey: 'n3p', bot: {} });
     const json = (method: string, body: unknown, headers: Record<string, string> = {}) => ({
       method,
       headers: { 'content-type': 'application/json', ...headers },
@@ -104,6 +104,13 @@ describe('programme fans (Neptune)', () => {
     expect(me).toMatchObject({ balance: 50, roblox: { username: 'PaulRbx' } });
     const bought = await app.request('/api/fan/orders', json('POST', { itemId: item.id }, { cookie }));
     expect(bought.status).toBe(200);
+
+    // Bot Neptune (Python) : lien /site et points
+    expect((await app.request('/api/neptune/link', json('POST', { discordId: '123456', username: 'Zoé' }))).status).toBe(401);
+    const link = (await (await app.request('/api/neptune/link', json('POST', { discordId: '123456', username: 'Zoé' }, { 'x-api-key': 'n3p' }))).json()) as { url: string };
+    expect(link.url).toContain('/fan/login?t=');
+    const pts = (await (await app.request('/api/neptune/points', json('POST', { discordId: '999999', username: 'X' }, { 'x-api-key': 'n3p' }))).json()) as { balance: number };
+    expect(pts.balance).toBe(0);
 
     // Jeu Roblox
     expect((await app.request('/api/roblox/pending?userId=42')).status).toBe(401);
