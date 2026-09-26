@@ -12,6 +12,8 @@ export interface Notifier {
 export interface RelanceSettings extends RelanceRules {
   dropWindowDays: number;
   cooldownHours: number;
+  /** Agences sans relances (ex. les fans du programme Neptune). */
+  skipClientIds?: readonly number[];
 }
 
 export async function runRelances(
@@ -23,6 +25,7 @@ export async function runRelances(
 ): Promise<number> {
   let sent = 0;
   for (const clipper of repo.listActiveClippers()) {
+    if (clipper.clientId !== null && settings.skipClientIds?.includes(clipper.clientId)) continue;
     const activity = analytics.activity(clipper, settings.dropWindowDays, now);
     for (const reason of evaluateRelance(activity, settings, now)) {
       const last = repo.lastRelanceAt(clipper.id, reason.kind);

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Mon espace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f5f4; --card: #ffffff; --ink: #0a0a0a; --muted: #6b6b6b; --line: #e7e5e4;
+    --accent: #0a0a0a; --accent-ink: #ffffff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0a0a0a; --card: #151515; --ink: #f5f5f4; --muted: #a1a1aa; --line: #262626; --accent: #f5f5f4; --accent-ink: #0a0a0a; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 Inter, system-ui, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; min-width: 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
+  .stat b { display: block; font: 700 22px/1.2 'JetBrains Mono', monospace; overflow-wrap: anywhere; }
+  .stat.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .stat.main .muted { color: inherit; opacity: .7; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { min-width: 0; }
+  .row > input { flex: 1 1 auto; width: auto; }
+  .row > button { flex: none; }
+  input, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  textarea { resize: vertical; min-height: 64px; }
+  button { font: 600 14px Inter, sans-serif; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 10px 14px; cursor: pointer; white-space: nowrap; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .list { display: grid; gap: 8px; }
+  .item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+  .item-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .product { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .product img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--bg); }
+  .product .price { font: 700 16px 'JetBrains Mono', monospace; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+  .pending { color: var(--warn); } .delivered { color: var(--ok); } .refunded { color: var(--muted); }
+  .center { text-align: center; padding: 60px 16px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; max-width: calc(100% - 32px); }
+  .toast.err { background: var(--bad); color: #fff; }
+  @media (max-width: 520px) { .stats { grid-template-columns: 1fr 1fr; } .stat.main { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><p class="muted center">Chargement…</p></div>
+<script>
+const $app = document.getElementById('app');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const fmt = (n) => Number(n).toLocaleString('fr-FR');
+const STATUS = { pending: 'En attente de livraison', delivered: 'Livré en jeu', refunded: 'Remboursé' };
+const PLATFORM = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+
+function toast(msg, err) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (err ? ' err' : '');
+  t.textContent = msg;
+  document.body.append(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { method: opts.method ?? 'GET', headers: opts.body ? { 'content-type': 'application/json' } : {}, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error ?? `Erreur ${res.status}`), { status: res.status });
+  return data;
+}
+
+function loggedOut() {
+  const expired = new URLSearchParams(location.search).has('expired');
+  $app.innerHTML = `<div class="card center"><h1>${expired ? 'Lien expiré' : 'Connecte-toi'}</h1>
+    <p class="muted">${expired ? 'Ce lien a déjà servi ou a expiré.' : ''} Tape <b>/site</b> sur Discord pour recevoir ton lien de connexion perso.</p></div>`;
+}
+
+async function render() {
+  let d;
+  try {
+    d = await api('/api/fan/me');
+  } catch (err) {
+    if (err.status === 401) return loggedOut();
+    $app.innerHTML = `<p class="center">${esc(err.message)}</p>`;
+    return;
+  }
+  document.title = d.programName;
+  const canBuy = !!d.roblox.userId;
+  $app.innerHTML = `
+    <header><div><h1>${esc(d.programName)}</h1><div class="muted small">Salut ${esc(d.username)} 👋</div></div><button id="logout">Déconnexion</button></header>
+    <div class="stats">
+      <div class="stat main"><span class="muted small">Mes points</span><b>${fmt(d.balance)}</b></div>
+      <div class="stat"><span class="muted small">Vues</span><b>${fmt(d.views)}</b></div>
+      <div class="stat"><span class="muted small">Dépensés</span><b>${fmt(d.spent)}</b></div>
+    </div>
+    <p class="muted small" style="margin:-4px 0 14px">${fmt(d.pointsPer1000)} points pour 1 000 vues · les vues sont mises à jour plusieurs fois par jour. Seules les vues faites après l'ajout d'un compte comptent.</p>
+
+    <div class="card"><h2>🎮 Mon compte Roblox</h2>
+      ${d.roblox.username ? `<p style="margin:0 0 10px">Relié à <b>${esc(d.roblox.username)}</b> : tes achats arrivent en jeu à ta prochaine connexion.</p>` : '<p class="muted small" style="margin:0 0 10px">Obligatoire pour recevoir tes achats dans le jeu.</p>'}
+      <form class="row" id="roblox"><input name="username" placeholder="Ton pseudo Roblox" value="${esc(d.roblox.username ?? '')}" required minlength="3" maxlength="20"><button class="primary">${d.roblox.username ? 'Changer' : 'Relier'}</button></form>
+    </div>
+
+    <div class="card"><h2>📱 Mes comptes suivis</h2>
+      <div class="list">${d.accounts.map((a) => `<div class="item-row"><span><b>${PLATFORM[a.platform]}</b> @${esc(a.handle)}</span><button data-del="${a.id}">Retirer</button></div>`).join('') || '<p class="muted small" style="margin:0">Aucun compte pour l\'instant.</p>'}</div>
+      <form class="stack" id="accounts" style="margin-top:10px;display:grid;gap:8px"><textarea name="text" placeholder="Colle le lien de ton profil TikTok, Instagram ou YouTube (un par ligne)"></textarea><div><button class="primary">Ajouter</button></div></form>
+    </div>
+
+    <div class="card"><h2>🛒 Boutique</h2>
+      ${canBuy ? '' : '<p class="small" style="margin:0 0 10px;color:var(--warn)">Relie ton compte Roblox pour pouvoir échanger tes points.</p>'}
+      <div class="shop">${d.items.map((i) => {
+        const soldOut = i.stock !== null && i.stock <= 0;
+        const ok = canBuy && !soldOut && d.balance >= i.price;
+        return `<div class="product">${i.imageUrl ? `<img src="${esc(i.imageUrl)}" alt="" loading="lazy">` : ''}
+          <span class="tag">${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</span><b>${esc(i.name)}</b>
+          ${i.description ? `<span class="muted small">${esc(i.description)}</span>` : ''}
+          <span class="price">${fmt(i.price)} pts</span>${i.stock !== null ? `<span class="muted small">${soldOut ? 'Rupture' : `${i.stock} restant(s)`}</span>` : ''}
+          <button class="primary" data-buy="${i.id}" ${ok ? '' : 'disabled'}>${soldOut ? 'Rupture' : d.balance < i.price ? `Encore ${fmt(i.price - d.balance)} pts` : 'Échanger'}</button></div>`;
+      }).join('') || '<p class="muted small" style="margin:0">La boutique arrive bientôt.</p>'}</div>
+    </div>
+
+    <div class="card"><h2>📦 Mes achats</h2>
+      <div class="list">${d.orders.map((o) => `<div class="item-row"><span><b>${esc(o.itemName)}</b> · ${fmt(o.price)} pts</span><span class="pill ${o.status}">${STATUS[o.status]}</span></div>`).join('') || '<p class="muted small" style="margin:0">Aucun achat.</p>'}</div>
+    </div>`;
+
+  document.getElementById('logout').onclick = async () => { await api('/fan/logout', { method: 'POST' }).catch(() => {}); loggedOut(); };
+  document.getElementById('roblox').onsubmit = async (e) => {
+    e.preventDefault();
+    try { const r = await api('/api/fan/roblox', { method: 'PUT', body: { username: new FormData(e.target).get('username') } }); toast(`Relié à ${r.username} ✅`); render(); } catch (err) { toast(err.message, true); }
+  };
+  document.getElementById('accounts').onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const r = await api('/api/fan/accounts', { method: 'POST', body: { text: new FormData(e.target).get('text') } });
+      if (r.conflicts.length) toast(`Déjà relié à quelqu'un d'autre : ${r.conflicts.map((c) => '@' + c.handle).join(', ')}`, true);
+      else toast('Compte ajouté ✅');
+      render();
+    } catch (err) { toast(err.message, true); }
+  };
+  $app.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
+    if (!confirm('Retirer ce compte ? Ses nouvelles vues ne compteront plus.')) return;
+    try { await api(`/api/fan/accounts/${b.dataset.del}`, { method: 'DELETE' }); render(); } catch (err) { toast(err.message, true); }
+  });
+  $app.querySelectorAll('[data-buy]').forEach((b) => b.onclick = async () => {
+    const item = d.items.find((i) => i.id === Number(b.dataset.buy));
+    if (!confirm(`Échanger ${fmt(item.price)} points contre « ${item.name} » ?`)) return;
+    try { await api('/api/fan/orders', { method: 'POST', body: { itemId: item.id } }); toast('Achat validé ✅ Connecte-toi au jeu pour le recevoir'); render(); } catch (err) { toast(err.message, true); }
+  });
+}
+
+render();
+</script>
+</body>
+</html>

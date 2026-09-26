@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { basicAuth } from 'hono/basic-auth';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import type { BotBridge } from '../bot/index.js';
@@ -10,6 +11,8 @@ import { parseAccountInput, PLATFORMS } from '../domain/links.js';
 import { normalizeRewardConfig } from '../domain/remuneration.js';
 import { dayKey } from '../domain/time.js';
 import type { AgencyService } from '../services/agency.js';
+import { FanRepo } from '../db/fans.js';
+import { FanService } from '../services/fans.js';
 import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
 
@@ -19,13 +22,18 @@ const ASSETS = {
   html: asset('index.html'),
   css: asset('app.css'),
   js: asset('app.js'),
+  fan: asset('fan.html'),
 };
 
 export interface WebDeps {
   repo: Repo;
   agency: AgencyService;
   recruitment: RecruitmentService;
+  /** Programme fans (créé par défaut si absent, ex. dans les tests). */
+  fans?: FanService;
   password?: string;
+  /** Clé partagée avec le jeu Roblox (livraison des achats). */
+  robloxApiKey?: string;
   /** Rempli quand le bot est connecté (sinon les actions Discord sont indisponibles). */
   bot: { current?: BotBridge };
 }
@@ -40,6 +48,19 @@ const ClipperBody = z.object({
     .object({ tiktok: z.string().optional(), instagram: z.string().optional(), youtube: z.string().optional() })
     .optional(),
 });
+
+const ItemBody = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(300).default(''),
+  imageUrl: z.string().trim().url().max(500).nullable().optional(),
+  price: z.number().int().min(1).max(100_000_000),
+  kind: z.enum(['gamepass', 'item']),
+  ref: z.string().trim().min(1).max(100),
+  stock: z.number().int().min(0).nullable().optional(),
+  active: z.boolean().default(true),
+});
+
+const FAN_COOKIE = 'fan_session';
 
 const ClientBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -58,6 +79,78 @@ export function createApp(deps: WebDeps): Hono {
   });
 
   app.get('/healthz', (c) => c.json({ ok: true, bot: status.bot.state }));
+
+  // --- Espace fan (public, connexion par lien /site) + API du jeu Roblox ---------------
+  // Déclaré avant le mot de passe du dashboard : les fans n'y ont pas accès.
+
+  const fans = deps.fans ?? new FanService(repo, new FanRepo(repo.db), agency, '');
+  const fanOf = (c: Context) => fans.clipperFromSession(getCookie(c, FAN_COOKIE));
+  const requireFan = (c: Context) => {
+    const fan = fanOf(c);
+    if (!fan) throw new HTTPException(401, { res: Response.json({ error: 'Session expirée : refais /site sur Discord' }, { status: 401 }) });
+    return fan;
+  };
+
+  app.get('/fan', (c) => c.html(ASSETS.fan));
+  app.get('/fan/login', (c) => {
+    const session = fans.login(c.req.query('t') ?? '');
+    if (!session) return c.redirect('/fan?expired=1');
+    setCookie(c, FAN_COOKIE, session, {
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure: c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:'),
+      path: '/',
+      maxAge: 30 * 86_400,
+    });
+    return c.redirect('/fan');
+  });
+  app.post('/fan/logout', (c) => {
+    const token = getCookie(c, FAN_COOKIE);
+    if (token) fans.fans.deleteSession(token);
+    deleteCookie(c, FAN_COOKIE, { path: '/' });
+    return c.json({ ok: true });
+  });
+
+  app.get('/api/fan/me', (c) => {
+    const fan = fanOf(c);
+    return fan ? c.json(fans.me(fan)) : c.json({ error: 'not_logged_in' }, 401);
+  });
+  app.post('/api/fan/accounts', async (c) => {
+    const fan = requireFan(c);
+    const { text } = z.object({ text: z.string().max(2000) }).parse(await c.req.json());
+    return c.json(fans.addAccounts(fan, text));
+  });
+  app.delete('/api/fan/accounts/:id', (c) => {
+    fans.removeAccount(requireFan(c), Number(c.req.param('id')));
+    return c.json({ ok: true });
+  });
+  app.put('/api/fan/roblox', async (c) => {
+    const fan = requireFan(c);
+    const { username } = z.object({ username: z.string().trim().min(3).max(20) }).parse(await c.req.json());
+    return c.json(await fans.linkRoblox(fan, username));
+  });
+  app.post('/api/fan/orders', async (c) => {
+    const fan = requireFan(c);
+    const { itemId } = z.object({ itemId: z.number().int().positive() }).parse(await c.req.json());
+    return c.json(fans.buy(fan, itemId));
+  });
+
+  // Le jeu Roblox demande les achats à livrer puis confirme la livraison (clé partagée).
+  const requireGame = (c: Context) => {
+    if (!deps.robloxApiKey) throw new HTTPException(503, { res: Response.json({ error: 'ROBLOX_API_KEY non configurée' }, { status: 503 }) });
+    if (c.req.header('x-api-key') !== deps.robloxApiKey) throw new HTTPException(401, { res: Response.json({ error: 'Clé invalide' }, { status: 401 }) });
+  };
+  app.get('/api/roblox/pending', (c) => {
+    requireGame(c);
+    const userId = Number(c.req.query('userId'));
+    if (!Number.isSafeInteger(userId) || userId <= 0) return c.json({ error: 'userId invalide' }, 400);
+    return c.json({ orders: fans.fans.pendingForRoblox(userId).map((o) => ({ id: o.id, kind: o.kind, ref: o.ref, name: o.itemName })) });
+  });
+  app.post('/api/roblox/delivered', async (c) => {
+    requireGame(c);
+    const body = z.object({ userId: z.number().int().positive(), orderIds: z.array(z.number().int().positive()).max(100) }).parse(await c.req.json());
+    return c.json({ ok: true, updated: fans.fans.markDelivered(body.orderIds, body.userId) });
+  });
 
   if (deps.password) {
     const password = deps.password;
@@ -430,6 +523,24 @@ export function createApp(deps: WebDeps): Hono {
     recruitment.saveSettings({ candidatureChannelId: channelId });
     return c.json({ ok: true });
   });
+
+  // --- Programme fans : boutique (staff) ----------------------------------------------
+
+  app.get('/api/fans', (c) => c.json({ ...fans.overview(), neptune: status.neptune, robloxKey: !!deps.robloxApiKey }));
+  app.put('/api/fans/settings', async (c) => {
+    const body = z
+      .object({ clientId: z.number().int().positive().nullable().optional(), pointsPer1000: z.number().min(0).max(1_000_000).optional(), programName: z.string().max(60).optional() })
+      .parse(await c.req.json());
+    return c.json(fans.saveSettings(body));
+  });
+  app.post('/api/shop/items', async (c) => c.json(fans.saveItem(null, ItemBody.parse(await c.req.json()))));
+  app.put('/api/shop/items/:id', async (c) => c.json(fans.saveItem(Number(c.req.param('id')), ItemBody.parse(await c.req.json()))));
+  app.delete('/api/shop/items/:id', (c) => {
+    fans.fans.deleteItem(Number(c.req.param('id')));
+    return c.json({ ok: true });
+  });
+  app.post('/api/shop/orders/:id/refund', (c) => c.json({ ok: fans.fans.refund(Number(c.req.param('id'))) }));
+  app.post('/api/shop/orders/:id/delivered', (c) => c.json({ ok: fans.fans.markDelivered([Number(c.req.param('id'))], null) > 0 }));
 
   // Toute autre route GET renvoie l'application (navigation côté navigateur).
   app.get('*', (c) => c.html(ASSETS.html));

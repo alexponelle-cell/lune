@@ -261,4 +261,49 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   );
   CREATE INDEX departures_user ON departures(discord_id, left_at);
   `,
+
+  // v6 : programme fans (bot Neptune) : espace fan, points, boutique, livraison dans le jeu Roblox
+  `
+  ALTER TABLE clippers ADD COLUMN roblox_username TEXT;
+  ALTER TABLE clippers ADD COLUMN roblox_user_id INTEGER;
+  CREATE INDEX clippers_roblox ON clippers(roblox_user_id);
+
+  -- Liens de connexion (10 min, usage unique) et sessions de l'espace fan. Seul le hash est stocké.
+  CREATE TABLE fan_tokens (
+    hash       TEXT    PRIMARY KEY,
+    clipper_id INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    kind       TEXT    NOT NULL CHECK (kind IN ('login', 'session')),
+    expires_at INTEGER NOT NULL,
+    used_at    INTEGER
+  );
+
+  CREATE TABLE shop_items (
+    id          INTEGER PRIMARY KEY,
+    name        TEXT    NOT NULL,
+    description TEXT    NOT NULL DEFAULT '',
+    image_url   TEXT,
+    price       INTEGER NOT NULL,
+    kind        TEXT    NOT NULL DEFAULT 'item' CHECK (kind IN ('gamepass', 'item')),
+    -- Identifiant compris par le jeu (ID du gamepass, nom de l'objet…)
+    ref         TEXT    NOT NULL,
+    stock       INTEGER,
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  INTEGER NOT NULL
+  );
+
+  -- Commande : pending → delivered (le jeu a donné l'objet) | refunded (points rendus)
+  CREATE TABLE shop_orders (
+    id           INTEGER PRIMARY KEY,
+    clipper_id   INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    item_id      INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
+    item_name    TEXT    NOT NULL,
+    kind         TEXT    NOT NULL,
+    ref          TEXT    NOT NULL,
+    price        INTEGER NOT NULL,
+    status       TEXT    NOT NULL DEFAULT 'pending',
+    created_at   INTEGER NOT NULL,
+    delivered_at INTEGER
+  );
+  CREATE INDEX shop_orders_clipper ON shop_orders(clipper_id, status);
+  `,
 ];

@@ -11,6 +11,7 @@ const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const ICONS = {
+  bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
   funnel: '<path d="M3 4h18l-7 9v6l-4 2v-8z"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.7.8 2.7 2.6 3 5.2"/>',
@@ -446,7 +447,7 @@ const NAV = [
   ['Pilotage', [['funnel', 'Funnel', 'funnel'], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users'], ['recruteurs', 'Recruteurs', 'userPlus'], ['classement', 'Classement', 'trophy']]],
   ['Automatisations', [['suivi', 'Suivi', 'pulse']], true],
   ['Découvrir', [['inspiration', 'Inspiration', 'spark']]],
-  ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['parametres', 'Paramètres', 'gear']]],
+  ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
 ];
 
 function renderSidebar() {
@@ -1467,6 +1468,109 @@ async function pageSuivi() {
 // Routeur
 // ---------------------------------------------------------------------------
 
+// --- Programme fans (bot Neptune) ------------------------------------------------------
+
+const ORDER_PILL = { pending: '<span class="pill wait">À livrer</span>', delivered: '<span class="pill ok">Livré</span>', refunded: '<span class="pill gray">Remboursé</span>' };
+
+async function pageBoutique() {
+  loading();
+  const d = await api('/api/fans');
+  const s = d.settings;
+  const n = (x) => Number(x).toLocaleString('fr-FR');
+  const nep = d.neptune;
+  main().innerHTML = `<div class="page-head"><div><h1>Boutique fans</h1><p>Les fans clippent, gagnent des points avec leurs vues et les échangent contre des objets en jeu</p></div>
+    <div class="actions"><a class="btn" href="/fan" target="_blank" rel="noopener">Voir l'espace fan</a></div></div>
+    <div class="stack">
+      <form class="card card-pad stack" id="fan-settings"><div><h2 style="margin:0;font-size:15px">Réglages</h2>
+        <p class="faint" style="margin:2px 0 0;font-size:12px">Bot Neptune : <b>${nep.state === 'ready' ? `connecté (${esc(nep.tag)})` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'non configuré (les commandes /site et /points sont sur le bot principal)'}</b> · Jeu Roblox : <b>${d.robloxKey ? 'clé configurée' : 'ROBLOX_API_KEY manquante'}</b></p></div>
+        <div class="grid-form">
+          <label class="field"><span>Nom du programme</span><input class="input" name="programName" value="${esc(s.programName)}"><small>Affiché sur l'espace fan</small></label>
+          <label class="field"><span>Agence des fans</span><select class="select" name="clientId"><option value="">Aucune</option>${d.clients.map((c) => `<option value="${c.id}" ${c.id === s.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><small>Les fans qui font /site y sont rattachés (ex. BeOne)</small></label>
+          <label class="field"><span>Points pour 1 000 vues</span><input class="input num" type="number" min="0" step="0.1" name="pointsPer1000" value="${s.pointsPer1000}"></label>
+        </div><div><button class="btn green">Sauvegarder</button></div></form>
+
+      <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence = ce que le jeu comprend (ID du gamepass, nom de l'objet…)</p></div><button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Objet</th><th>Type</th><th>Référence jeu</th><th class="r">Prix</th><th class="r">Stock</th><th>État</th><th class="r"></th></tr></thead><tbody>
+        ${d.items.map((i) => `<tr><td><b>${esc(i.name)}</b>${i.description ? `<small class="faint" style="display:block">${esc(i.description)}</small>` : ''}</td><td>${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</td>
+          <td class="num">${esc(i.ref)}</td><td class="r num">${n(i.price)} pts</td><td class="r num">${i.stock ?? '∞'}</td><td>${i.active ? '<span class="pill ok">En vente</span>' : '<span class="pill gray">Masqué</span>'}</td>
+          <td class="r"><button class="icon-btn" data-edit-item="${i.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-item="${i.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucun objet. Ajoute le premier gamepass ou objet.</td></tr>'}
+        </tbody></table></div></div>
+
+      <div class="card"><div class="card-head"><div><h2>Commandes</h2><p>« À livrer » : le jeu les donne au joueur à sa prochaine connexion</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Fan</th><th>Roblox</th><th>Objet</th><th class="r">Prix</th><th>État</th><th class="r"></th></tr></thead><tbody>
+        ${d.orders.map((o) => `<tr><td class="num faint">${dm(o.createdAt)}</td><td>${esc(o.username)}</td><td>${esc(o.roblox ?? '—')}</td><td>${esc(o.itemName)}</td><td class="r num">${n(o.price)}</td><td>${ORDER_PILL[o.status]}</td>
+          <td class="r">${o.status === 'pending' ? `<button class="btn sm" data-delivered="${o.id}">Marquer livré</button> <button class="btn sm danger" data-refund="${o.id}">Rembourser</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucune commande.</td></tr>'}
+        </tbody></table></div></div>
+
+      <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues depuis leur inscription</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Roblox</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th></tr></thead><tbody>
+        ${d.fans.map((f) => `<tr class="link" data-clipper="${f.id}"><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td></tr>`).join('') || `<tr><td colspan="6" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent quand ils font /site sur Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
+        </tbody></table></div></div>
+    </div>`;
+  const root = main();
+  bindRows(root);
+  $('#fan-settings', root).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    try {
+      await api('/api/fans/settings', { method: 'PUT', body: { programName: fd.get('programName'), clientId: fd.get('clientId') ? Number(fd.get('clientId')) : null, pointsPer1000: Number(fd.get('pointsPer1000')) } });
+      toast('Réglages sauvegardés ✅');
+      pageBoutique();
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+  const itemForm = (i = {}) => `<label class="field"><span>Nom</span><input class="input" name="name" required maxlength="80" value="${esc(i.name ?? '')}"></label>
+    <label class="field"><span>Description</span><input class="input" name="description" maxlength="300" value="${esc(i.description ?? '')}"></label>
+    <label class="field"><span>Type</span><select class="select" name="kind"><option value="gamepass" ${i.kind === 'gamepass' ? 'selected' : ''}>Gamepass</option><option value="item" ${i.kind === 'item' ? 'selected' : ''}>Objet</option></select></label>
+    <label class="field"><span>Référence jeu</span><input class="input num" name="ref" required maxlength="100" value="${esc(i.ref ?? '')}" placeholder="ID du gamepass ou nom de l'objet"><small>Transmis tel quel au jeu</small></label>
+    <label class="field"><span>Prix (points)</span><input class="input num" type="number" min="1" name="price" required value="${i.price ?? ''}"></label>
+    <label class="field"><span>Stock</span><input class="input num" type="number" min="0" name="stock" value="${i.stock ?? ''}" placeholder="Vide = illimité"></label>
+    <label class="field"><span>Image (lien)</span><input class="input" name="imageUrl" value="${esc(i.imageUrl ?? '')}" placeholder="https://…"></label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="active" ${i.active === false ? '' : 'checked'}> En vente</label>`;
+  const itemBody = (fd) => ({
+    name: fd.get('name'),
+    description: fd.get('description'),
+    kind: fd.get('kind'),
+    ref: fd.get('ref'),
+    price: Number(fd.get('price')),
+    stock: fd.get('stock') === '' ? null : Number(fd.get('stock')),
+    imageUrl: fd.get('imageUrl') || null,
+    active: fd.get('active') === 'on',
+  });
+  $('[data-add-item]', root).addEventListener('click', () =>
+    modal('Nouvel objet', itemForm(), { confirm: 'Créer', onConfirm: async (fd) => { await api('/api/shop/items', { method: 'POST', body: itemBody(fd) }); pageBoutique(); } }),
+  );
+  root.addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-edit-item]');
+    if (ed) {
+      const i = d.items.find((x) => x.id === Number(ed.dataset.editItem));
+      modal(`Modifier ${i.name}`, itemForm(i), { onConfirm: async (fd) => { await api(`/api/shop/items/${i.id}`, { method: 'PUT', body: itemBody(fd) }); pageBoutique(); } });
+    }
+    const del = e.target.closest('[data-del-item]');
+    if (del) {
+      const i = d.items.find((x) => x.id === Number(del.dataset.delItem));
+      modal('Supprimer l’objet', `<p style="margin:0">Supprimer <b>${esc(i.name)}</b> ? Les commandes déjà passées sont conservées. Pour le retirer temporairement, décoche plutôt « En vente ».</p>`, {
+        confirm: 'Supprimer',
+        danger: true,
+        onConfirm: async () => { await api(`/api/shop/items/${i.id}`, { method: 'DELETE' }); pageBoutique(); },
+      });
+    }
+    const act = e.target.closest('[data-delivered], [data-refund]');
+    if (act) {
+      const refund = 'refund' in act.dataset;
+      const id = refund ? act.dataset.refund : act.dataset.delivered;
+      try {
+        await api(`/api/shop/orders/${id}/${refund ? 'refund' : 'delivered'}`, { method: 'POST' });
+        toast(refund ? 'Commande remboursée : points rendus' : 'Commande marquée livrée');
+        pageBoutique();
+      } catch (err) {
+        toast(err.message, true);
+      }
+    }
+  });
+}
+
 const ROUTES = {
   agence: pageAgence,
   clippers: pageClippers,
@@ -1479,6 +1583,7 @@ const ROUTES = {
   funnel: pageFunnel,
   recruteurs: pageRecruteurs,
   suivi: pageSuivi,
+  boutique: pageBoutique,
 };
 
 async function router() {

@@ -1,5 +1,6 @@
 import { REST, Routes } from 'discord.js';
 import { commandDefinitions } from './commands.js';
+import { fanCommandDefinitions } from './fans.js';
 import { recruitmentCommandDefinitions } from './recruitment.js';
 
 /**
@@ -7,11 +8,12 @@ import { recruitmentCommandDefinitions } from './recruitment.js';
  * Avec un guildId, les commandes apparaissent instantanément sur ce serveur ;
  * sans, elles sont globales (jusqu'à 1 h de propagation).
  */
-export async function registerCommands(opts: { token: string; clientId: string; guildId?: string }): Promise<string> {
+export async function registerCommands(opts: { token: string; clientId: string; guildId?: string; withFans?: boolean }): Promise<string> {
   const rest = new REST().setToken(opts.token);
   const route = opts.guildId
     ? Routes.applicationGuildCommands(opts.clientId, opts.guildId)
     : Routes.applicationCommands(opts.clientId);
-  await rest.put(route, { body: [...commandDefinitions, ...recruitmentCommandDefinitions] });
-  return `${commandDefinitions.length + recruitmentCommandDefinitions.length} commandes enregistrées ${opts.guildId ? `sur le serveur ${opts.guildId}` : 'globalement'}`;
+  const body = [...commandDefinitions, ...recruitmentCommandDefinitions, ...(opts.withFans ? fanCommandDefinitions : [])];
+  await rest.put(route, { body });
+  return `${body.length} commandes enregistrées ${opts.guildId ? `sur le serveur ${opts.guildId}` : 'globalement'}`;
 }

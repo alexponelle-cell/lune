@@ -13,6 +13,13 @@ const schema = z.object({
   DISCORD_CLIENT_ID: optionalString,
   DISCORD_GUILD_ID: optionalString,
 
+  /** Bot Neptune (programme fans, sur le serveur du créateur). Optionnel. */
+  NEPTUNE_TOKEN: optionalString,
+  NEPTUNE_CLIENT_ID: optionalString,
+  NEPTUNE_GUILD_ID: optionalString,
+  /** Clé partagée avec le jeu Roblox pour livrer les achats de la boutique. */
+  ROBLOX_API_KEY: optionalString,
+
   DATABASE_PATH: z.string().default('./data/tracker.db'),
 
   WEB_PORT: z.coerce.number().int().positive().default(3000),

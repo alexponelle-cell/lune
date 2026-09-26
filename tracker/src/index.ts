@@ -8,7 +8,10 @@ import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
+import { FanRepo } from './db/fans.js';
 import { RecruitmentRepo } from './db/recruitment.js';
+import { startNeptune } from './bot/fans.js';
+import { FanService } from './services/fans.js';
 import { AgencyService } from './services/agency.js';
 import { RecruitmentService } from './services/recruitment.js';
 import { Analytics } from './services/analytics.js';
@@ -32,9 +35,13 @@ const agency = new AgencyService(repo, {
   dropMinPreviousViews: config.DROP_MIN_PREVIOUS_VIEWS,
 });
 const recruitment = new RecruitmentService(repo, new RecruitmentRepo(db), agency);
+const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl);
 const botHolder: { current?: Bot['bridge'] } = {};
 
-const stopWeb = startWeb(createApp({ repo, agency, recruitment, password: config.DASHBOARD_PASSWORD, bot: botHolder }), config.WEB_PORT);
+const stopWeb = startWeb(
+  createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, bot: botHolder }),
+  config.WEB_PORT,
+);
 log.info(`dashboard sur ${dashboardUrl} (données : ${config.FETCHER_MODE})`);
 if (!config.DASHBOARD_PASSWORD) log.warn('DASHBOARD_PASSWORD absent : le dashboard est accessible sans mot de passe');
 
@@ -46,6 +53,7 @@ if (config.DISCORD_TOKEN) {
         token: config.DISCORD_TOKEN,
         clientId: config.DISCORD_CLIENT_ID,
         guildId: config.DISCORD_GUILD_ID,
+        withFans: !config.NEPTUNE_TOKEN,
       });
       status.bot.commandsRegistered = result;
       log.info(result);
@@ -56,7 +64,16 @@ if (config.DISCORD_TOKEN) {
     log.warn('DISCORD_CLIENT_ID absent : slash commands non enregistrées');
   }
   try {
-    bot = await startBot({ token: config.DISCORD_TOKEN, repo, analytics, agency, recruitment, dashboardUrl, guildId: config.DISCORD_GUILD_ID });
+    bot = await startBot({
+      token: config.DISCORD_TOKEN,
+      repo,
+      analytics,
+      agency,
+      recruitment,
+      dashboardUrl,
+      guildId: config.DISCORD_GUILD_ID,
+      fans: config.NEPTUNE_TOKEN ? undefined : fans,
+    });
     botHolder.current = bot.bridge;
   } catch (err) {
     // Le site reste en ligne pour afficher l'erreur sur le dashboard.
@@ -69,6 +86,17 @@ if (config.DISCORD_TOKEN) {
   log.warn('DISCORD_TOKEN absent : bot désactivé, seuls le site et la collecte tournent');
 }
 
+// Bot Neptune : programme fans sur le serveur du créateur (optionnel)
+let stopNeptune: (() => Promise<void>) | undefined;
+if (config.NEPTUNE_TOKEN) {
+  try {
+    stopNeptune = await startNeptune({ token: config.NEPTUNE_TOKEN, clientId: config.NEPTUNE_CLIENT_ID, guildId: config.NEPTUNE_GUILD_ID, fans });
+  } catch (err) {
+    status.neptune = { state: 'error', error: err instanceof Error ? err.message : String(err) };
+    log.error('connexion du bot Neptune impossible', err);
+  }
+}
+
 const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () => collectAll(repo, fetchers));
 const notifier = bot?.notifier;
 const stopRelance = notifier
@@ -79,6 +107,8 @@ const stopRelance = notifier
         dropThresholdPercent: config.DROP_THRESHOLD_PERCENT,
         dropMinPreviousViews: config.DROP_MIN_PREVIOUS_VIEWS,
         cooldownHours: config.RELANCE_COOLDOWN_HOURS,
+        // Pas de relances pour les fans
+        skipClientIds: fans.settings().clientId ? [fans.settings().clientId!] : [],
       }),
     }))
   : () => {};
@@ -89,6 +119,7 @@ async function shutdown() {
   stopRelance();
   stopWeb();
   await bot?.stop();
+  await stopNeptune?.();
   db.close();
   process.exit(0);
 }

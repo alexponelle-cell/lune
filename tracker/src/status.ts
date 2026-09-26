@@ -16,12 +16,15 @@ export interface ServiceStatus {
     commandsRegistered?: string;
     error?: string;
   };
+  /** Bot Neptune (programme fans), s'il est configuré. */
+  neptune: { state: 'disabled' | 'ready' | 'error'; tag?: string; guilds?: number; error?: string };
   lastErrors: Array<{ at: number; message: string }>;
 }
 
 export const status: ServiceStatus = {
   startedAt: Date.now(),
   bot: { state: 'disabled' },
+  neptune: { state: 'disabled' },
   lastErrors: [],
 };
 

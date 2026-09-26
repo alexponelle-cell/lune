@@ -5,10 +5,12 @@ import type { Notifier } from '../jobs/relance.js';
 import { log } from '../log.js';
 import type { AgencyService } from '../services/agency.js';
 import type { Analytics } from '../services/analytics.js';
+import type { FanService } from '../services/fans.js';
 import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
 import { handleCommand } from './commands.js';
 import { formatComptesReply, registerAccountsFromMessage } from './comptes.js';
+import { attachFanCommands, FAN_COMMANDS } from './fans.js';
 import { attachCommunity, type CommunityBridge } from './community.js';
 import { attachRecruitment, RECRUITMENT_COMMANDS, type RecruitmentBridge } from './recruitment.js';
 
@@ -34,6 +36,8 @@ interface Deps {
   recruitment: RecruitmentService;
   dashboardUrl: string;
   guildId?: string;
+  /** Commandes /site et /points sur ce bot (quand il n'y a pas de bot Neptune séparé). */
+  fans?: FanService;
 }
 
 /** Intents privilégiés (à activer dans le Developer Portal, onglet Bot) dont on peut se passer. */
@@ -81,6 +85,8 @@ function createClient(
   // Accueil, candidatures, départs, compteurs (ex-bot « Lune Builder »)
   const communityBridge = attachCommunity(discord, { repo, recruitment: deps.recruitment, agency: deps.agency, guildId: deps.guildId });
 
+  if (deps.fans) attachFanCommands(discord, deps.fans);
+
   // Salon COMPTES : enregistrement des comptes postés par les clippers.
   discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.inGuild()) return;
@@ -102,7 +108,7 @@ function createClient(
   });
 
   discord.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand() || RECRUITMENT_COMMANDS.has(interaction.commandName)) return;
+    if (!interaction.isChatInputCommand() || RECRUITMENT_COMMANDS.has(interaction.commandName) || FAN_COMMANDS.has(interaction.commandName)) return;
     const name = interaction.commandName;
     log.info(`commande /${name} par ${interaction.user.username} (salon ${interaction.channelId})`);
     try {
