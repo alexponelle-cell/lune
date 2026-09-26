@@ -1,6 +1,27 @@
 // Catalogue NOCTA — produits sélectionnés parmi les tendances dropshipping 2026.
 // `cost` = prix d'achat fournisseur estimé (livraison incluse), pour suivre la marge.
 // Il n'est jamais affiché côté client.
+// `stock` (optionnel) : à relier à votre vrai inventaire. Un bandeau « plus que N »
+// s'affiche seulement sous STORE.lowStock — n'affichez jamais un faux stock.
+
+const STORE = {
+  freeShipping: 60,               // livraison offerte dès… (€)
+  bundleMin: 2,                   // remise dès N articles
+  bundlePct: 15,                  // … de X %
+  saleEnds: "2026-10-05T23:59:59", // fin de la promo de lancement (le timer disparaît ensuite)
+  lowStock: 15,
+};
+
+// Une couleur par catégorie : icônes, halos, filtres.
+const CATEGORY_COLORS = {
+  "Beauté":    "#F472B6",
+  "Tech":      "#22D3EE",
+  "Maison":    "#A78BFA",
+  "Voyage":    "#FB923C",
+  "Bien-être": "#34D399",
+  "Cuisine":   "#FBBF24",
+  "Animaux":   "#A3E635",
+};
 
 const ICONS = {
   charger: '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="30" width="48" height="22" rx="6"/><rect x="16" y="10" width="14" height="26" rx="3"/><circle cx="44" cy="22" r="7"/><path d="M44 29v6M20 41h24"/><path d="M23 18l-2 5h4l-2 5"/></svg>',
@@ -23,7 +44,7 @@ const PRODUCTS = [
     title: "Masque LED 7 couleurs",
     category: "Beauté",
     icon: "mask",
-    price: 89, compareAt: 149, cost: 22,
+    price: 89, compareAt: 149, cost: 22, stock: 9,
     rating: 4.8, reviews: 1284, tag: "Best-seller",
     short: "Luminothérapie visage à domicile, 10 minutes par jour.",
     points: ["7 longueurs d'onde (rouge, bleu, proche infrarouge…)", "Silicone souple, sans fil, rechargeable USB-C", "Minuterie auto 10 min"],
@@ -43,7 +64,7 @@ const PRODUCTS = [
     title: "Diffuseur nuage de pluie",
     category: "Maison",
     icon: "cloud",
-    price: 44, compareAt: 69, cost: 12,
+    price: 44, compareAt: 69, cost: 12, stock: 14,
     rating: 4.8, reviews: 2107, tag: "Viral",
     short: "Humidificateur + diffuseur d'huiles avec effet goutte à goutte apaisant.",
     points: ["Effet pluie hypnotique", "Lumière d'ambiance 7 couleurs", "Silencieux, idéal chambre"],
@@ -53,7 +74,7 @@ const PRODUCTS = [
     title: "Traducteur vocal IA instantané",
     category: "Tech",
     icon: "translator",
-    price: 69, compareAt: 119, cost: 19,
+    price: 69, compareAt: 119, cost: 19, stock: 23,
     rating: 4.6, reviews: 487, tag: "Nouveau",
     short: "Traduction voix et texte en temps réel dans 130+ langues.",
     points: ["Mode hors-ligne pour 16 langues", "Scan de texte par caméra", "Autonomie 7 jours"],
@@ -83,7 +104,7 @@ const PRODUCTS = [
     title: "Mini pistolet de massage",
     category: "Bien-être",
     icon: "massage",
-    price: 54, compareAt: 89, cost: 13,
+    price: 54, compareAt: 89, cost: 13, stock: 11,
     rating: 4.8, reviews: 1043, tag: "Best-seller",
     short: "Récupération musculaire en format poche.",
     points: ["5 vitesses, 4 embouts", "Moteur silencieux < 45 dB", "Tient dans une poche de veste"],

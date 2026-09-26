@@ -4,16 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NOCTA — Objets malins</title>
-  <meta name="description" content="NOCTA : une sélection d'objets malins pour la maison, la tech et le bien-être. Livraison offerte dès 60 €.">
-  <meta name="theme-color" content="#0A0A0C">
+  <meta name="description" content="NOCTA : une sélection d'objets malins pour la maison, la tech et le bien-être. -15 % dès 2 articles, livraison offerte dès 60 €.">
+  <meta name="theme-color" content="#09090B">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <div class="announce">Livraison offerte dès 60 € · <strong>-10 %</strong> sur votre 1ʳᵉ commande avec le code <strong>NOCTA10</strong></div>
+  <div class="announce">
+    <span>🎁 <strong>-15 % dès 2 articles</strong> · Livraison offerte dès 60 €</span>
+    <span data-sale>Promo de lancement : fin dans <span class="timer" data-timer></span></span>
+  </div>
 
   <header class="header">
     <div class="container header-inner">
@@ -34,60 +37,53 @@
   <main>
     <!-- Hero -->
     <section class="hero">
+      <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="container hero-grid">
         <div>
-          <span class="eyebrow">Collection 2026</span>
-          <h1>Des objets malins,<br><em>pensés pour vos nuits</em> comme pour vos jours.</h1>
-          <p class="lead">Tech, maison et bien-être : une sélection courte et exigeante de produits testés, expédiés en 24 h.</p>
+          <span class="pill"><b>Nouveau</b> La collection 2026 est en ligne</span>
+          <h1>Les objets qui font <em>« waouh »</em> chez vous.</h1>
+          <p class="lead">Tech, maison, beauté : les produits les plus partagés du moment, testés par notre équipe et expédiés en 24 h.</p>
           <div class="hero-cta">
-            <a href="#shop" class="btn btn-primary">Découvrir la boutique</a>
+            <a href="#shop" class="btn btn-primary">Je découvre la boutique <span class="arrow">→</span></a>
             <a href="#best" class="btn btn-ghost">Voir le best-seller</a>
           </div>
-          <div class="hero-stats">
-            <div><strong>12 000+</strong><span>clients satisfaits</span></div>
-            <div><strong>4,8/5</strong><span>note moyenne</span></div>
-            <div><strong>30 jours</strong><span>pour changer d'avis</span></div>
+          <div class="proof">
+            <div class="faces" aria-hidden="true">
+              <span style="background:#7C3AED">CL</span><span style="background:#DB2777">YB</span><span style="background:#EA580C">SM</span><span style="background:#0891B2">+</span>
+            </div>
+            <div><span class="stars">★★★★★</span> <b>4,8/5</b> · plus de 12 000 clients</div>
           </div>
         </div>
-        <div class="hero-visual" aria-hidden="true">
-          <svg class="art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="100" cy="100" r="92" stroke-opacity=".15"/>
-            <circle cx="100" cy="100" r="68" stroke-opacity=".3"/>
-            <path d="M128 44a60 60 0 1 0 28 84A48 48 0 0 1 128 44z" fill="currentColor" fill-opacity=".08"/>
-            <circle cx="52" cy="46" r="2" fill="currentColor"/>
-            <circle cx="160" cy="70" r="1.5" fill="currentColor"/>
-            <circle cx="150" cy="160" r="2" fill="currentColor"/>
-            <circle cx="36" cy="140" r="1.5" fill="currentColor"/>
-          </svg>
-          <div class="hero-badge">
-            <div><small>Le plus vendu cette semaine</small><b>Masque LED 7 couleurs</b></div>
-            <button class="btn btn-primary" style="height:38px;padding:0 16px;font-size:13px" data-open="masque-led">Voir</button>
+
+        <div class="showcase">
+          <div class="show-main">
+            <div>
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 6c-13 0-22 10-22 24 0 16 10 28 22 28s22-12 22-28C54 16 45 6 32 6z"/><ellipse cx="23" cy="28" rx="5" ry="3"/><ellipse cx="41" cy="28" rx="5" ry="3"/><path d="M27 46c3 2 7 2 10 0"/><circle cx="32" cy="16" r="1.2"/><circle cx="20" cy="40" r="1.2"/><circle cx="44" cy="40" r="1.2"/><circle cx="32" cy="37" r="1.2"/></svg>
+              <div class="show-label">
+                <div><small>N°1 des ventes</small><b>Masque LED 7 couleurs</b></div>
+                <button class="btn btn-primary" style="height:40px;padding:0 18px;font-size:13px" data-open="masque-led">89 € →</button>
+              </div>
+            </div>
           </div>
+          <button class="float-card fc-1" style="--c:#22D3EE" data-open="chargeur-3en1">
+            <span class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="30" width="48" height="22" rx="6"/><rect x="16" y="10" width="14" height="26" rx="3"/><circle cx="44" cy="22" r="7"/></svg></span>
+            <span><small>Station 3-en-1</small><b>49 €</b> <s style="color:var(--muted)">79 €</s></span>
+          </button>
+          <button class="float-card fc-2" style="--c:#A78BFA" data-open="diffuseur-nuage">
+            <span class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 34h28a9 9 0 0 0 0-18 13 13 0 0 0-25-2A9 9 0 0 0 18 34z"/><path d="M24 40v4M32 42v6M40 40v4"/></svg></span>
+            <span><small>Diffuseur nuage · viral</small><b>44 €</b> <s style="color:var(--muted)">69 €</s></span>
+          </button>
         </div>
       </div>
     </section>
 
-    <!-- Réassurance -->
-    <section class="trust">
-      <div class="container trust-grid">
-        <div class="trust-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
-          <div>Livraison offerte<small>dès 60 € d'achat</small></div>
-        </div>
-        <div class="trust-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-          <div>Retours 30 jours<small>satisfait ou remboursé</small></div>
-        </div>
-        <div class="trust-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-          <div>Paiement sécurisé<small>CB, PayPal, Apple Pay</small></div>
-        </div>
-        <div class="trust-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
-          <div>Support 7j/7<small>réponse en moins de 24 h</small></div>
-        </div>
+    <!-- Défilant -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Livraison offerte dès 60 €</span><span>-15 % dès 2 articles</span><span>Expédié sous 24 h</span><span>Retours gratuits 30 jours</span><span>Paiement 100 % sécurisé</span><span>Support 7j/7</span>
+        <span>Livraison offerte dès 60 €</span><span>-15 % dès 2 articles</span><span>Expédié sous 24 h</span><span>Retours gratuits 30 jours</span><span>Paiement 100 % sécurisé</span><span>Support 7j/7</span>
       </div>
-    </section>
+    </div>
 
     <!-- Boutique -->
     <section class="section" id="shop">
@@ -95,7 +91,7 @@
         <div class="section-head">
           <div>
             <span class="eyebrow">La sélection</span>
-            <h2>Nos produits tendance</h2>
+            <h2>Les produits <span class="grad-text">tendance</span></h2>
           </div>
           <div class="filters" id="filters" role="group" aria-label="Filtrer par catégorie"></div>
         </div>
@@ -106,22 +102,50 @@
     <!-- Produit phare -->
     <section class="section" id="best" style="padding-top:0">
       <div class="container">
-        <div class="feature">
-          <div>
-            <span class="eyebrow">Produit phare</span>
-            <h2>Le soin visage des instituts, chez vous.</h2>
-            <p>Notre masque LED combine 7 longueurs d'onde pour cibler éclat, imperfections et fermeté. Dix minutes par jour, sans fil, pendant que vous lisez ou regardez une série.</p>
-            <ul>
-              <li>Résultats visibles dès 4 semaines d'utilisation régulière</li>
-              <li>Sans chaleur, sans douleur, adapté à tous types de peau</li>
-              <li>Garantie 1 an, retour gratuit sous 30 jours</li>
-            </ul>
-            <div class="hero-cta">
-              <button class="btn btn-primary" data-open="masque-led">Découvrir — 89 €</button>
+        <div class="feature-wrap">
+          <div class="feature">
+            <div>
+              <span class="eyebrow">Produit phare</span>
+              <h2>Le soin visage des instituts, <span class="grad-text">chez vous.</span></h2>
+              <p>7 longueurs d'onde pour cibler éclat, imperfections et fermeté. Dix minutes par jour, sans fil, pendant que vous regardez votre série.</p>
+              <ul>
+                <li>Résultats visibles dès 4 semaines d'utilisation régulière</li>
+                <li>Sans chaleur, sans douleur, adapté à tous types de peau</li>
+                <li>Garantie 1 an, retour gratuit sous 30 jours</li>
+              </ul>
+              <div class="feature-price"><b>89 €</b><s>149 €</s><span class="price"><span class="save">-40 %</span></span></div>
+              <div class="hero-cta" style="margin-top:18px">
+                <button class="btn btn-primary" data-open="masque-led">Je le veux <span class="arrow">→</span></button>
+              </div>
+            </div>
+            <div class="feature-visual" aria-hidden="true">
+              <span class="ring"></span>
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M32 6c-13 0-22 10-22 24 0 16 10 28 22 28s22-12 22-28C54 16 45 6 32 6z"/><ellipse cx="23" cy="28" rx="5" ry="3"/><ellipse cx="41" cy="28" rx="5" ry="3"/><path d="M27 46c3 2 7 2 10 0"/><circle cx="32" cy="16" r="1.2"/><circle cx="20" cy="40" r="1.2"/><circle cx="44" cy="40" r="1.2"/><circle cx="32" cy="37" r="1.2"/></svg>
             </div>
           </div>
-          <div class="feature-visual" aria-hidden="true">
-            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M32 6c-13 0-22 10-22 24 0 16 10 28 22 28s22-12 22-28C54 16 45 6 32 6z"/><ellipse cx="23" cy="28" rx="5" ry="3"/><ellipse cx="41" cy="28" rx="5" ry="3"/><path d="M27 46c3 2 7 2 10 0"/><circle cx="32" cy="16" r="1.2"/><circle cx="20" cy="40" r="1.2"/><circle cx="44" cy="40" r="1.2"/><circle cx="32" cy="37" r="1.2"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pourquoi nous -->
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="perks">
+          <div class="perk" style="--c:#22D3EE">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></div>
+            <b>Livraison offerte</b><small>dès 60 € · suivi inclus</small>
+          </div>
+          <div class="perk" style="--c:#F472B6">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div>
+            <b>-15 % dès 2 articles</b><small>appliqué automatiquement</small>
+          </div>
+          <div class="perk" style="--c:#34D399">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+            <b>Retours 30 jours</b><small>satisfait ou remboursé</small>
+          </div>
+          <div class="perk" style="--c:#A78BFA">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+            <b>Paiement sécurisé</b><small>CB, PayPal, Apple Pay</small>
           </div>
         </div>
       </div>
@@ -133,24 +157,24 @@
         <div class="section-head">
           <div>
             <span class="eyebrow">Ils en parlent</span>
-            <h2>4,8/5 sur plus de 12 000 commandes</h2>
+            <h2><span class="grad-text">4,8/5</span> sur plus de 12 000 commandes</h2>
           </div>
         </div>
         <div class="reviews">
           <article class="review">
             <span class="stars">★★★★★</span>
             <p>« Le diffuseur nuage est devenu la pièce centrale de ma chambre. Colis reçu en 4 jours, emballage soigné. »</p>
-            <footer><span class="avatar">CL</span><div>Camille L.<small>Achat vérifié · Diffuseur nuage</small></div></footer>
+            <footer><span class="avatar" style="background:#7C3AED">CL</span><div>Camille L.<small>Achat vérifié · Diffuseur nuage</small></div></footer>
           </article>
           <article class="review">
             <span class="stars">★★★★★</span>
             <p>« J'ai enfin une seule station pour tout charger. Compacte, stable, et le magnétique tient vraiment bien. »</p>
-            <footer><span class="avatar">YB</span><div>Yanis B.<small>Achat vérifié · Station 3-en-1</small></div></footer>
+            <footer><span class="avatar" style="background:#0891B2">YB</span><div>Yanis B.<small>Achat vérifié · Station 3-en-1</small></div></footer>
           </article>
           <article class="review">
             <span class="stars">★★★★☆</span>
             <p>« Le mini pistolet de massage est bluffant pour sa taille. Je l'emporte à la salle tous les jours. »</p>
-            <footer><span class="avatar">SM</span><div>Sarah M.<small>Achat vérifié · Mini pistolet</small></div></footer>
+            <footer><span class="avatar" style="background:#DB2777">SM</span><div>Sarah M.<small>Achat vérifié · Mini pistolet</small></div></footer>
           </article>
         </div>
       </div>
@@ -171,6 +195,10 @@
             <p>Les commandes sont préparées sous 24 h ouvrées. Comptez 4 à 8 jours ouvrés en France métropolitaine et en Belgique, avec un numéro de suivi envoyé par e-mail.</p>
           </details>
           <details>
+            <summary>Comment fonctionne la remise -15 % ?</summary>
+            <p>Dès 2 articles dans votre panier (identiques ou différents), 15 % sont déduits automatiquement du total. Aucun code à saisir.</p>
+          </details>
+          <details>
             <summary>Puis-je retourner un produit ?</summary>
             <p>Oui, vous disposez de 30 jours après réception pour nous retourner un article non utilisé. Le remboursement est effectué sous 5 jours après réception du retour.</p>
           </details>
@@ -178,23 +206,19 @@
             <summary>Le paiement est-il sécurisé ?</summary>
             <p>Tous les paiements passent par Shopify Payments (chiffrement SSL, 3-D Secure). Nous ne stockons jamais vos données bancaires.</p>
           </details>
-          <details>
-            <summary>Comment suivre ma commande ?</summary>
-            <p>Dès l'expédition, vous recevez un e-mail avec un lien de suivi. Vous pouvez aussi nous écrire à tout moment, nous répondons 7j/7.</p>
-          </details>
         </div>
       </div>
     </section>
 
     <!-- Newsletter -->
-    <section class="section newsletter">
-      <div class="container">
+    <section class="container">
+      <div class="newsletter-box">
         <span class="eyebrow">Newsletter</span>
         <h2 style="margin-top:12px">-10 % sur votre première commande</h2>
-        <p>Nouveautés, ventes privées et conseils. Un e-mail par semaine, maximum.</p>
+        <p>Nouveautés, ventes privées et avant-premières. Un e-mail par semaine, maximum.</p>
         <form class="news-form" id="news-form">
           <input type="email" required placeholder="Votre adresse e-mail" aria-label="Adresse e-mail">
-          <button class="btn btn-primary" type="submit">Je m'inscris</button>
+          <button class="btn btn-primary" type="submit">Je profite du -10 %</button>
         </form>
         <div class="news-msg" id="news-msg" role="status"></div>
       </div>
@@ -238,12 +262,14 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
-    <div class="ship-bar"><span id="ship-text"></span><div class="progress"><i id="ship-progress"></i></div></div>
+    <div class="ship-bar" id="ship-bar"></div>
     <div class="drawer-items" id="cart-items"></div>
     <div class="drawer-foot">
-      <div class="total"><span>Sous-total</span><b id="cart-total">0 €</b></div>
-      <button class="btn btn-primary btn-block" id="checkout">Passer commande</button>
-      <small>Taxes incluses. Frais de port calculés à l'étape suivante.</small>
+      <div class="row"><span>Sous-total</span><span id="cart-sub">0 €</span></div>
+      <div class="row discount" id="cart-discount-row"><span>Remise -15 %</span><span id="cart-discount"></span></div>
+      <div class="total"><span>Total</span><b id="cart-total">0 €</b></div>
+      <button class="btn btn-primary btn-block" id="checkout">Commander maintenant <span class="arrow">→</span></button>
+      <small>🔒 Paiement sécurisé · Retours gratuits 30 jours</small>
     </div>
   </aside>
 

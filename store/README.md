@@ -33,26 +33,42 @@ qui a le meilleur coût par achat.
 
 ## 2. Palette (tokens dans `styles.css`)
 
+Base sombre + couleurs vives pour guider l'œil vers l'achat.
+
 | Rôle | Token | Couleur |
 |---|---|---|
-| Fond | `--bg` | `#0A0A0C` |
-| Surface (cartes, footer) | `--surface` | `#121215` |
-| Surface élevée | `--surface-2` / `--surface-3` | `#1A1A1F` / `#232329` |
-| Bordure | `--border` / `--border-strong` | `#2A2A31` / `#3A3A43` |
-| Texte | `--text` | `#F4F4F6` |
-| Texte secondaire | `--text-soft` / `--muted` | `#C9C9D1` / `#8E8E99` |
-| Accent (boutons, prix clés) | `--accent` | `#D4B679` (champagne) |
-| Succès / promo | `--success` | `#4CC38A` |
-| Erreur | `--danger` | `#F2555A` |
+| Fond | `--bg` | `#09090B` |
+| Surfaces (cartes, footer) | `--surface` / `--surface-2` / `--surface-3` | `#111114` / `#18181D` / `#212128` |
+| Bordures | `--border` / `--border-strong` | `#26262E` / `#363640` |
+| Texte | `--text` / `--text-soft` / `--muted` | `#F5F5F7` / `#C8C8D2` / `#8B8B98` |
+| **Boutons d'achat** | `--cta` | dégradé `#7C3AED` → `#DB2777` (texte blanc) |
+| Titres / halos | `--grad` | dégradé `#A78BFA` → `#F472B6` → `#FB923C` |
+| Promo / économies | `--success` | `#34D399` |
+| Stock bas | `--orange` | `#FB923C` |
 
-Règle : un seul accent. Le champagne est réservé aux actions (CTA, badges, compteur panier).
+Une couleur par catégorie (`CATEGORY_COLORS` dans `products.js`) : Beauté `#F472B6`,
+Tech `#22D3EE`, Maison `#A78BFA`, Voyage `#FB923C`, Bien-être `#34D399`,
+Cuisine `#FBBF24`, Animaux `#A3E635`.
+
+## Leviers de conversion intégrés
+
+- **Ajout rapide** sur chaque carte (sans ouvrir la fiche).
+- **-15 % dès 2 articles**, calculé dans le panier, avec jauge de progression.
+- **Livraison offerte dès 60 €**, avec jauge.
+- **Compte à rebours** de la promo de lancement (`STORE.saleEnds`), disparaît à la fin.
+- **Stock bas** affiché sous 15 unités (`stock` dans `products.js`).
+- Réglages centralisés dans l'objet `STORE` de `products.js`.
+
+⚠️ En France/UE, le compte à rebours, les prix barrés et le stock doivent être réels
+(prix barré = prix réellement pratiqué avant la promo). Ne relancez pas un faux
+timer à chaque visite.
 
 ## 3. Passer sur Shopify
 
 1. Créer la boutique Shopify, installer le thème gratuit **Dawn**.
 2. *Personnaliser → Paramètres du thème → Couleurs* : créer un schéma
-   « Sombre » avec : Arrière-plan `#0A0A0C`, Texte `#F4F4F6`,
-   Bouton plein `#D4B679`, Libellé du bouton `#0A0A0C`, Bouton contour `#F4F4F6`,
+   « Sombre » avec : Arrière-plan `#09090B`, Texte `#F5F5F7`,
+   Bouton plein `#DB2777`, Libellé du bouton `#FFFFFF`, Bouton contour `#F5F5F7`,
    Ombre `#000000`. L'appliquer à toutes les sections.
 3. *Typographie* : Inter (titres en gras 700–800).
 4. Installer une appli fournisseur (DSers, CJ Dropshipping ou AutoDS), importer les
@@ -60,7 +76,7 @@ Règle : un seul accent. Le champagne est réservé aux actions (CTA, badges, co
 5. Reproduire la structure de la page : bandeau annonce → hero → réassurance →
    grille produits → produit phare → avis → FAQ → newsletter.
 6. Remplacer les illustrations par de vraies photos produit sur fond sombre
-   (fond `#121215`, format carré 1:1).
+   (fond `#111114`, format carré 1:1).
 
 À faire avant de lancer : mentions légales, CGV, politique de retour (obligatoires
 en France/UE), et remplacer les avis d'exemple par de vrais avis clients
