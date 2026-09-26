@@ -14,7 +14,7 @@ import { status } from '../status.js';
 
 /** Commandes du programme fans : sur le bot Neptune (serveur du créateur), ou sur le bot principal s'il n'y a pas de Neptune. */
 export const fanCommandDefinitions = [
-  new SlashCommandBuilder().setName('site').setDescription('Reçois ton lien de connexion à ton espace (vues, points, boutique)').toJSON(),
+  new SlashCommandBuilder().setName('site').setDescription('Reçois ton lien de connexion à ton espace (vues, coins, boutique)').toJSON(),
   new SlashCommandBuilder().setName('coins').setDescription('Tes vues et tes coins').toJSON(),
 ];
 export const FAN_COMMANDS = new Set(fanCommandDefinitions.map((c) => c.name));
