@@ -365,26 +365,47 @@ export function attachRecruitment(
       const s = recruitment.settings();
       const channel = await discord.channels.fetch(channelId);
       if (!channel?.isSendable()) throw new Error('Salon introuvable ou non accessible au bot');
-      const embed = new EmbedBuilder()
-        .setColor(0x16a34a)
-        .setTitle('🎬 Réalise ton test de clip')
-        .setDescription(
-          [
-            "Voici les **4 étapes** pour rejoindre l'équipe :",
-            '',
-            `**1. 📁 Consulte le Drive**${s.guidelinesUrl ? `\n${s.guidelinesUrl}` : ''}\nTu y trouveras les exemples et guidelines à respecter.`,
-            '',
-            '**2. 🎓 Regarde les tutos**',
-            '',
-            '**3. 🎬 Fais ton test**\nClique sur **Envoyer mon test** : un salon privé s’ouvre, dépose-y ton montage via **Drive ou WeTransfer**.',
-            '',
-            '**4. ✅ Validation**\n**Validé** → tu rejoins l’équipe.\n**À corriger** → tu reçois un retour pour améliorer ton clip.',
-          ].join('\n'),
-        );
+      // Forum des tutos (comme chez Micka : lien du salon + des posts à regarder)
+      const g = await guild();
+      const forum = (await g.channels.fetch()).find((c) => c?.type === ChannelType.GuildForum && /tuto/i.test(c.name));
+      let posts: string[] = [];
+      if (forum?.type === ChannelType.GuildForum) {
+        const [active, archived] = await Promise.all([
+          forum.threads.fetchActive().catch(() => null),
+          forum.threads.fetchArchived().catch(() => null),
+        ]);
+        const threads = [...(active?.threads.values() ?? []), ...(archived?.threads.values() ?? [])].filter((t) => t.parentId === forum.id);
+        posts = [...new Map(threads.map((t) => [t.id, t])).values()]
+          .sort((a, b) => (a.createdTimestamp ?? 0) - (b.createdTimestamp ?? 0))
+          .slice(0, 6)
+          .map((t) => `• <#${t.id}>`);
+      }
+      const content = [
+        '## 🎬 Réalise ton test de clip',
+        "Voici les **4 étapes** pour rejoindre l'équipe :",
+        '',
+        '**1. 📁 Consulte le Drive**',
+        ...(s.guidelinesUrl ? [s.guidelinesUrl] : []),
+        'Tu y trouveras les exemples et guidelines à respecter.',
+        '',
+        '**2. 🎓 Regarde les tutos**',
+        forum ? `Dans <#${forum.id}>${posts.length ? ', regarde notamment :' : '.'}` : 'Dans le salon tutos.',
+        ...posts,
+        '',
+        '**3. 🎬 Fais ton test**',
+        'Clique sur 📨 **Envoyer mon test** et envoie ton montage via **Drive ou WeTransfer** dans ton salon privé.',
+        '',
+        '**4. ✅ Validation**',
+        '**Validé** → Tu rejoins l’équipe.',
+        '**À corriger** → Tu reçois un retour pour améliorer ton clip.',
+        ...(s.testVideoUrl ? ['', '🎥 **La vidéo ci-dessous t’explique les consignes du test :**', s.testVideoUrl] : []),
+        '',
+        '**Une question ? Ouvre ton salon de test, on t’aidera.**',
+      ].join('\n');
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(TEST_BUTTON_ID).setLabel('Envoyer mon test').setEmoji('📨').setStyle(ButtonStyle.Success),
       );
-      await channel.send({ embeds: [embed], components: [row] });
+      await channel.send({ content, components: [row], allowedMentions: { parse: [] } });
     },
 
     async channels() {

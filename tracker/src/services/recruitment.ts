@@ -21,6 +21,8 @@ export interface RecruitmentSettings {
   callMinMinutes: number;
   /** Lien des guidelines (Drive) envoyé aux candidats. */
   guidelinesUrl: string;
+  /** Vidéo des consignes du test (lien), ajoutée au message « Réalise ton test ». */
+  testVideoUrl: string;
   /** Apprenti : vues cumulées depuis l'arrivée. */
   apprentiViews: number;
   /** Confirmé : vues sur les 7 derniers jours. */
@@ -66,6 +68,7 @@ export const DEFAULT_RECRUITMENT: RecruitmentSettings = {
   callDurationMin: 90,
   callMinMinutes: 15,
   guidelinesUrl: '',
+  testVideoUrl: '',
   apprentiViews: 10_000,
   confirmeWeeklyViews: 200_000,
   recruiterPerValidated: 0,

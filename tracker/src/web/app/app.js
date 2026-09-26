@@ -1116,6 +1116,7 @@ async function pageParametres() {
           <label class="field"><span>Rôle « Nouveau clipper »</span>${pick('newClipperRoleId', rs.newClipperRoleId, roles, 'Aucun')}<small>Donné quand un test est validé</small></label>
           <label class="field"><span>Catégorie des salons de test</span>${pick('testCategoryId', rs.testCategoryId, ofType('category'), 'Aucune (en haut du serveur)')}</label>
           <label class="field"><span>Lien des guidelines (Drive)</span><input class="input" name="guidelinesUrl" value="${esc(rs.guidelinesUrl)}" placeholder="https://drive.google.com/…"><small>Envoyé aux candidats</small></label>
+          <label class="field"><span>Vidéo des consignes du test (lien)</span><input class="input" name="testVideoUrl" value="${esc(rs.testVideoUrl)}" placeholder="Lien YouTube / Drive / Discord"><small>Ajoutée au message « Réalise ton test »</small></label>
         </div>
         <div class="grid-form">
           <label class="field"><span>Salon vocal des calls</span>${pick('callChannelId', rs.callChannelId, ofType('voice'), 'Aucun (présence non suivie)')}</label>
