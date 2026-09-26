@@ -3,75 +3,300 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Mon espace</title>
+<meta name="theme-color" content="#080808">
+<title>BE ONE POURCENT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f5f5f4; --card: #ffffff; --ink: #0a0a0a; --muted: #6b6b6b; --line: #e7e5e4;
-    --accent: #0a0a0a; --accent-ink: #ffffff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #0a0a0a; --card: #151515; --ink: #f5f5f4; --muted: #a1a1aa; --line: #262626; --accent: #f5f5f4; --accent-ink: #0a0a0a; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; }
+    --bg: #080808; --bg-2: #101010; --ink: #f5f5f5; --muted: #9a9a9a; --faint: #5c5c5c;
+    --line: rgba(255, 255, 255, .08); --line-2: rgba(255, 255, 255, .14);
+    --glass: rgba(22, 22, 22, .55); --glass-2: rgba(34, 34, 34, .6);
+    --lime: #b6ff00; --cyan: #00e5ff; --lime-glow: rgba(182, 255, 0, .35); --cyan-glow: rgba(0, 229, 255, .3);
+    --bad: #ff4d6d; --warn: #ffc233;
+    --display: 'Anton', 'Impact', sans-serif;
+    --r: 18px;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 Inter, system-ui, sans-serif; }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
-  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
-  h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
-  .muted { color: var(--muted); }
-  .small { font-size: 13px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; min-width: 0; }
-  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
-  .stat b { display: block; font: 700 22px/1.2 'JetBrains Mono', monospace; overflow-wrap: anywhere; }
-  .stat.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  .stat.main .muted { color: inherit; opacity: .7; }
-  .row { display: flex; gap: 8px; align-items: center; }
-  .row > * { min-width: 0; }
-  .row > input { flex: 1 1 auto; width: auto; }
-  .row > button { flex: none; }
-  input, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-  textarea { resize: vertical; min-height: 64px; }
-  button { font: 600 14px Inter, sans-serif; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 10px 14px; cursor: pointer; white-space: nowrap; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  .list { display: grid; gap: 8px; }
-  .item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
-  .item-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-  .product { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-  .product img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--bg); }
-  .product .price { font: 700 16px 'JetBrains Mono', monospace; }
-  .tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
-  .pending { color: var(--warn); } .delivered { color: var(--ok); } .refunded { color: var(--muted); }
-  .center { text-align: center; padding: 60px 16px; }
-  .discord-btn { display: inline-flex; align-items: center; gap: 10px; background: #5865f2; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 20px; border-radius: 12px; }
-  .discord-btn:hover { background: #4752c4; }
-  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; max-width: calc(100% - 32px); }
-  .toast.err { background: var(--bad); color: #fff; }
-  @media (max-width: 520px) { .stats { grid-template-columns: 1fr 1fr; } .stat.main { grid-column: 1 / -1; } }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 Inter, system-ui, sans-serif; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+  ::selection { background: var(--lime); color: #000; }
+
+  /* ---------- Fond : particules, grille, scan ---------- */
+  #fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .grid-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 64px 64px; mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 75%); opacity: .5; }
+  .scan { position: fixed; inset: 0; z-index: 50; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px); }
+  .scan::after { content: ''; position: absolute; left: 0; right: 0; height: 140px; top: -140px;
+    background: linear-gradient(180deg, transparent, rgba(182,255,0,.045), transparent); animation: sweep 7s linear infinite; }
+  @keyframes sweep { to { transform: translateY(calc(100vh + 140px)); } }
+  main, nav, footer { position: relative; z-index: 2; }
+
+  /* ---------- Curseur ---------- */
+  .cursor, .cursor-ring { position: fixed; top: 0; left: 0; z-index: 100; pointer-events: none; border-radius: 50%; display: none; }
+  .cursor { width: 8px; height: 8px; background: var(--lime); box-shadow: 0 0 12px var(--lime); margin: -4px 0 0 -4px; }
+  .cursor-ring { width: 36px; height: 36px; border: 1.5px solid rgba(182,255,0,.5); margin: -18px 0 0 -18px; transition: width .2s, height .2s, margin .2s, border-color .2s; }
+  .cursor-ring.hover { width: 56px; height: 56px; margin: -28px 0 0 -28px; border-color: var(--cyan); }
+  @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    body.has-cursor, body.has-cursor a, body.has-cursor button { cursor: none; }
+    body.has-cursor .cursor, body.has-cursor .cursor-ring { display: block; }
+  }
+
+  /* ---------- Nav ---------- */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px clamp(16px, 4vw, 40px); transition: background .3s, border-color .3s; border-bottom: 1px solid transparent; }
+  nav.solid { background: rgba(8,8,8,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-color: var(--line); }
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--display); font-size: 22px; letter-spacing: .02em; white-space: nowrap; }
+  .logo b { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--lime); color: #000; font-size: 17px; box-shadow: 0 0 24px var(--lime-glow); }
+  .links { display: flex; gap: 26px; font-weight: 600; font-size: 14px; color: var(--muted); }
+  .links a { text-decoration: none; transition: color .2s; }
+  .links a:hover { color: var(--ink); }
+  @media (max-width: 860px) { .links { display: none; } .logo span { display: none; } }
+
+  /* ---------- Boutons ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 14px; padding: 14px 22px;
+    font: 800 15px Inter, sans-serif; letter-spacing: .02em; text-decoration: none; cursor: pointer; color: var(--ink);
+    background: var(--glass-2); border: 1px solid var(--line-2); transition: transform .2s, box-shadow .25s, background .2s; white-space: nowrap; }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px var(--line-2), 0 10px 30px rgba(0,0,0,.4); }
+  .btn.lime { background: var(--lime); color: #000; border-color: var(--lime); }
+  .btn.lime:hover { box-shadow: 0 0 0 4px rgba(182,255,0,.15), 0 0 40px var(--lime-glow); }
+  .btn.cyan:hover { box-shadow: 0 0 0 4px rgba(0,229,255,.12), 0 0 34px var(--cyan-glow); border-color: var(--cyan); }
+  .btn.discord { background: #5865f2; border-color: #5865f2; color: #fff; }
+  .btn.discord:hover { box-shadow: 0 0 36px rgba(88,101,242,.55); }
+  .btn.big { padding: 18px 30px; font-size: 16px; border-radius: 16px; }
+  .btn.sm { padding: 10px 14px; font-size: 13px; border-radius: 11px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; background: var(--glass-2); border: 1px solid var(--line-2); font-weight: 800; font-size: 14px; }
+  .chip .coin { color: var(--lime); }
+
+  /* ---------- Sections ---------- */
+  section { padding: clamp(70px, 10vw, 120px) clamp(16px, 4vw, 40px); }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .kicker { display: inline-flex; align-items: center; gap: 8px; font: 700 12px 'JetBrains Mono', monospace; letter-spacing: .2em; text-transform: uppercase; color: var(--lime); }
+  .kicker::before { content: ''; width: 18px; height: 2px; background: currentColor; }
+  h2 { font-family: var(--display); font-weight: 400; font-size: clamp(38px, 6vw, 72px); line-height: 1; letter-spacing: .01em; margin: 14px 0 12px; text-transform: uppercase; }
+  .lead { color: var(--muted); font-size: 17px; max-width: 620px; margin: 0; }
+  .glass { background: linear-gradient(160deg, rgba(40,40,40,.55), rgba(16,16,16,.55)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: var(--r); }
+  .lift { transition: transform .3s cubic-bezier(.2,.7,.2,1), border-color .3s, box-shadow .3s; }
+  .lift:hover { transform: translateY(-6px); border-color: rgba(182,255,0,.35); box-shadow: 0 20px 50px rgba(0,0,0,.5), 0 0 40px rgba(182,255,0,.08); }
+
+  /* ---------- Hero ---------- */
+  .hero { min-height: 100svh; display: grid; place-items: center; text-align: center; position: relative; overflow: hidden; padding-top: 110px; }
+  .hero-media { position: absolute; inset: -8% 0; z-index: -1; will-change: transform; }
+  .hero-media img, .hero-media video { width: 100%; height: 100%; object-fit: cover; opacity: .35; filter: grayscale(.2) contrast(1.1); }
+  .hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background:
+    radial-gradient(ellipse 60% 50% at 50% 45%, rgba(182,255,0,.12), transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 20%, rgba(0,229,255,.10), transparent 70%),
+    linear-gradient(180deg, rgba(8,8,8,.2) 0%, rgba(8,8,8,.55) 60%, var(--bg) 100%); }
+  .hero h1 { font-family: var(--display); font-weight: 400; font-size: clamp(54px, 13vw, 176px); line-height: .88; margin: 18px 0 20px; text-transform: uppercase; letter-spacing: .005em; }
+  .hero h1 .word { display: inline-block; white-space: nowrap; }
+  .hero h1 .ch { display: inline-block; opacity: 0; transform: translateY(40px) rotate(4deg); animation: up .7s cubic-bezier(.2,.8,.2,1) forwards; }
+  .hero h1 .accent { color: var(--lime); text-shadow: 0 0 40px var(--lime-glow); }
+  @keyframes up { to { opacity: 1; transform: none; } }
+  .hero p { font-size: clamp(17px, 2.2vw, 22px); color: #cfcfcf; max-width: 640px; margin: 0 auto 34px; }
+  .hero .ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .scroll-hint { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); color: var(--faint); font: 600 11px 'JetBrains Mono', monospace; letter-spacing: .2em; }
+
+  /* ---------- Communauté ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 40px; }
+  .stat { padding: 24px; min-width: 0; }
+  .stat .ico { font-size: 26px; }
+  .stat .num { font: 800 clamp(30px, 4vw, 44px)/1.1 'JetBrains Mono', monospace; margin: 14px 0 4px; overflow-wrap: anywhere; }
+  .stat .lbl { color: var(--muted); font-weight: 600; font-size: 14px; }
+  .progress { margin-top: 14px; padding: 24px; }
+  .bar { height: 12px; border-radius: 99px; background: rgba(255,255,255,.06); overflow: hidden; margin-top: 12px; }
+  .bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--lime)); box-shadow: 0 0 20px var(--lime-glow); transition: width 1.6s cubic-bezier(.2,.8,.2,1); }
+  .row-between { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 860px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* ---------- Contenu ---------- */
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 30px 0 22px; }
+  .tab { padding: 10px 16px; border-radius: 99px; border: 1px solid var(--line-2); background: transparent; color: var(--muted); font: 700 14px Inter, sans-serif; cursor: pointer; transition: all .2s; }
+  .tab.on, .tab:hover { color: #000; background: var(--lime); border-color: var(--lime); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .media-card { overflow: hidden; text-decoration: none; display: flex; flex-direction: column; min-width: 0; }
+  .thumb { aspect-ratio: 16/9; background: linear-gradient(135deg, #1a1a1a, #0d0d0d); position: relative; overflow: hidden; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s; }
+  .media-card:hover .thumb img { transform: scale(1.06); }
+  .thumb .play { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity .3s; background: rgba(0,0,0,.35); }
+  .media-card:hover .play { opacity: 1; }
+  .play span { width: 58px; height: 58px; border-radius: 50%; background: var(--lime); display: grid; place-items: center; box-shadow: 0 0 30px var(--lime-glow); }
+  .badge { position: absolute; top: 10px; left: 10px; padding: 4px 10px; border-radius: 99px; font: 800 11px Inter, sans-serif; letter-spacing: .06em; text-transform: uppercase; background: rgba(8,8,8,.75); border: 1px solid var(--line-2); backdrop-filter: blur(6px); }
+  .media-card .meta { padding: 14px 16px 16px; }
+  .media-card .meta b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .media-card .meta small { color: var(--muted); }
+  .empty { padding: 34px; text-align: center; color: var(--muted); }
+
+  /* ---------- Section 1% ---------- */
+  .one { text-align: center; position: relative; overflow: hidden; }
+  .one::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 50% 40% at 50% 60%, rgba(182,255,0,.08), transparent 70%); pointer-events: none; }
+  .one .big { font-family: var(--display); font-size: clamp(42px, 8.5vw, 120px); line-height: .95; text-transform: uppercase; margin: 0; }
+  .one .big .dim { color: #3a3a3a; }
+  .one .big .hl { color: var(--lime); text-shadow: 0 0 50px var(--lime-glow); }
+  .pct { font: 800 clamp(64px, 12vw, 150px)/1 'JetBrains Mono', monospace; margin: 40px 0 8px; background: linear-gradient(90deg, var(--cyan), var(--lime)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .dots { display: grid; grid-template-columns: repeat(20, 1fr); gap: 7px; max-width: 520px; margin: 30px auto 0; }
+  .dots i { aspect-ratio: 1; border-radius: 50%; background: #242424; transition: background .4s, box-shadow .4s, transform .4s; }
+  .dots i.lit { background: var(--lime); box-shadow: 0 0 18px var(--lime), 0 0 40px var(--lime-glow); transform: scale(1.5); }
+  .dots.go i:not(.lit) { background: #161616; }
+
+  /* ---------- Boutique ---------- */
+  .how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 34px 0 30px; }
+  .how .step { padding: 22px; }
+  .how .n { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: rgba(182,255,0,.12); color: var(--lime); font: 800 16px 'JetBrains Mono', monospace; margin-bottom: 12px; }
+  .how b { display: block; font-size: 17px; margin-bottom: 4px; }
+  .how p { margin: 0; color: var(--muted); font-size: 14px; }
+  @media (max-width: 760px) { .how { grid-template-columns: 1fr; } }
+  .wallet { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .wallet .w { padding: 22px; min-width: 0; }
+  .wallet .w.main { background: linear-gradient(135deg, rgba(182,255,0,.16), rgba(0,229,255,.08)); border-color: rgba(182,255,0,.35); box-shadow: 0 0 60px rgba(182,255,0,.08); }
+  .wallet .v { font: 800 clamp(28px, 4vw, 44px)/1.1 'JetBrains Mono', monospace; margin-top: 6px; overflow-wrap: anywhere; }
+  .wallet .main .v { color: var(--lime); text-shadow: 0 0 30px var(--lime-glow); }
+  .wallet small { color: var(--muted); font-weight: 600; }
+  @media (max-width: 760px) { .wallet { grid-template-columns: 1fr 1fr; } .wallet .main { grid-column: 1 / -1; } }
+  .panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 30px; }
+  .panel { padding: 22px; min-width: 0; }
+  .panel h3 { margin: 0 0 6px; font-size: 18px; }
+  .panel p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  @media (max-width: 760px) { .panels { grid-template-columns: 1fr; } }
+  .field-row { display: flex; gap: 8px; }
+  .field-row > * { min-width: 0; }
+  input, textarea { width: 100%; font: 500 15px Inter, sans-serif; color: var(--ink); background: rgba(0,0,0,.45); border: 1px solid var(--line-2); border-radius: 12px; padding: 13px 14px; outline: none; transition: border-color .2s, box-shadow .2s; }
+  input:focus, textarea:focus { border-color: var(--lime); box-shadow: 0 0 0 3px rgba(182,255,0,.15); }
+  textarea { resize: vertical; min-height: 70px; }
+  .field-row input { flex: 1 1 auto; width: auto; }
+  .acc { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: rgba(0,0,0,.25); }
+  .acc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .item { padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; position: relative; overflow: hidden; }
+  .item .pic { aspect-ratio: 1; border-radius: 14px; background: radial-gradient(circle at 50% 35%, rgba(182,255,0,.18), rgba(0,0,0,.2) 70%); display: grid; place-items: center; font-size: 64px; overflow: hidden; }
+  .item .pic img { width: 100%; height: 100%; object-fit: cover; }
+  .item .type { position: absolute; top: 26px; left: 26px; }
+  .item .name { font-weight: 800; font-size: 18px; }
+  .item .desc { color: var(--muted); font-size: 14px; }
+  .item .price { font: 800 22px 'JetBrains Mono', monospace; color: var(--lime); }
+  .item .stock { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .orders .acc { font-size: 14px; }
+  .st { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+  .st.pending { color: var(--warn); } .st.delivered { color: var(--lime); } .st.refunded { color: var(--faint); }
+  .login-cta { padding: 30px; text-align: center; margin-top: 20px; background: linear-gradient(135deg, rgba(88,101,242,.18), rgba(0,229,255,.06)); border-color: rgba(88,101,242,.35); }
+  .login-cta h3 { font-family: var(--display); font-weight: 400; font-size: clamp(28px, 4vw, 42px); text-transform: uppercase; margin: 0 0 8px; }
+  .login-cta p { color: #cfcfcf; margin: 0 0 20px; }
+  .alert { padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; font-weight: 600; background: rgba(255,77,109,.12); border: 1px solid rgba(255,77,109,.35); color: #ffb3c1; }
+
+  footer { padding: 40px 16px 60px; text-align: center; color: var(--faint); font-size: 13px; border-top: 1px solid var(--line); }
+
+  /* ---------- Apparitions ---------- */
+  .reveal { opacity: 0; transform: translateY(34px); transition: opacity .9s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; background: var(--lime); color: #000; padding: 13px 20px; border-radius: 14px; font-weight: 800; box-shadow: 0 0 40px var(--lime-glow); max-width: calc(100% - 32px); text-align: center; }
+  .toast.err { background: var(--bad); color: #fff; box-shadow: 0 0 40px rgba(255,77,109,.4); }
+  #confetti { position: fixed; inset: 0; z-index: 95; pointer-events: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+    .hero h1 .ch { opacity: 1; transform: none; }
+    html { scroll-behavior: auto; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap" id="app"><p class="muted center">Chargement…</p></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="grid-bg" aria-hidden="true"></div>
+<div class="scan" aria-hidden="true"></div>
+<div class="cursor" aria-hidden="true"></div><div class="cursor-ring" aria-hidden="true"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<nav id="nav">
+  <a class="logo" href="#top"><b>1%</b><span id="brand">BE ONE POURCENT</span></a>
+  <div class="links"><a href="#communaute">Communauté</a><a href="#contenu">Contenu</a><a href="#un-pourcent">Le 1%</a><a href="#boutique">Boutique</a></div>
+  <div id="nav-user"></div>
+</nav>
+
+<main id="top">
+  <header class="hero" id="hero">
+    <div class="hero-media" id="hero-media"></div>
+    <div class="wrap">
+      <span class="kicker">Communauté officielle</span>
+      <h1 id="hero-title"></h1>
+      <p id="tagline"></p>
+      <div class="ctas" id="hero-ctas"></div>
+    </div>
+    <div class="scroll-hint">SCROLL ↓</div>
+  </header>
+
+  <section id="communaute">
+    <div class="wrap">
+      <div class="reveal"><span class="kicker">La communauté</span><h2>On avance ensemble</h2>
+        <p class="lead">Chaque clip compte. Chaque vue rapproche toute la communauté du prochain palier.</p></div>
+      <div class="stats" id="stats"></div>
+      <div class="glass progress reveal" id="progress"></div>
+    </div>
+  </section>
+
+  <section id="contenu">
+    <div class="wrap">
+      <div class="reveal"><span class="kicker">Contenu</span><h2>Ne rate rien</h2>
+        <p class="lead">Les dernières vidéos, les meilleurs moments et les clips de la commu.</p></div>
+      <div class="tabs reveal" id="tabs"></div>
+      <div class="cards" id="cards"></div>
+    </div>
+  </section>
+
+  <section class="one" id="un-pourcent">
+    <div class="wrap reveal">
+      <p class="big"><span class="dim">Pas besoin d'être</span> parfait.</p>
+      <p class="big">Il faut juste être <span class="hl">dans le 1%.</span></p>
+      <div class="pct" id="pct">100%</div>
+      <p class="lead" style="margin:0 auto">99 abandonnent. 1 continue. Sois celui-là.</p>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <section id="boutique">
+    <div class="wrap">
+      <div class="reveal"><span class="kicker">Boutique</span><h2>Tes clips = des coins</h2>
+        <p class="lead" id="shop-lead"></p></div>
+      <div class="how">
+        <div class="glass step lift reveal"><span class="n">1</span><b>Connecte-toi avec Discord</b><p>Un clic, pas de mot de passe.</p></div>
+        <div class="glass step lift reveal"><span class="n">2</span><b>Poste des clips</b><p>Ajoute tes comptes TikTok, Insta, YouTube : chaque vue te rapporte des coins.</p></div>
+        <div class="glass step lift reveal"><span class="n">3</span><b>Échange tes coins</b><p>Contre des gamepasses et objets, livrés direct dans le jeu.</p></div>
+      </div>
+      <div id="shop-area"></div>
+    </div>
+  </section>
+</main>
+
+<footer><span id="foot"></span> · Les vues sont mises à jour plusieurs fois par jour.</footer>
+
 <script>
-const $app = document.getElementById('app');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const fmt = (n) => Number(n).toLocaleString('fr-FR');
-const STATUS = { pending: 'En attente de livraison', delivered: 'Livré en jeu', refunded: 'Remboursé' };
+const compact = (n) => n >= 1e9 ? (n / 1e9).toFixed(1).replace('.0', '') + ' Md' : n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '') + ' M' : n >= 1e4 ? Math.round(n / 1e3) + ' k' : fmt(n);
+const STATUS = { pending: 'En route vers le jeu', delivered: 'Livré ✅', refunded: 'Remboursé' };
 const PLATFORM = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+const KIND = { video: 'Vidéo', podcast: 'Podcast', best: 'Best of', clip: 'Clip commu' };
+const DISCORD_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.6 1.3a18.4 18.4 0 0 0-5.6 0L8.6 3a19.7 19.7 0 0 0-4.9 1.4C.6 9.1-.3 13.6.1 18.1a19.9 19.9 0 0 0 6 3l1.3-2.1a12.9 12.9 0 0 1-2-1l.5-.4a14.2 14.2 0 0 0 12.2 0l.5.4c-.6.4-1.3.7-2 1l1.3 2.1a19.8 19.8 0 0 0 6-3c.5-5.2-.8-9.7-3.6-13.7zM8 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4z"/></svg>';
+const PLAY_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="#000"><path d="M8 5v14l11-7z"/></svg>';
+const loginBtn = (cls = '') => `<a class="btn discord ${cls}" href="/fan/auth/discord">${DISCORD_SVG}Se connecter avec Discord</a>`;
+
+let PUB = null;
+let ME = null;
 
 function toast(msg, err) {
   const t = document.createElement('div');
   t.className = 'toast' + (err ? ' err' : '');
   t.textContent = msg;
   document.body.append(t);
-  setTimeout(() => t.remove(), 3500);
+  setTimeout(() => t.remove(), 3800);
 }
 
 async function api(path, opts = {}) {
@@ -81,87 +306,254 @@ async function api(path, opts = {}) {
   return data;
 }
 
-function loggedOut() {
-    const error = new URLSearchParams(location.search).get('error');
-  $app.innerHTML = `<div class="card center"><h1>Boutique</h1>
-    <p class="muted" style="margin:0 0 18px">Gagne des coins avec les vues de tes clips et échange-les contre des objets en jeu.</p>
-    ${error ? `<p class="small" style="color:var(--bad)">${esc(error)}</p>` : ''}
-    <a href="/fan/auth/discord" class="discord-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.6 1.3a18.4 18.4 0 0 0-5.6 0L8.6 3a19.7 19.7 0 0 0-4.9 1.4C.6 9.1-.3 13.6.1 18.1a19.9 19.9 0 0 0 6 3l1.3-2.1a12.9 12.9 0 0 1-2-1l.5-.4a14.2 14.2 0 0 0 12.2 0l.5.4c-.6.4-1.3.7-2 1l1.3 2.1a19.8 19.8 0 0 0 6-3c.5-5.2-.8-9.7-3.6-13.7zM8 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4z"/></svg>Se connecter avec Discord</a></div>`;
+// ---------- Fond animé : particules reliées ----------
+function particles() {
+  const c = $('#fx'), g = c.getContext('2d');
+  let w, h, pts = [];
+  const mouse = { x: -999, y: -999 };
+  const resize = () => {
+    w = c.width = innerWidth * devicePixelRatio; h = c.height = innerHeight * devicePixelRatio;
+    c.style.width = innerWidth + 'px'; c.style.height = innerHeight + 'px';
+    const n = Math.min(90, Math.round(innerWidth * innerHeight / 18000));
+    pts = Array.from({ length: n }, () => ({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .25 * devicePixelRatio, vy: (Math.random() - .5) * .25 * devicePixelRatio, r: (Math.random() * 1.4 + .4) * devicePixelRatio, cyan: Math.random() < .25 }));
+  };
+  resize(); addEventListener('resize', resize);
+  addEventListener('pointermove', (e) => { mouse.x = e.clientX * devicePixelRatio; mouse.y = e.clientY * devicePixelRatio; });
+  const link = 130 * devicePixelRatio;
+  const frame = () => {
+    g.clearRect(0, 0, w, h);
+    for (const p of pts) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
+      const dm = Math.hypot(p.x - mouse.x, p.y - mouse.y);
+      if (dm < 160 * devicePixelRatio) { p.x += (p.x - mouse.x) / dm * .6; p.y += (p.y - mouse.y) / dm * .6; }
+      g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      g.fillStyle = p.cyan ? 'rgba(0,229,255,.7)' : 'rgba(182,255,0,.65)'; g.fill();
+    }
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      const a = pts[i], b = pts[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < link) { g.strokeStyle = `rgba(182,255,0,${.09 * (1 - d / link)})`; g.lineWidth = devicePixelRatio; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); }
+    }
+    requestAnimationFrame(frame);
+  };
+  frame();
 }
 
-async function render() {
-  let d;
-  try {
-    d = await api('/api/fan/me');
-  } catch (err) {
-    if (err.status === 401) return loggedOut();
-    $app.innerHTML = `<p class="center">${esc(err.message)}</p>`;
+// ---------- Curseur perso ----------
+function cursor() {
+  if (!matchMedia('(pointer: fine)').matches) return;
+  document.body.classList.add('has-cursor');
+  const dot = $('.cursor'), ring = $('.cursor-ring');
+  let x = 0, y = 0, rx = 0, ry = 0;
+  addEventListener('pointermove', (e) => { x = e.clientX; y = e.clientY; dot.style.transform = `translate(${x}px,${y}px)`; });
+  document.addEventListener('pointerover', (e) => ring.classList.toggle('hover', !!e.target.closest('a,button,.tab,.lift')));
+  const loop = () => { rx += (x - rx) * .18; ry += (y - ry) * .18; ring.style.transform = `translate(${rx}px,${ry}px)`; requestAnimationFrame(loop); };
+  loop();
+}
+
+// ---------- Apparitions, compteurs, parallax ----------
+function countUp(el, to, format = compact) {
+  if (reduce) { el.textContent = format(to); return; }
+  const t0 = performance.now(), dur = 1600;
+  const step = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = format(Math.round(to * e)); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+const io = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    const el = e.target;
+    el.classList.add('in');
+    if (el.dataset.count !== undefined) countUp(el, Number(el.dataset.count), el.dataset.full !== undefined ? fmt : compact);
+    if (el.dataset.bar !== undefined) el.style.width = el.dataset.bar + '%';
+    if (el.id === 'pct') onePercent();
+    io.unobserve(el);
+  }
+}, { threshold: .2 });
+const observe = (root = document) => root.querySelectorAll('.reveal:not(.in), [data-count], [data-bar], #pct').forEach((el) => io.observe(el));
+
+function parallax() {
+  if (reduce) return;
+  const media = $('#hero-media');
+  addEventListener('scroll', () => { media.style.transform = `translateY(${scrollY * .3}px) scale(1.05)`; $('#nav').classList.toggle('solid', scrollY > 40); }, { passive: true });
+}
+
+// ---------- Section 1% ----------
+function onePercent() {
+  const el = $('#pct'), dots = $('#dots');
+  const lit = 57;
+  if (reduce) { el.textContent = '1%'; dots.children[lit].classList.add('lit'); dots.classList.add('go'); return; }
+  const t0 = performance.now(), dur = 2200;
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+    const v = Math.max(1, Math.round(100 - 99 * e));
+    el.textContent = v + '%';
+    [...dots.children].forEach((d, i) => (d.style.background = i >= v && i !== lit ? '#161616' : ''));
+    if (k < 1) requestAnimationFrame(step);
+    else { dots.children[lit].classList.add('lit'); dots.classList.add('go'); }
+  };
+  requestAnimationFrame(step);
+}
+
+// ---------- Confettis (achat) ----------
+function confetti() {
+  if (reduce) return;
+  const c = $('#confetti'), g = c.getContext('2d');
+  c.width = innerWidth; c.height = innerHeight;
+  const bits = Array.from({ length: 140 }, () => ({ x: innerWidth / 2, y: innerHeight * .6, vx: (Math.random() - .5) * 16, vy: -Math.random() * 16 - 6, s: Math.random() * 7 + 4, r: Math.random() * 6, c: ['#b6ff00', '#00e5ff', '#f5f5f5'][Math.floor(Math.random() * 3)] }));
+  const t0 = performance.now();
+  const frame = (t) => {
+    g.clearRect(0, 0, c.width, c.height);
+    for (const b of bits) { b.vy += .45; b.x += b.vx; b.y += b.vy; b.r += .1; g.save(); g.translate(b.x, b.y); g.rotate(b.r); g.fillStyle = b.c; g.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); g.restore(); }
+    if (t - t0 < 2600) requestAnimationFrame(frame); else g.clearRect(0, 0, c.width, c.height);
+  };
+  requestAnimationFrame(frame);
+}
+
+// ---------- Rendu ----------
+function renderHero() {
+  const title = PUB.programName;
+  document.title = title;
+  $('#brand').textContent = title;
+  $('#foot').textContent = `© ${new Date().getFullYear()} ${title}`;
+  let i = 0;
+  const words = title.split(/\s+/).filter(Boolean);
+  $('#hero-title').innerHTML = words.map((w, wi) => `<span class="word ${wi === words.length - 1 ? 'accent' : ''}">${[...w].map((ch) => `<span class="ch" style="animation-delay:${(i++) * 45}ms">${esc(ch)}</span>`).join('')}</span>`).join(' ');
+  $('#tagline').textContent = PUB.tagline;
+  const join = PUB.discordInviteUrl
+    ? `<a class="btn lime big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre la communauté</a>`
+    : `<a class="btn lime big" href="${ME ? '#boutique' : '/fan/auth/discord'}">Rejoindre la communauté</a>`;
+  $('#hero-ctas').innerHTML = `${join}<a class="btn cyan big" href="#boutique">Voir la boutique</a>`;
+  const m = PUB.heroMediaUrl;
+  if (m) $('#hero-media').innerHTML = /\.(mp4|webm)(\?|$)/i.test(m)
+    ? `<video src="${esc(m)}" autoplay muted loop playsinline ${reduce ? '' : ''}></video>`
+    : `<img src="${esc(m)}" alt="">`;
+}
+
+function renderNav() {
+  $('#nav-user').innerHTML = ME
+    ? `<a class="chip" href="#boutique">🪙 <span class="coin">${fmt(ME.balance)}</span> coins</a>`
+    : `<a class="btn discord sm" href="/fan/auth/discord">${DISCORD_SVG}Connexion</a>`;
+}
+
+function renderStats() {
+  const s = PUB.stats;
+  const card = (ico, n, lbl) => `<div class="glass stat lift reveal"><div class="ico">${ico}</div><div class="num" data-count="${n}">0</div><div class="lbl">${lbl}</div></div>`;
+  $('#stats').innerHTML = card('👥', s.members, 'Membres') + card('🔥', s.active, 'Actifs cette semaine') + card('🏆', s.rewards, 'Récompenses débloquées') + card('🎬', s.clips, 'Clips publiés');
+  const next = [1e5, 1e6, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 1e10].find((m) => m > s.views) ?? s.views * 2;
+  const pct = Math.min(100, Math.round((s.views / next) * 100));
+  $('#progress').innerHTML = `<div class="row-between"><div><b style="font-size:18px">📈 Progression de la communauté</b><div style="color:var(--muted);font-size:14px">Prochain palier : ${compact(next)} vues</div></div>
+    <div style="font:800 28px 'JetBrains Mono',monospace;color:var(--lime)"><span data-count="${s.views}">0</span> <span style="font-size:14px;color:var(--muted)">vues</span></div></div>
+    <div class="bar"><i data-bar="${Math.max(2, pct)}"></i></div>`;
+}
+
+let TAB = 'all';
+function renderContent() {
+  const items = [
+    ...PUB.featured.map((f) => ({ ...f, sub: KIND[f.kind] })),
+    ...PUB.clips.map((c) => ({ kind: 'clip', title: c.title || `Clip ${PLATFORM[c.platform]}`, url: c.url, thumbnail: c.thumbnail, sub: `${PLATFORM[c.platform]} · ${compact(c.views)} vues` })),
+  ];
+  const kinds = ['all', ...['video', 'clip', 'podcast', 'best'].filter((k) => items.some((x) => x.kind === k))];
+  $('#tabs').innerHTML = kinds.length > 2 ? kinds.map((k) => `<button class="tab ${k === TAB ? 'on' : ''}" data-tab="${k}">${k === 'all' ? 'Tout' : KIND[k]}</button>`).join('') : '';
+  const list = items.filter((x) => TAB === 'all' || x.kind === TAB);
+  $('#cards').innerHTML = list.map((x) => `<a class="glass media-card lift reveal" href="${esc(x.url)}" target="_blank" rel="noopener">
+      <div class="thumb">${x.thumbnail ? `<img src="${esc(x.thumbnail)}" alt="" loading="lazy">` : ''}<span class="badge">${esc(KIND[x.kind])}</span><div class="play"><span>${PLAY_SVG}</span></div></div>
+      <div class="meta"><b>${esc(x.title || 'Voir la vidéo')}</b><small>${esc(x.sub ?? '')}</small></div></a>`).join('')
+    || '<div class="glass empty" style="grid-column:1/-1">Les premières vidéos arrivent très vite 🎬</div>';
+  $('#tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; TAB = b.dataset.tab; renderContent(); };
+  observe($('#contenu'));
+}
+
+function itemCard(i, balance, canBuy) {
+  const soldOut = i.stock !== null && i.stock <= 0;
+  const missing = balance === null ? null : Math.max(0, i.price - balance);
+  let btn;
+  if (balance === null) btn = `<a class="btn discord sm" href="/fan/auth/discord">${DISCORD_SVG}Connexion</a>`;
+  else if (soldOut) btn = '<button class="btn sm" disabled>Rupture</button>';
+  else if (!canBuy) btn = '<button class="btn sm" disabled>Relie ton Roblox</button>';
+  else if (missing > 0) btn = `<button class="btn sm" disabled>Encore ${fmt(missing)} coins</button>`;
+  else btn = `<button class="btn lime" data-buy="${i.id}">Échanger</button>`;
+  return `<div class="glass item lift reveal"><div class="pic">${i.imageUrl ? `<img src="${esc(i.imageUrl)}" alt="" loading="lazy">` : i.kind === 'gamepass' ? '🎟️' : '🎁'}</div>
+    <span class="badge type">${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</span>
+    <div class="name">${esc(i.name)}</div>${i.description ? `<div class="desc">${esc(i.description)}</div>` : ''}
+    <div class="row-between"><span class="price">🪙 ${fmt(i.price)}</span>${i.stock !== null ? `<span class="stock">${soldOut ? 'Épuisé' : `${i.stock} restant${i.stock > 1 ? 's' : ''}`}</span>` : ''}</div>${btn}</div>`;
+}
+
+function renderShop() {
+  const error = new URLSearchParams(location.search).get('error');
+  $('#shop-lead').textContent = `${fmt(PUB.pointsPer1000)} coins pour 1 000 vues sur tes clips. Seules les vues faites après l'ajout de ton compte comptent.`;
+  const area = $('#shop-area');
+  if (!ME) {
+    area.innerHTML = `${error ? `<div class="alert">${esc(error)}</div>` : ''}
+      <div class="shop">${PUB.items.map((i) => itemCard(i, null, false)).join('') || '<div class="glass empty" style="grid-column:1/-1">La boutique ouvre bientôt 🔥</div>'}</div>
+      <div class="glass login-cta reveal"><h3>Prêt à gagner tes premiers coins ?</h3><p>Connecte-toi avec Discord pour ajouter tes comptes et débloquer la boutique.</p>${loginBtn('big')}</div>`;
+    observe(area);
     return;
   }
-  document.title = d.programName;
+  const d = ME;
   const canBuy = !!d.roblox.userId;
-  $app.innerHTML = `
-    <header><div><h1>${esc(d.programName)}</h1><div class="muted small">Salut ${esc(d.username)} 👋</div></div><button id="logout">Déconnexion</button></header>
-    <div class="stats">
-      <div class="stat main"><span class="muted small">Mes coins</span><b>${fmt(d.balance)}</b></div>
-      <div class="stat"><span class="muted small">Vues</span><b>${fmt(d.views)}</b></div>
-      <div class="stat"><span class="muted small">Dépensés</span><b>${fmt(d.spent)}</b></div>
+  area.innerHTML = `
+    <div class="wallet">
+      <div class="glass w main reveal"><small>🪙 Mes coins</small><div class="v" data-count="${d.balance}" data-full>0</div></div>
+      <div class="glass w reveal"><small>👀 Vues</small><div class="v" data-count="${d.views}">0</div></div>
+      <div class="glass w reveal"><small>🛒 Dépensés</small><div class="v">${fmt(d.spent)}</div></div>
     </div>
-    <p class="muted small" style="margin:-4px 0 14px">${fmt(d.pointsPer1000)} coins pour 1 000 vues · les vues sont mises à jour plusieurs fois par jour. Seules les vues faites après l'ajout d'un compte comptent.</p>
-
-    <div class="card"><h2>🎮 Mon compte Roblox</h2>
-      ${d.roblox.username ? `<p style="margin:0 0 10px">Relié à <b>${esc(d.roblox.username)}</b> : tes achats arrivent en jeu à ta prochaine connexion.</p>` : '<p class="muted small" style="margin:0 0 10px">Obligatoire pour recevoir tes achats dans le jeu.</p>'}
-      <form class="row" id="roblox"><input name="username" placeholder="Ton pseudo Roblox" value="${esc(d.roblox.username ?? '')}" required minlength="3" maxlength="20"><button class="primary">${d.roblox.username ? 'Changer' : 'Relier'}</button></form>
+    <div class="panels">
+      <div class="glass panel reveal"><h3>🎮 Mon compte Roblox</h3>
+        <p>${d.roblox.username ? `Relié à <b style="color:var(--ink)">${esc(d.roblox.username)}</b> : tes achats arrivent en jeu à ta prochaine connexion.` : 'Obligatoire pour recevoir tes achats dans le jeu.'}</p>
+        <form class="field-row" id="roblox"><input name="username" placeholder="Ton pseudo Roblox" value="${esc(d.roblox.username ?? '')}" required minlength="3" maxlength="20" autocomplete="off"><button class="btn ${d.roblox.username ? '' : 'lime'}">${d.roblox.username ? 'Changer' : 'Relier'}</button></form>
+      </div>
+      <div class="glass panel reveal"><h3>📱 Mes comptes</h3><p>Les vues de ces comptes te rapportent des coins.</p>
+        ${d.accounts.map((a) => `<div class="acc"><span><b>${PLATFORM[a.platform]}</b> @${esc(a.handle)}</span><button class="btn sm" data-del="${a.id}">Retirer</button></div>`).join('')}
+        <form id="accounts" style="display:grid;gap:8px"><textarea name="text" rows="2" placeholder="Colle le lien de ton profil TikTok, Instagram ou YouTube"></textarea><div><button class="btn lime">Ajouter</button></div></form>
+      </div>
     </div>
+    <div class="shop">${d.items.map((i) => itemCard(i, d.balance, canBuy)).join('') || '<div class="glass empty" style="grid-column:1/-1">La boutique ouvre bientôt 🔥</div>'}</div>
+    ${d.orders.length ? `<div class="glass panel orders reveal" style="margin-top:20px"><h3>📦 Mes achats</h3>${d.orders.map((o) => `<div class="acc"><span><b>${esc(o.itemName)}</b> · 🪙 ${fmt(o.price)}</span><span class="st ${o.status}">${STATUS[o.status]}</span></div>`).join('')}</div>` : ''}
+    <div style="text-align:center;margin-top:30px"><button class="btn sm" id="logout">Se déconnecter</button></div>`;
+  observe(area);
 
-    <div class="card"><h2>📱 Mes comptes suivis</h2>
-      <div class="list">${d.accounts.map((a) => `<div class="item-row"><span><b>${PLATFORM[a.platform]}</b> @${esc(a.handle)}</span><button data-del="${a.id}">Retirer</button></div>`).join('') || '<p class="muted small" style="margin:0">Aucun compte pour l\'instant.</p>'}</div>
-      <form class="stack" id="accounts" style="margin-top:10px;display:grid;gap:8px"><textarea name="text" placeholder="Colle le lien de ton profil TikTok, Instagram ou YouTube (un par ligne)"></textarea><div><button class="primary">Ajouter</button></div></form>
-    </div>
-
-    <div class="card"><h2>🛒 Boutique</h2>
-      ${canBuy ? '' : '<p class="small" style="margin:0 0 10px;color:var(--warn)">Relie ton compte Roblox pour pouvoir échanger tes coins.</p>'}
-      <div class="shop">${d.items.map((i) => {
-        const soldOut = i.stock !== null && i.stock <= 0;
-        const ok = canBuy && !soldOut && d.balance >= i.price;
-        return `<div class="product">${i.imageUrl ? `<img src="${esc(i.imageUrl)}" alt="" loading="lazy">` : ''}
-          <span class="tag">${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</span><b>${esc(i.name)}</b>
-          ${i.description ? `<span class="muted small">${esc(i.description)}</span>` : ''}
-          <span class="price">${fmt(i.price)} coins</span>${i.stock !== null ? `<span class="muted small">${soldOut ? 'Rupture' : `${i.stock} restant(s)`}</span>` : ''}
-          <button class="primary" data-buy="${i.id}" ${ok ? '' : 'disabled'}>${soldOut ? 'Rupture' : d.balance < i.price ? `Encore ${fmt(i.price - d.balance)} coins` : 'Échanger'}</button></div>`;
-      }).join('') || '<p class="muted small" style="margin:0">La boutique arrive bientôt.</p>'}</div>
-    </div>
-
-    <div class="card"><h2>📦 Mes achats</h2>
-      <div class="list">${d.orders.map((o) => `<div class="item-row"><span><b>${esc(o.itemName)}</b> · ${fmt(o.price)} coins</span><span class="pill ${o.status}">${STATUS[o.status]}</span></div>`).join('') || '<p class="muted small" style="margin:0">Aucun achat.</p>'}</div>
-    </div>`;
-
-  document.getElementById('logout').onclick = async () => { await api('/fan/logout', { method: 'POST' }).catch(() => {}); loggedOut(); };
-  document.getElementById('roblox').onsubmit = async (e) => {
+  $('#logout').onclick = async () => { await api('/fan/logout', { method: 'POST' }).catch(() => {}); ME = null; renderNav(); renderShop(); };
+  $('#roblox').onsubmit = async (e) => {
     e.preventDefault();
-    try { const r = await api('/api/fan/roblox', { method: 'PUT', body: { username: new FormData(e.target).get('username') } }); toast(`Relié à ${r.username} ✅`); render(); } catch (err) { toast(err.message, true); }
+    try { const r = await api('/api/fan/roblox', { method: 'PUT', body: { username: new FormData(e.target).get('username') } }); toast(`Relié à ${r.username} ✅`); await reloadMe(); } catch (err) { toast(err.message, true); }
   };
-  document.getElementById('accounts').onsubmit = async (e) => {
+  $('#accounts').onsubmit = async (e) => {
     e.preventDefault();
     try {
       const r = await api('/api/fan/accounts', { method: 'POST', body: { text: new FormData(e.target).get('text') } });
       if (r.conflicts.length) toast(`Déjà relié à quelqu'un d'autre : ${r.conflicts.map((c) => '@' + c.handle).join(', ')}`, true);
-      else toast('Compte ajouté ✅');
-      render();
+      else toast('Compte ajouté ✅ Tes prochaines vues comptent !');
+      await reloadMe();
     } catch (err) { toast(err.message, true); }
   };
-  $app.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
+  area.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
     if (!confirm('Retirer ce compte ? Ses nouvelles vues ne compteront plus.')) return;
-    try { await api(`/api/fan/accounts/${b.dataset.del}`, { method: 'DELETE' }); render(); } catch (err) { toast(err.message, true); }
-  });
-  $app.querySelectorAll('[data-buy]').forEach((b) => b.onclick = async () => {
+    try { await api(`/api/fan/accounts/${b.dataset.del}`, { method: 'DELETE' }); await reloadMe(); } catch (err) { toast(err.message, true); }
+  }));
+  area.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = async () => {
     const item = d.items.find((i) => i.id === Number(b.dataset.buy));
     if (!confirm(`Échanger ${fmt(item.price)} coins contre « ${item.name} » ?`)) return;
-    try { await api('/api/fan/orders', { method: 'POST', body: { itemId: item.id } }); toast('Achat validé ✅ Connecte-toi au jeu pour le recevoir'); render(); } catch (err) { toast(err.message, true); }
-  });
+    try { await api('/api/fan/orders', { method: 'POST', body: { itemId: item.id } }); confetti(); toast('Échange validé 🎉 Connecte-toi au jeu pour le recevoir !'); await reloadMe(); } catch (err) { toast(err.message, true); }
+  }));
 }
 
-render();
+async function reloadMe() {
+  try { ME = await api('/api/fan/me'); } catch { ME = null; }
+  renderNav(); renderShop();
+}
+
+async function init() {
+  const dots = $('#dots');
+  dots.innerHTML = '<i></i>'.repeat(100);
+  if (!reduce) { particles(); cursor(); }
+  parallax();
+  [PUB, ME] = await Promise.all([api('/api/fan/public'), api('/api/fan/me').catch(() => null)]);
+  renderHero(); renderNav(); renderStats(); renderContent(); renderShop();
+  observe();
+  if (new URLSearchParams(location.search).has('error')) location.hash = '#boutique';
+}
+init().catch((err) => toast(err.message, true));
 </script>
 </body>
 </html>

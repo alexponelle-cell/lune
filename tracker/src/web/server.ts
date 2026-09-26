@@ -157,6 +157,7 @@ export function createApp(deps: WebDeps): Hono {
     return c.json({ ok: true });
   });
 
+  app.get('/api/fan/public', (c) => c.json(fans.publicPage()));
   app.get('/api/fan/me', (c) => {
     const fan = fanOf(c);
     return fan ? c.json(fans.me(fan)) : c.json({ error: 'not_logged_in' }, 401);
@@ -594,7 +595,15 @@ export function createApp(deps: WebDeps): Hono {
   app.get('/api/fans', (c) => c.json({ ...fans.overview(), neptune: status.neptune, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
   app.put('/api/fans/settings', async (c) => {
     const body = z
-      .object({ clientId: z.number().int().positive().nullable().optional(), pointsPer1000: z.number().min(0).max(1_000_000).optional(), programName: z.string().max(60).optional() })
+      .object({
+        clientId: z.number().int().positive().nullable().optional(),
+        pointsPer1000: z.number().min(0).max(1_000_000).optional(),
+        programName: z.string().max(60).optional(),
+        tagline: z.string().max(160).optional(),
+        heroMediaUrl: z.string().max(500).optional(),
+        discordInviteUrl: z.string().max(500).optional(),
+        featured: z.string().max(5000).optional(),
+      })
       .parse(await c.req.json());
     return c.json(fans.saveSettings(body));
   });

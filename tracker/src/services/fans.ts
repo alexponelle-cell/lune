@@ -11,9 +11,45 @@ export interface FanSettings {
   pointsPer1000: number;
   /** Nom affiché sur l'espace fan. */
   programName: string;
+  /** Accroche sous le titre de la page d'accueil. */
+  tagline: string;
+  /** Image ou vidéo (.mp4) de fond de la page d'accueil. */
+  heroMediaUrl: string;
+  /** Invitation au serveur Discord (bouton « Rejoindre la communauté »). */
+  discordInviteUrl: string;
+  /** Contenus mis en avant, une ligne par contenu : « type | titre | lien » (type : video, podcast, best). */
+  featured: string;
 }
 
-export const DEFAULT_FANS: FanSettings = { clientId: null, pointsPer1000: 10, programName: 'Programme clippeurs' };
+export const DEFAULT_FANS: FanSettings = {
+  clientId: null,
+  pointsPer1000: 10,
+  programName: 'BE ONE POURCENT',
+  tagline: 'La communauté de ceux qui veulent aller plus loin.',
+  heroMediaUrl: '',
+  discordInviteUrl: '',
+  featured: '',
+};
+
+const FEATURED_KINDS = ['video', 'podcast', 'best'] as const;
+type FeaturedKind = (typeof FEATURED_KINDS)[number];
+
+/** « type | titre | lien » → contenu (miniature YouTube déduite du lien). */
+export function parseFeatured(text: string): Array<{ kind: FeaturedKind; title: string; url: string; thumbnail: string | null }> {
+  return text
+    .split('\n')
+    .map((line) => line.split('|').map((p) => p.trim()))
+    .map((parts) => {
+      const url = parts.find((p) => /^https?:\/\//i.test(p));
+      if (!url) return null;
+      const kind = (FEATURED_KINDS as readonly string[]).includes(parts[0]!.toLowerCase()) ? (parts[0]!.toLowerCase() as FeaturedKind) : 'video';
+      const title = parts.find((p) => p !== url && !(FEATURED_KINDS as readonly string[]).includes(p.toLowerCase())) ?? '';
+      const yt = url.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([\w-]{11})/);
+      return { kind, title, url, thumbnail: yt ? `https://i.ytimg.com/vi/${yt[1]}/hqdefault.jpg` : null };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .slice(0, 24);
+}
 
 const LOGIN_TTL = 10 * 60_000;
 const SESSION_TTL = 30 * 86_400_000;
@@ -44,6 +80,11 @@ export class FanService {
     if (patch.clientId !== undefined) next.clientId = patch.clientId && this.repo.getClient(patch.clientId) ? patch.clientId : null;
     if (patch.pointsPer1000 !== undefined && Number.isFinite(patch.pointsPer1000) && patch.pointsPer1000 >= 0) next.pointsPer1000 = patch.pointsPer1000;
     if (patch.programName !== undefined && patch.programName.trim()) next.programName = patch.programName.trim().slice(0, 60);
+    if (patch.tagline !== undefined) next.tagline = patch.tagline.trim().slice(0, 160);
+    const url = (v: string) => (v.trim() === '' || /^https:\/\//i.test(v.trim()) ? v.trim().slice(0, 500) : null);
+    if (patch.heroMediaUrl !== undefined && url(patch.heroMediaUrl) !== null) next.heroMediaUrl = url(patch.heroMediaUrl)!;
+    if (patch.discordInviteUrl !== undefined && url(patch.discordInviteUrl) !== null) next.discordInviteUrl = url(patch.discordInviteUrl)!;
+    if (patch.featured !== undefined) next.featured = patch.featured.slice(0, 5000);
     this.repo.setSetting('fans', next);
     return next;
   }
@@ -141,6 +182,41 @@ export class FanService {
   buy(clipper: Clipper, itemId: number, now = Date.now()): ShopOrder {
     if (!this.fans.roblox(clipper.id).userId) throw new Error("Relie d'abord ton compte Roblox pour recevoir l'objet en jeu");
     return this.fans.placeOrder(clipper.id, itemId, this.balance(clipper.id, now).earned, now);
+  }
+
+  // --- Page publique (accueil de la communauté) --------------------------------------
+
+  /** Données visibles sans connexion : chiffres de la communauté, contenus, clips, boutique. */
+  publicPage(now = Date.now()) {
+    const s = this.settings();
+    const fans = s.clientId ? this.repo.listClippers({ clientId: s.clientId }) : [];
+    const ids = fans.map((f) => f.id);
+    const views = this.viewsByClipper(now);
+    const week = this.repo.videosPublished(now - 7 * 86_400_000, now, ids);
+    const clips = this.repo
+      .videosPublished(now - 30 * 86_400_000, now, ids)
+      .filter((v) => v.url)
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 8)
+      .map((v) => ({ platform: v.platform, url: v.url, title: v.title, thumbnail: v.thumbnailUrl, views: v.views }));
+    const allClips = this.repo.videosPublished(0, now, ids).length;
+    return {
+      programName: s.programName,
+      tagline: s.tagline,
+      heroMediaUrl: s.heroMediaUrl,
+      discordInviteUrl: s.discordInviteUrl,
+      pointsPer1000: s.pointsPer1000,
+      stats: {
+        members: fans.length,
+        active: new Set(week.map((v) => v.clipperId)).size,
+        clips: allClips,
+        rewards: this.fans.orders({ status: 'delivered', limit: 100_000 }).length,
+        views: ids.reduce((sum, id) => sum + (views.get(id) ?? 0), 0),
+      },
+      featured: parseFeatured(s.featured),
+      clips,
+      items: this.fans.items({ activeOnly: true }),
+    };
   }
 
   // --- Staff -------------------------------------------------------------------------
