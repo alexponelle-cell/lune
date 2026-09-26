@@ -130,4 +130,35 @@ describe('recrutement', () => {
     };
     expect(settings).toMatchObject({ callWeekday: 7, staffRoleId: '123' });
   });
+
+  it('candidature : formulaire → à traiter dans Suivi → décision depuis le dashboard', async () => {
+    const app = createApp({ repo, agency: new AgencyService(repo), recruitment: service, bot: {} });
+    const json = (body: unknown) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const c = rec.upsertCandidate({ discordId: 'c1', username: 'Anto', stage: 'invite', now });
+    const cand = rec.openCandidature(c.id, 'ticket1', now);
+    expect(rec.activeCandidature(c.id)?.id).toBe(cand.id);
+    expect(rec.candidaturesByStatus('open')).toHaveLength(1);
+    rec.addRelance(cand.id);
+    expect(rec.candidature(cand.id)?.relances).toBe(1);
+
+    rec.submitCandidature(cand.id, { prenom: 'Anto, 19 ans' }, now);
+    let suivi = (await (await app.request('/api/suivi?preset=7d')).json()) as {
+      kpis: { pending: number };
+      toTreat: { candidatures: Array<{ id: number; username: string; answers: Record<string, string> }> };
+    };
+    expect(suivi.toTreat.candidatures).toMatchObject([{ id: cand.id, username: 'Anto', answers: { prenom: 'Anto, 19 ans' } }]);
+    expect(suivi.kpis.pending).toBe(1);
+
+    const res = (await (await app.request(`/api/candidatures/${cand.id}/decide`, json({ accept: true }))).json()) as { warnings: string[] };
+    expect(res.warnings[0]).toContain('Bot hors ligne');
+    expect(rec.candidature(cand.id)).toMatchObject({ status: 'accepted', decidedBy: 'dashboard' });
+    expect(rec.candidate(c.id)?.stage).toBe('test');
+    expect((await app.request(`/api/candidatures/${cand.id}/decide`, json({ accept: false }))).status).toBe(400);
+    suivi = (await (await app.request('/api/suivi?preset=7d')).json()) as never;
+    expect(suivi.toTreat.candidatures).toHaveLength(0);
+
+    rec.addDeparture({ discordId: 'c1', username: 'Anto', roles: ['Test'], joinedAt: now, dmSent: false, at: now });
+    rec.setDepartureReason('c1', 'Pas le temps');
+    expect(rec.departures(now - DAY, now + DAY)).toMatchObject([{ username: 'Anto', reason: 'Pas le temps', dmSent: false }]);
+  });
 });

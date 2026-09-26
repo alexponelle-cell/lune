@@ -230,4 +230,35 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   );
   CREATE INDEX voice_sessions_time ON voice_sessions(joined_at);
   `,
+
+  // v5 : candidatures (ticket + formulaire) et départs, repris du bot « Lune Builder »
+  `
+  CREATE TABLE candidatures (
+    id               INTEGER PRIMARY KEY,
+    clipper_id       INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    channel_id       TEXT,
+    status           TEXT    NOT NULL DEFAULT 'open', -- open | submitted | accepted | refused
+    answers          TEXT,
+    opened_at        INTEGER NOT NULL,
+    submitted_at     INTEGER,
+    relances         INTEGER NOT NULL DEFAULT 0,
+    decided_at       INTEGER,
+    decided_by       TEXT,
+    staff_message_id TEXT
+  );
+  CREATE INDEX candidatures_status ON candidatures(status);
+  CREATE INDEX candidatures_channel ON candidatures(channel_id);
+
+  CREATE TABLE departures (
+    id         INTEGER PRIMARY KEY,
+    discord_id TEXT    NOT NULL,
+    username   TEXT    NOT NULL,
+    roles      TEXT,
+    joined_at  INTEGER,
+    left_at    INTEGER NOT NULL,
+    dm_sent    INTEGER NOT NULL DEFAULT 0,
+    reason     TEXT
+  );
+  CREATE INDEX departures_user ON departures(discord_id, left_at);
+  `,
 ];

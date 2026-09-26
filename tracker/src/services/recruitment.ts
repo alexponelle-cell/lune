@@ -30,6 +30,30 @@ export interface RecruitmentSettings {
   recruiterPerConfirmed: number;
   /** "À relancer" : clippers sans analyse du staff depuis N jours. */
   relanceAnalysisDays: number;
+
+  // --- Accueil & candidatures (anciennement bot « Lune Builder ») ---
+  /** Salon #start-here (cité dans le DM de bienvenue). */
+  welcomeChannelId: string;
+  /** Salon #candidature (bouton Postuler). */
+  candidatureChannelId: string;
+  /** Catégorie où créer les tickets de candidature. */
+  ticketCategoryId: string;
+  /** Salon staff où arrivent les formulaires (#candidatures-staff). */
+  staffChannelId: string;
+  /** Salon #départs. */
+  departuresChannelId: string;
+  /** Rôle donné à l'arrivée sur le serveur. */
+  arrivantRoleId: string;
+  /** Rôle donné quand une candidature est acceptée (retiré à la validation du test). */
+  testRoleId: string;
+  /** Salon #faire-test (message du bouton de test, cité aux candidats acceptés). */
+  testChannelId: string;
+  /** Relances d'un candidat qui n'a pas rempli le formulaire (minutes après l'ouverture). */
+  relance1Min: number;
+  relance2Min: number;
+  /** Compteurs "Objectifs" mis à jour automatiquement (salons vocaux). */
+  vuesCounterId: string;
+  clippersCounterId: string;
 }
 
 export const DEFAULT_RECRUITMENT: RecruitmentSettings = {
@@ -47,6 +71,18 @@ export const DEFAULT_RECRUITMENT: RecruitmentSettings = {
   recruiterPerValidated: 0,
   recruiterPerConfirmed: 0,
   relanceAnalysisDays: 7,
+  welcomeChannelId: '',
+  candidatureChannelId: '',
+  ticketCategoryId: '',
+  staffChannelId: '',
+  departuresChannelId: '',
+  arrivantRoleId: '',
+  testRoleId: '',
+  testChannelId: '',
+  relance1Min: 30,
+  relance2Min: 1440,
+  vuesCounterId: '',
+  clippersCounterId: '',
 };
 
 export type Level = 'nouveau' | 'apprenti' | 'confirme';
@@ -262,6 +298,14 @@ export class RecruitmentService {
       .sort((a, b) => (a.lastAnalysisAt ?? 0) - (b.lastAnalysisAt ?? 0));
     const avis = request('avis');
     const inscriptions = request('inscription');
+    const candidatures = this.rec.candidaturesByStatus('submitted').map((c) => ({
+      id: c.id,
+      clipperId: c.clipperId,
+      username: name(c.clipperId),
+      answers: c.answers ?? {},
+      submittedAt: c.submittedAt,
+      channelId: c.channelId,
+    }));
 
     const rows = clippers
       .map((c) => {
@@ -285,13 +329,13 @@ export class RecruitmentService {
 
     return {
       kpis: {
-        pending: tests.length + inscriptions.length + avis.length,
+        pending: candidatures.length + tests.length + inscriptions.length + avis.length,
         activeClippers: clippers.length,
         lastCallPresent: lastCall ? lastCall.validated : null,
         toRelance: relancer.length,
         unanswered: unanswered.length,
       },
-      toTreat: { tests, inscriptions, avis, messages: unanswered, relancer },
+      toTreat: { candidatures, tests, inscriptions, avis, messages: unanswered, relancer },
       rows,
       calls: calls.map(({ presentIds: _p, ...c }) => c),
       callLabel: this.callLabel(),

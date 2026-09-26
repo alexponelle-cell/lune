@@ -36,6 +36,8 @@ const fakeBridge = () => ({
   publishTestMessage: async () => {},
   channels: async () => [],
   ticketUrl: () => null,
+  publishCandidatureMessage: async () => {},
+  decideCandidature: async () => [],
 });
 
 describe('parcours complet', () => {

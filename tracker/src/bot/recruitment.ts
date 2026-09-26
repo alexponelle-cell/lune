@@ -333,12 +333,13 @@ export function attachRecruitment(
         ].join('\n'),
       );
       if (!sent) warnings.push('Message de validation non envoyé (salon introuvable)');
-      const roleId = recruitment.settings().newClipperRoleId;
+      const { newClipperRoleId: roleId, testRoleId } = recruitment.settings();
       if (roleId) {
         try {
           const g = await guild();
           const member = await g.members.fetch(candidate.discordId);
           await member.roles.add(roleId);
+          if (testRoleId && member.roles.cache.has(testRoleId)) await member.roles.remove(testRoleId);
         } catch (err) {
           warnings.push(`Rôle non attribué : vérifie que le rôle du bot est au-dessus de « Nouveau clipper » (${String(err)})`);
         }

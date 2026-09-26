@@ -9,6 +9,7 @@ import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
 import { handleCommand } from './commands.js';
 import { formatComptesReply, registerAccountsFromMessage } from './comptes.js';
+import { attachCommunity, type CommunityBridge } from './community.js';
 import { attachRecruitment, RECRUITMENT_COMMANDS, type RecruitmentBridge } from './recruitment.js';
 
 export interface Bot {
@@ -18,7 +19,7 @@ export interface Bot {
 }
 
 /** Ce que le dashboard peut demander au bot. */
-export interface BotBridge extends RecruitmentBridge {
+export interface BotBridge extends RecruitmentBridge, CommunityBridge {
   /** Envoie un message au clipper (salon COMPTES de son agence, sinon DM). false si impossible. */
   send(clipper: Clipper, text: string): Promise<boolean>;
   roles(): Promise<Array<{ id: string; name: string }>>;
@@ -41,7 +42,10 @@ interface Privileged {
   members: boolean;
 }
 
-function createClient(deps: Deps, privileged: Privileged): { discord: DiscordClient; recruitmentBridge: RecruitmentBridge } {
+function createClient(
+  deps: Deps,
+  privileged: Privileged,
+): { discord: DiscordClient; recruitmentBridge: RecruitmentBridge; communityBridge: CommunityBridge } {
   const { repo } = deps;
   const discord = new DiscordClient({
     intents: [
@@ -72,6 +76,8 @@ function createClient(deps: Deps, privileged: Privileged): { discord: DiscordCli
   });
 
   const recruitmentBridge = attachRecruitment(discord, { repo, recruitment: deps.recruitment, guildId: deps.guildId });
+  // Accueil, candidatures, départs, compteurs (ex-bot « Lune Builder »)
+  const communityBridge = attachCommunity(discord, { repo, recruitment: deps.recruitment, agency: deps.agency, guildId: deps.guildId });
 
   // Salon COMPTES : enregistrement des comptes postés par les clippers.
   discord.on(Events.MessageCreate, async (message) => {
@@ -113,7 +119,7 @@ function createClient(deps: Deps, privileged: Privileged): { discord: DiscordCli
   discord.on(Events.Error, (err) => log.error('discord', err));
   discord.on(Events.Warn, (msg) => log.warn(`discord: ${msg}`));
   discord.on(Events.ShardDisconnect, (e) => log.warn(`discord déconnecté (code ${e.code})`));
-  return { discord, recruitmentBridge };
+  return { discord, recruitmentBridge, communityBridge };
 }
 
 const isDisallowedIntents = (err: unknown) =>
@@ -146,7 +152,7 @@ export async function startBot(deps: Deps): Promise<Bot> {
       );
     }
   }
-  const { discord, recruitmentBridge } = created!;
+  const { discord, recruitmentBridge, communityBridge } = created!;
 
   const client = discord;
 
@@ -181,6 +187,7 @@ export async function startBot(deps: Deps): Promise<Bot> {
 
   const bridge: BotBridge = {
     ...recruitmentBridge,
+    ...communityBridge,
     async send(clipper, text) {
       try {
         await deliver(clipper, text, '');

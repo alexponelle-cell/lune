@@ -1129,12 +1129,29 @@ async function pageParametres() {
           <label class="field"><span>Confirmé : vues / 7 jours</span><input class="input num" type="number" min="0" step="1000" name="confirmeWeeklyViews" value="${rs.confirmeWeeklyViews}"></label>
           <label class="field"><span>« À relancer » après (jours sans analyse)</span><input class="input num" type="number" min="1" name="relanceAnalysisDays" value="${rs.relanceAnalysisDays}"></label>
         </div>
+        <div><h3 style="margin:6px 0 0;font-size:13px">Accueil & candidatures</h3></div>
+        <div class="grid-form">
+          <label class="field"><span>Rôle à l'arrivée</span>${pick('arrivantRoleId', rs.arrivantRoleId, roles, 'Aucun')}<small>Donné automatiquement en rejoignant le serveur</small></label>
+          <label class="field"><span>Rôle « Test »</span>${pick('testRoleId', rs.testRoleId, roles, 'Aucun')}<small>Donné quand une candidature est acceptée, retiré à la validation du test</small></label>
+          <label class="field"><span>Salon start-here</span>${pick('welcomeChannelId', rs.welcomeChannelId, ofType('text'), 'Aucun')}<small>Cité dans le DM de bienvenue</small></label>
+          <label class="field"><span>Catégorie des tickets de candidature</span>${pick('ticketCategoryId', rs.ticketCategoryId, ofType('category'), 'Aucune (en haut du serveur)')}</label>
+          <label class="field"><span>Salon staff des candidatures</span>${pick('staffChannelId', rs.staffChannelId, ofType('text'), 'Aucun')}<small>Les formulaires arrivent ici avec Accepter / Refuser</small></label>
+          <label class="field"><span>Salon des départs</span>${pick('departuresChannelId', rs.departuresChannelId, ofType('text'), 'Aucun')}</label>
+          <label class="field"><span>1re relance (min)</span><input class="input num" type="number" min="1" name="relance1Min" value="${rs.relance1Min}"><small>Si le formulaire n'est pas rempli</small></label>
+          <label class="field"><span>2e relance (min)</span><input class="input num" type="number" min="1" name="relance2Min" value="${rs.relance2Min}"></label>
+          <label class="field"><span>Compteur « vues »</span>${pick('vuesCounterId', rs.vuesCounterId, ofType('voice'), 'Aucun')}<small>Salon vocal renommé toutes les 6 h</small></label>
+          <label class="field"><span>Compteur « clippers »</span>${pick('clippersCounterId', rs.clippersCounterId, ofType('voice'), 'Aucun')}</label>
+        </div>
         <div><button class="btn green">Sauvegarder</button></div></form>
       <div class="card card-pad stack" style="gap:10px"><div><h2 style="margin:0;font-size:15px">Message « Réalise ton test »</h2>
         <p class="faint" style="margin:2px 0 0;font-size:12px">Publie les 4 étapes + le bouton « Envoyer mon test » dans le salon de ton choix (ex. #faire-test)</p></div>
-        <div class="actions">${chans ? `<select class="select" id="test-channel">${ofType('text').map((c) => `<option value="${c.id}">#${esc(c.name)}</option>`).join('')}</select>
+        <div class="actions">${chans ? `<select class="select" id="test-channel">${ofType('text').map((c) => `<option value="${c.id}" ${c.id === rs.testChannelId ? 'selected' : ''}>#${esc(c.name)}</option>`).join('')}</select>
           <button class="btn dark" data-publish>${icon('discord')} Publier le message</button>` : '<span class="faint">Bot hors ligne</span>'}</div>
         <p class="faint" style="margin:0;font-size:12px">Permissions nécessaires pour le bot : Gérer les salons, Gérer les rôles (son rôle doit être au-dessus de « Nouveau clipper »), Gérer le serveur (invitations).</p></div>
+      <div class="card card-pad stack" style="gap:10px"><div><h2 style="margin:0;font-size:15px">Message « Postuler »</h2>
+        <p class="faint" style="margin:2px 0 0;font-size:12px">Publie le bouton « Postuler » (ouvre un ticket + formulaire) dans le salon de ton choix (ex. #candidature)</p></div>
+        <div class="actions">${chans ? `<select class="select" id="cand-channel">${ofType('text').map((c) => `<option value="${c.id}" ${c.id === rs.candidatureChannelId ? 'selected' : ''}>#${esc(c.name)}</option>`).join('')}</select>
+          <button class="btn dark" data-publish-cand>${icon('discord')} Publier le message</button>` : '<span class="faint">Bot hors ligne</span>'}</div></div>
       <div class="card"><div class="card-head"><div><h2>Agences</h2><p>Chaque agence (client) a son salon COMPTES, son forfait et son barème</p></div><button class="btn dark" data-add-client>${icon('plus')} Nouvelle agence</button></div>
         <div class="table-wrap"><table><thead><tr><th>Agence</th><th>Salon COMPTES (ID)</th><th class="r">Forfait mensuel</th><th class="r">Actions</th></tr></thead><tbody>
         ${META.clients.map((c) => `<tr><td><div class="who">${avatar(c.name)}<div><b>${esc(c.name)}</b><small class="faint">${esc(c.slug)}</small></div></div></td>
@@ -1173,6 +1190,14 @@ async function pageParametres() {
     try {
       await api('/api/discord/test-message', { method: 'POST', body: { channelId: $('#test-channel', root).value } });
       toast('Message publié sur Discord ✅');
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+  $('[data-publish-cand]', root)?.addEventListener('click', async () => {
+    try {
+      await api('/api/discord/candidature-message', { method: 'POST', body: { channelId: $('#cand-channel', root).value } });
+      toast('Bouton « Postuler » publié sur Discord ✅');
     } catch (err) {
       toast(err.message, true);
     }
@@ -1290,16 +1315,20 @@ async function pageRecruteurs() {
   });
 }
 
-let SUIVI_TAB = 'tests';
+let SUIVI_TAB = 'candidatures';
+const CAND_LABELS = { prenom: 'Prénom et âge', niveau: 'Niveau en montage', logiciel: 'Logiciel', dispo: 'Disponibilités', liens: 'Liens' };
 async function pageSuivi() {
   loading();
   const d = await api(`/api/suivi?${qs({}, false)}`);
   const k = d.kpis;
   const t = d.toTreat;
-  const counts = { tests: t.tests.length, inscriptions: t.inscriptions.length, avis: t.avis.length, messages: t.messages.length, relancer: t.relancer.length };
+  const counts = { candidatures: t.candidatures.length, tests: t.tests.length, inscriptions: t.inscriptions.length, avis: t.avis.length, messages: t.messages.length, relancer: t.relancer.length };
   const ticketBtn = (url) => (url ? `<a class="btn sm" href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--blue);border-color:#c7cbff">${icon('message')} Ticket</a>` : '<span class="faint">—</span>');
   const item = (name, sub, actions) => `<div class="todo">${avatar(name)}<div style="flex:1;min-width:0"><b>${esc(name)}</b><small class="faint" style="display:block;overflow:hidden;text-overflow:ellipsis">${sub}</small></div><div class="actions">${actions}</div></div>`;
   const lists = {
+    candidatures: () => t.candidatures.map((x) => item(x.username, `Candidature envoyée ${ago(x.submittedAt)} · ${esc([x.answers.niveau, x.answers.logiciel].filter(Boolean).join(' · '))}`,
+      `<button class="btn sm" data-answers="${x.id}">Voir les réponses</button>${ticketBtn(x.ticketUrl)}
+       <button class="btn sm danger" data-cand-refuse="${x.id}">✕ Refuser</button><button class="btn sm green" data-cand-accept="${x.id}">${icon('check')} Accepter</button>`)).join(''),
     tests: () => t.tests.map((x) => item(x.username, `Test déposé ${ago(x.submittedAt)}${x.attempts > 1 ? ` · essai n°${x.attempts}` : ''}`,
       `${x.submissionUrl ? `<a class="btn sm" href="${esc(x.submissionUrl)}" target="_blank" rel="noopener">${icon('play')} Voir la vidéo</a>` : ''}${ticketBtn(x.ticketUrl)}
        <button class="btn sm danger" data-refuse="${x.clipperId}">✕ Refuser</button><button class="btn sm green" data-validate="${x.clipperId}">${icon('check')} Valider</button>`)).join(''),
@@ -1315,12 +1344,12 @@ async function pageSuivi() {
   };
   const kpi = (label, value, sub, cls = '', ic = 'check') => `<div class="card kpi ${cls}"><div class="k-label" style="display:flex;justify-content:space-between">${label}<span class="kpi-ic">${icon(ic)}</span></div>
     <div class="k-value num">${value}</div><div class="k-foot"><span>${sub}</span></div></div>`;
-  const tabNames = { tests: 'Tests', inscriptions: 'Inscriptions', avis: 'Avis', messages: 'Messages', relancer: 'À relancer' };
+  const tabNames = { candidatures: 'Candidatures', tests: 'Tests', inscriptions: 'Inscriptions', avis: 'Avis', messages: 'Messages', relancer: 'À relancer' };
   main().innerHTML = `<div class="page-head"><div><h1>Suivi</h1><p>Tests, demandes d'avis, messages & présence aux calls, remontés automatiquement par le bot Discord</p></div>
     <div class="actions"><span class="pill ${META.status.bot.state === 'ready' ? 'ok' : 'gray'}">${icon('discord').replace('<svg', '<svg width="13"')} ${META.status.bot.state === 'ready' ? 'Synchronisé en temps réel' : 'Bot hors ligne'}</span>${periodPicker()}</div></div>
     <div class="stack">
       <div class="kpis">
-        ${kpi('Demandes en attente', k.pending, k.pending ? 'tests, inscriptions & avis' : 'aucune demande ouverte')}
+        ${kpi('Demandes en attente', k.pending, k.pending ? 'candidatures, tests, inscriptions & avis' : 'aucune demande ouverte')}
         ${kpi('Clippers actifs', k.activeClippers, `${k.activeClippers} clippers au total`, '', 'users')}
         ${kpi('Présents au dernier call', k.lastCallPresent ?? '—', k.lastCallPresent == null ? 'aucun call enregistré' : 'présence validée', '', 'discord')}
         ${kpi('À relancer', k.toRelance, `sans analyse depuis plus de ${d.relanceDays} j`, k.toRelance ? 'kpi-red' : '', 'bell')}
@@ -1363,6 +1392,25 @@ async function pageSuivi() {
     pageSuivi();
   };
   $('#todo', root).addEventListener('click', async (e) => {
+    const ans = e.target.closest('[data-answers]');
+    if (ans) {
+      const x = t.candidatures.find((y) => y.id === Number(ans.dataset.answers));
+      modal(`Candidature de ${x.username}`, Object.entries(x.answers).map(([key, v]) => `<div><b style="font-size:12px">${esc(CAND_LABELS[key] ?? key)}</b><div class="muted" style="white-space:pre-wrap;word-break:break-word">${esc(v || '—')}</div></div>`).join(''), { confirm: 'Fermer', onConfirm: async () => {} });
+    }
+    const ca = e.target.closest('[data-cand-accept], [data-cand-refuse]');
+    if (ca) {
+      const accept = 'candAccept' in ca.dataset;
+      const x = t.candidatures.find((y) => y.id === Number(accept ? ca.dataset.candAccept : ca.dataset.candRefuse));
+      modal(`${accept ? 'Accepter' : 'Refuser'} la candidature de ${x.username} ?`, `<p style="margin:0" class="muted">${accept ? 'Le bot lui donne le rôle « Test » et lui explique quoi faire dans son ticket.' : 'Le bot lui envoie un message de refus poli dans son ticket.'}</p>`, {
+        confirm: accept ? 'Accepter' : 'Refuser',
+        danger: !accept,
+        onConfirm: async () => {
+          const r = await api(`/api/candidatures/${x.id}/decide`, { method: 'POST', body: { accept } });
+          toast(accept ? `${x.username} passe en test 🎬` : 'Candidature refusée');
+          done(r);
+        },
+      });
+    }
     const v = e.target.closest('[data-validate]');
     if (v) {
       const x = t.tests.find((y) => y.clipperId === Number(v.dataset.validate));

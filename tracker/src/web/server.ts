@@ -338,9 +338,26 @@ export function createApp(deps: WebDeps): Hono {
     const withTicket = <T extends { channelId: string | null }>(list: T[]) => list.map((x) => ({ ...x, ticketUrl: ticket(x.channelId) }));
     return c.json({
       ...s,
-      toTreat: { ...s.toTreat, tests: withTicket(s.toTreat.tests), messages: withTicket(s.toTreat.messages) },
+      toTreat: {
+        ...s.toTreat,
+        tests: withTicket(s.toTreat.tests),
+        messages: withTicket(s.toTreat.messages),
+        candidatures: withTicket(s.toTreat.candidatures),
+      },
       rows: withTicket(s.rows),
     });
+  });
+
+  app.post('/api/candidatures/:id/decide', async (c) => {
+    const id = Number(c.req.param('id'));
+    const { accept } = z.object({ accept: z.boolean() }).parse(await c.req.json());
+    const cand = rec.candidature(id);
+    if (!cand) return c.json({ error: 'Candidature introuvable' }, 404);
+    if (cand.status !== 'submitted' && cand.status !== 'open') return c.json({ error: 'Candidature déjà traitée' }, 400);
+    if (deps.bot.current) return c.json({ ok: true, warnings: await deps.bot.current.decideCandidature(id, accept, 'dashboard') });
+    rec.decideCandidature(id, accept, 'dashboard');
+    if (accept) rec.setStage(cand.clipperId, 'test');
+    return c.json({ ok: true, warnings: ['Bot hors ligne : message et rôle Discord non envoyés'] });
   });
 
   app.post('/api/tests/:clipperId/validate', async (c) => {
@@ -394,6 +411,15 @@ export function createApp(deps: WebDeps): Hono {
     if (!deps.bot.current) return c.json({ error: 'Bot Discord non connecté' }, 503);
     const { channelId } = z.object({ channelId: z.string().regex(/^\d+$/) }).parse(await c.req.json());
     await deps.bot.current.publishTestMessage(channelId);
+    recruitment.saveSettings({ testChannelId: channelId });
+    return c.json({ ok: true });
+  });
+
+  app.post('/api/discord/candidature-message', async (c) => {
+    if (!deps.bot.current) return c.json({ error: 'Bot Discord non connecté' }, 503);
+    const { channelId } = z.object({ channelId: z.string().regex(/^\d+$/) }).parse(await c.req.json());
+    await deps.bot.current.publishCandidatureMessage(channelId);
+    recruitment.saveSettings({ candidatureChannelId: channelId });
     return c.json({ ok: true });
   });
 

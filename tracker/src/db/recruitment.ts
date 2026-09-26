@@ -48,7 +48,37 @@ export interface RequestRow {
   doneAt: number | null;
 }
 
+export type CandidatureStatus = 'open' | 'submitted' | 'accepted' | 'refused';
+
+export interface Candidature {
+  id: number;
+  clipperId: number;
+  channelId: string | null;
+  status: CandidatureStatus;
+  answers: Record<string, string> | null;
+  openedAt: number;
+  submittedAt: number | null;
+  relances: number;
+  decidedAt: number | null;
+  decidedBy: string | null;
+  staffMessageId: string | null;
+}
+
 type Row = Record<string, any>;
+
+const toCandidature = (r: Row): Candidature => ({
+  id: r.id,
+  clipperId: r.clipper_id,
+  channelId: r.channel_id,
+  status: r.status,
+  answers: r.answers ? JSON.parse(r.answers) : null,
+  openedAt: r.opened_at,
+  submittedAt: r.submitted_at,
+  relances: r.relances,
+  decidedAt: r.decided_at,
+  decidedBy: r.decided_by,
+  staffMessageId: r.staff_message_id,
+});
 
 const toCandidate = (r: Row): Candidate => ({
   id: r.id,
@@ -334,5 +364,84 @@ export class RecruitmentRepo {
 
   deleteRecruiter(id: number): void {
     this.db.prepare('DELETE FROM recruiters WHERE id = ?').run(id);
+  }
+
+  // --- Candidatures (ticket + formulaire) --------------------------------------------
+
+  openCandidature(clipperId: number, channelId: string, now = Date.now()): Candidature {
+    const r = this.db
+      .prepare('INSERT INTO candidatures (clipper_id, channel_id, opened_at) VALUES (?, ?, ?) RETURNING *')
+      .get(clipperId, channelId, now);
+    return toCandidature(r as Row);
+  }
+
+  candidature(id: number): Candidature | undefined {
+    const r = this.db.prepare('SELECT * FROM candidatures WHERE id = ?').get(id);
+    return r ? toCandidature(r as Row) : undefined;
+  }
+
+  candidatureByChannel(channelId: string): Candidature | undefined {
+    const r = this.db.prepare('SELECT * FROM candidatures WHERE channel_id = ? ORDER BY id DESC LIMIT 1').get(channelId);
+    return r ? toCandidature(r as Row) : undefined;
+  }
+
+  /** Candidature en cours (ouverte ou envoyée) d'un membre. */
+  activeCandidature(clipperId: number): Candidature | undefined {
+    const r = this.db
+      .prepare("SELECT * FROM candidatures WHERE clipper_id = ? AND status IN ('open', 'submitted') ORDER BY id DESC LIMIT 1")
+      .get(clipperId);
+    return r ? toCandidature(r as Row) : undefined;
+  }
+
+  submitCandidature(id: number, answers: Record<string, string>, now = Date.now()): void {
+    this.db
+      .prepare("UPDATE candidatures SET status = 'submitted', answers = ?, submitted_at = ? WHERE id = ?")
+      .run(JSON.stringify(answers), now, id);
+  }
+
+  setCandidatureStaffMessage(id: number, messageId: string): void {
+    this.db.prepare('UPDATE candidatures SET staff_message_id = ? WHERE id = ?').run(messageId, id);
+  }
+
+  decideCandidature(id: number, accept: boolean, by: string, now = Date.now()): void {
+    this.db
+      .prepare('UPDATE candidatures SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?')
+      .run(accept ? 'accepted' : 'refused', by, now, id);
+  }
+
+  candidaturesByStatus(status: CandidatureStatus): Candidature[] {
+    return this.db
+      .prepare('SELECT * FROM candidatures WHERE status = ? ORDER BY COALESCE(submitted_at, opened_at)')
+      .all(status)
+      .map((r) => toCandidature(r as Row));
+  }
+
+  addRelance(id: number): void {
+    this.db.prepare('UPDATE candidatures SET relances = relances + 1 WHERE id = ?').run(id);
+  }
+
+  // --- Départs -------------------------------------------------------------------------
+
+  addDeparture(input: { discordId: string; username: string; roles: string[]; joinedAt: number | null; dmSent: boolean; at?: number }): void {
+    this.db
+      .prepare('INSERT INTO departures (discord_id, username, roles, joined_at, left_at, dm_sent) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(input.discordId, input.username, input.roles.join(', '), input.joinedAt, input.at ?? Date.now(), input.dmSent ? 1 : 0);
+  }
+
+  setDepartureReason(discordId: string, reason: string): void {
+    this.db
+      .prepare('UPDATE departures SET reason = ? WHERE id = (SELECT MAX(id) FROM departures WHERE discord_id = ?)')
+      .run(reason, discordId);
+  }
+
+  departures(from: number, to: number): Array<{ username: string; roles: string; joinedAt: number | null; leftAt: number; reason: string | null; dmSent: boolean }> {
+    return (
+      this.db
+        .prepare(
+          `SELECT username, roles, joined_at AS joinedAt, left_at AS leftAt, reason, dm_sent AS dmSent
+           FROM departures WHERE left_at >= ? AND left_at < ? ORDER BY left_at DESC`,
+        )
+        .all(from, to) as Array<{ username: string; roles: string; joinedAt: number | null; leftAt: number; reason: string | null; dmSent: number }>
+    ).map((d) => ({ ...d, dmSent: d.dmSent === 1 }));
   }
 }
