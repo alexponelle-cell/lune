@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#FAFAF7">
 <title>BeOne Rewards</title>
-<link rel="icon" href="/fan/assets/beone.png">
+<link rel="icon" href="/fan/assets/beone.png?v=hd">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -334,7 +334,7 @@ function coin(cls = 'coin') {
 function mascot(prop = 'coins', cls = 'mascot') {
   const img = prop === 'gift' || prop === 'trophy' ? 'beone-roblox.png' : 'beone.png';
   const badge = { camera: '🎬', coins: '🪙', gift: '🎁', trophy: '🏆' }[prop] ?? '🪙';
-  return `<span class="${cls} beone"><img src="/fan/assets/${img}" alt="BeOne"><span class="prop">${badge}</span></span>`;
+  return `<span class="${cls} beone"><img src="/fan/assets/${img}?v=hd" alt="BeOne"><span class="prop">${badge}</span></span>`;
 }
 const AVA_COLORS = ['#8064ff', '#111111', '#f0445c', '#1fbf6a', '#ff8a3d', '#2d9cdb'];
 function avatar(name, url, cls = 'ava') {

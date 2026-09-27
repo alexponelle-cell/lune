@@ -132,11 +132,14 @@ export function createApp(deps: WebDeps): Hono {
     if (name === 'beone.png' || name === 'beone-roblox.png') {
       const hd = await fans.creatorAvatars(deps.youtubeApiKey);
       const url = name === 'beone.png' ? hd.youtube : hd.roblox;
-      if (url) return c.redirect(url, 302);
+      if (url) {
+        c.header('cache-control', 'public, max-age=3600');
+        return c.redirect(url, 302);
+      }
     }
     const file = FAN_FILES[name];
     if (!file) return c.notFound();
-    return c.body(file.data, 200, { 'content-type': file.type, 'cache-control': 'public, max-age=86400' });
+    return c.body(file.data, 200, { 'content-type': file.type, 'cache-control': 'public, max-age=600' });
   });
   const isHttps = (c: Context) => c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:');
   const startSession = (c: Context, session: string) => {
