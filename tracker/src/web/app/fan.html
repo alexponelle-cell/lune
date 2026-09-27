@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#FAFAF7">
 <title>BeOne Rewards</title>
+<link rel="icon" href="/fan/assets/beone.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -100,7 +101,7 @@
   .stage .bg-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .9; }
   .stage .rays { position: absolute; inset: -40%; background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.28) 0 10deg, transparent 10deg 30deg); animation: spin 40s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .stage .mascot { position: absolute; left: 50%; bottom: 4%; width: 58%; transform: translateX(-50%); }
+  .stage .beone { position: absolute; left: 21%; top: 19%; width: 58%; }
   .float { position: absolute; animation: float 3.2s ease-in-out infinite; }
   @keyframes float { 50% { transform: translateY(-14px) rotate(6deg); } }
   .float.c1 { top: 10%; left: 9%; width: 16%; }
@@ -231,6 +232,8 @@
 
   /* ---------- Bandeaux ---------- */
   .banner { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; padding: 34px 38px; border-radius: 36px; background: var(--ink); color: #fff; overflow: hidden; position: relative; }
+  .banner.city { grid-template-columns: minmax(0, 560px); min-height: 320px; background: linear-gradient(90deg, rgba(8,8,20,.92) 0%, rgba(8,8,20,.7) 45%, rgba(8,8,20,0) 75%), #111 url(/fan/assets/banner.jpg) 65% center / cover; }
+  @media (max-width: 700px) { .banner.city { background: linear-gradient(180deg, rgba(8,8,20,.35), rgba(8,8,20,.92) 60%), #111 url(/fan/assets/banner.jpg) 66% center / cover; min-height: 380px; align-content: end; } }
   .banner h3 { font-size: clamp(30px, 4vw, 48px); font-weight: 900; text-transform: uppercase; line-height: 1; }
   .banner p { color: #bdbbb3; margin: 10px 0 20px; font-size: 17px; }
   .banner .mascot { width: 170px; }
@@ -262,6 +265,9 @@
   .toast.ok { background: var(--green); } .toast.err { background: var(--red); }
   .fx-coin { position: fixed; z-index: 95; width: 34px; height: 34px; pointer-events: none; }
   #confetti { position: fixed; inset: 0; z-index: 96; pointer-events: none; }
+  .beone { position: relative; display: block; aspect-ratio: 1; container-type: inline-size; }
+  .beone img { width: 100%; height: 100%; border-radius: 50%; border: 5cqw solid #fff; box-shadow: 0 18px 40px rgba(17,17,17,.18); background: #fff; object-fit: cover; }
+  .beone .prop { position: absolute; right: -2%; bottom: 0; width: 36%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; background: var(--yellow); border: 3.5cqw solid #fff; font-size: 17cqw; box-shadow: 0 8px 18px rgba(17,17,17,.15); }
   .bob { animation: bob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
   @keyframes bob { 50% { transform: translateY(-8px) rotate(-2deg); } }
   .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
@@ -317,26 +323,11 @@ function coin(cls = 'coin') {
     <text x="32" y="40" text-anchor="middle" font-family="Outfit,Inter,sans-serif" font-weight="900" font-size="26" fill="#b27e00">B</text>
     <path d="M17 18a19 19 0 0 1 12-7" stroke="#fff" stroke-width="3.5" stroke-linecap="round" fill="none" opacity=".8"/></svg>`;
 }
-/** Petit perso style Roblox (tête carrée jaune, corps violet) avec un accessoire. */
+/** BeOne (avatar dessiné, ou avatar Roblox pour les récompenses) avec un petit accessoire. */
 function mascot(prop = 'coins', cls = 'mascot') {
-  const props = {
-    camera: `<g transform="translate(96 96)"><rect x="0" y="0" width="54" height="38" rx="8" fill="#111"/><rect x="10" y="-8" width="16" height="10" rx="3" fill="#111"/><circle cx="30" cy="19" r="12" fill="#8064ff"/><circle cx="30" cy="19" r="6" fill="#111"/><circle cx="26" cy="15" r="2.5" fill="#fff"/><circle cx="48" cy="7" r="3" fill="#f0445c"/></g>`,
-    coins: `<g transform="translate(100 90)"><ellipse cx="22" cy="44" rx="22" ry="7" fill="#c98f00"/><rect x="0" y="16" width="44" height="28" fill="#e9ae00"/><ellipse cx="22" cy="16" rx="22" ry="7" fill="#ffd83d"/><text x="22" y="21" text-anchor="middle" font-family="Outfit,sans-serif" font-weight="900" font-size="11" fill="#b27e00">B</text></g>`,
-    gift: `<g transform="translate(96 92)"><rect x="0" y="12" width="52" height="40" rx="6" fill="#8064ff"/><rect x="-3" y="4" width="58" height="14" rx="4" fill="#6446f0"/><rect x="22" y="4" width="8" height="48" fill="#ffd83d"/><path d="M26 4c-10-14-24-4-12 0M26 4c10-14 24-4 12 0" stroke="#ffd83d" stroke-width="5" fill="none" stroke-linecap="round"/></g>`,
-    trophy: `<g transform="translate(98 78)"><path d="M6 0h40v14a20 20 0 0 1-40 0z" fill="#ffd83d"/><path d="M6 6H-4a10 10 0 0 0 12 12M46 6h10a10 10 0 0 1-12 12" stroke="#e9ae00" stroke-width="5" fill="none"/><rect x="20" y="32" width="12" height="14" fill="#e9ae00"/><rect x="10" y="46" width="32" height="10" rx="3" fill="#111"/><text x="26" y="20" text-anchor="middle" font-family="Outfit,sans-serif" font-weight="900" font-size="13" fill="#b27e00">1%</text></g>`,
-  };
-  return `<svg class="${cls}" viewBox="0 0 170 210" aria-hidden="true">
-    <ellipse cx="80" cy="202" rx="52" ry="7" fill="rgba(0,0,0,.12)"/>
-    <rect x="50" y="150" width="26" height="48" rx="6" fill="#2b2b2b"/><rect x="84" y="150" width="26" height="48" rx="6" fill="#2b2b2b"/>
-    <rect x="42" y="92" width="76" height="66" rx="12" fill="#8064ff"/><rect x="42" y="92" width="76" height="14" rx="7" fill="#9b85ff"/>
-    <text x="80" y="136" text-anchor="middle" font-family="Outfit,sans-serif" font-weight="900" font-size="22" fill="#fff">1%</text>
-    <rect x="20" y="96" width="22" height="54" rx="9" fill="#ffd83d"/><rect x="118" y="92" width="22" height="30" rx="9" fill="#ffd83d" transform="rotate(-35 129 107)"/>
-    <rect x="44" y="18" width="72" height="72" rx="18" fill="#ffd83d"/><rect x="44" y="18" width="72" height="16" rx="8" fill="#ffe57a"/>
-    <rect x="40" y="10" width="80" height="20" rx="8" fill="#111"/><rect x="92" y="4" width="34" height="14" rx="6" fill="#111"/>
-    <circle cx="66" cy="52" r="6" fill="#111"/><circle cx="94" cy="52" r="6" fill="#111"/><circle cx="68" cy="50" r="2" fill="#fff"/><circle cx="96" cy="50" r="2" fill="#fff"/>
-    <path d="M66 68q14 12 28 0" stroke="#111" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <circle cx="58" cy="66" r="5" fill="#ff9f6b" opacity=".6"/><circle cx="102" cy="66" r="5" fill="#ff9f6b" opacity=".6"/>
-    ${props[prop] ?? ''}</svg>`;
+  const img = prop === 'gift' || prop === 'trophy' ? 'beone-roblox.png' : 'beone.png';
+  const badge = { camera: '🎬', coins: '🪙', gift: '🎁', trophy: '🏆' }[prop] ?? '🪙';
+  return `<span class="${cls} beone"><img src="/fan/assets/${img}" alt="BeOne"><span class="prop">${badge}</span></span>`;
 }
 const AVA_COLORS = ['#8064ff', '#111111', '#f0445c', '#1fbf6a', '#ff8a3d', '#2d9cdb'];
 function avatar(name, url, cls = 'ava') {
@@ -514,9 +505,9 @@ function pageHome() {
   </section>
 
   <section>
-    <div class="banner reveal"><div><h3>Prêt à rejoindre le 1% ?</h3><p>Chaque vue compte. Ton premier clip peut te rapporter tes premiers coins dès aujourd'hui.</p>
+    <div class="banner city reveal"><div><h3>Prêt à rejoindre le 1% ?</h3><p>Chaque vue compte. Ton premier clip peut te rapporter tes premiers coins dès aujourd'hui.</p>
       <div class="ctas" style="display:flex;gap:12px;flex-wrap:wrap">${ME ? '<a class="btn yellow big" href="#/clipper">Mes clips</a>' : '<a class="btn yellow big" href="/fan/auth/discord">Je commence</a>'}${PUB.discordInviteUrl ? `<a class="btn white big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord</a>` : ''}</div></div>
-      ${mascot('camera', 'mascot bob')}</div>
+</div>
   </section>`;
 }
 const emptyShop = () => `<div class="card empty reveal" style="grid-column:1/-1"><div class="e">🎁</div>Les premières récompenses arrivent très bientôt !</div>`;

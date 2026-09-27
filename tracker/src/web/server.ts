@@ -25,6 +25,12 @@ const ASSETS = {
   js: asset('app.js'),
   fan: asset('fan.html'),
 };
+const fanFile = (name: string, type: string) => ({ data: new Uint8Array(readFileSync(new URL(`./app/fan/${name}`, import.meta.url))), type });
+const FAN_FILES: Record<string, { data: Uint8Array<ArrayBuffer>; type: string }> = {
+  'beone.png': fanFile('beone.png', 'image/png'),
+  'beone-roblox.png': fanFile('beone-roblox.png', 'image/png'),
+  'banner.jpg': fanFile('banner.jpg', 'image/jpeg'),
+};
 
 export interface WebDeps {
   repo: Repo;
@@ -115,6 +121,12 @@ export function createApp(deps: WebDeps): Hono {
   };
 
   app.get('/fan', (c) => c.html(ASSETS.fan));
+  // Visuels de la boutique (avatars, bannière du créateur)
+  app.get('/fan/assets/:name', (c) => {
+    const file = FAN_FILES[c.req.param('name')];
+    if (!file) return c.notFound();
+    return c.body(file.data, 200, { 'content-type': file.type, 'cache-control': 'public, max-age=86400' });
+  });
   const isHttps = (c: Context) => c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:');
   const startSession = (c: Context, session: string) => {
     setCookie(c, FAN_COOKIE, session, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/', maxAge: 30 * 86_400 });
