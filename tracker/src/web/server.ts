@@ -606,7 +606,7 @@ export function createApp(deps: WebDeps): Hono {
 
   // --- Programme fans : boutique (staff) ----------------------------------------------
 
-  app.get('/api/fans', (c) => c.json({ ...fans.overview(), neptune: status.neptune, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
+  app.get('/api/fans', async (c) => c.json({ ...fans.overview(), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
   app.put('/api/fans/settings', async (c) => {
     const body = z
       .object({

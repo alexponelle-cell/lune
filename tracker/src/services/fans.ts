@@ -214,36 +214,47 @@ export class FanService {
   // --- Photos HD du créateur (YouTube + Roblox), mises en cache 12 h -----------------
 
   private avatarCache: { key: string; at: number; urls: { youtube: string | null; roblox: string | null } } | null = null;
+  /** Dernière erreur de récupération des photos (affichée dans le dashboard). */
+  avatarErrors: { youtube: string | null; roblox: string | null } = { youtube: null, roblox: null };
 
   async creatorAvatars(youtubeApiKey: string | undefined, now = Date.now()) {
     const s = this.settings();
     const key = `${s.creatorYoutube}|${s.creatorRoblox}`;
     if (this.avatarCache && this.avatarCache.key === key && now - this.avatarCache.at < 12 * 3_600_000) return this.avatarCache.urls;
-    const safe = async <T>(fn: () => Promise<T>) => {
+    const safe = async <T>(which: 'youtube' | 'roblox', fn: () => Promise<T>) => {
       try {
-        return await fn();
-      } catch {
+        const v = await fn();
+        this.avatarErrors[which] = v ? null : this.avatarErrors[which] ?? 'introuvable';
+        return v;
+      } catch (err) {
+        this.avatarErrors[which] = err instanceof Error ? err.message : String(err);
         return null;
       }
     };
+    this.avatarErrors = { youtube: null, roblox: null };
+    if (!youtubeApiKey) this.avatarErrors.youtube = 'YOUTUBE_API_KEY absente';
     const youtube = s.creatorYoutube && youtubeApiKey
-      ? await safe(async () => {
+      ? await safe('youtube', async () => {
           const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=${encodeURIComponent('@' + s.creatorYoutube)}&key=${youtubeApiKey}`;
-          const r = (await (await fetch(url, { signal: AbortSignal.timeout(8000) })).json()) as { items?: Array<{ snippet: { thumbnails: Record<string, { url: string }> } }> };
+          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          const r = (await res.json()) as { items?: Array<{ snippet: { thumbnails: Record<string, { url: string }> } }>; error?: { message?: string } };
+          if (!res.ok) throw new Error(`YouTube HTTP ${res.status} : ${r.error?.message ?? ''}`);
+          if (!r.items?.length) throw new Error(`chaîne @${s.creatorYoutube} introuvable`);
           const t = r.items?.[0]?.snippet.thumbnails;
           const best = t?.high?.url ?? t?.medium?.url ?? t?.default?.url ?? null;
           return best ? best.replace(/=s\d+/, '=s800') : null;
         })
       : null;
     const roblox = s.creatorRoblox
-      ? await safe(async () => {
+      ? await safe('roblox', async () => {
           const user = await this.resolveRoblox(s.creatorRoblox);
-          if (!user) return null;
-          const r = (await (
-            await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=420x420&format=Png&isCircular=false`, { signal: AbortSignal.timeout(8000) })
-          ).json()) as { data?: Array<{ imageUrl?: string; state?: string }> };
+          if (!user) throw new Error(`pseudo Roblox ${s.creatorRoblox} introuvable`);
+          const res = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=420x420&format=Png&isCircular=false`, { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) throw new Error(`Roblox miniatures HTTP ${res.status}`);
+          const r = (await res.json()) as { data?: Array<{ imageUrl?: string; state?: string }> };
           const d = r.data?.[0];
-          return d?.state === 'Completed' && d.imageUrl ? d.imageUrl : null;
+          if (!(d?.state === 'Completed' && d.imageUrl)) throw new Error(`miniature Roblox pas prête (${d?.state ?? 'vide'})`);
+          return d.imageUrl;
         })
       : null;
     // Échec (réseau, API) : on réessaie dans 10 min au lieu de 12 h
