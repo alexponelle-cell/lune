@@ -309,4 +309,38 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
 
   // v7 : avatar Discord des fans (classement, profil)
   `ALTER TABLE clippers ADD COLUMN avatar_url TEXT;`,
+
+  // v8 : notifications Discord des fans (envoyées par Neptune)
+  `
+  ALTER TABLE clippers ADD COLUMN notify INTEGER NOT NULL DEFAULT 1;
+
+  -- Où en est chaque fan : coins déjà annoncés, niveau annoncé, dernier message
+  CREATE TABLE fan_notify_state (
+    clipper_id   INTEGER PRIMARY KEY REFERENCES clippers(id) ON DELETE CASCADE,
+    earned_base  INTEGER NOT NULL,
+    level        INTEGER NOT NULL,
+    last_sent_at INTEGER
+  );
+
+  -- Événements déjà annoncés (objet abordable, top 3 de la semaine, commande livrée)
+  CREATE TABLE fan_notified (
+    clipper_id INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    key        TEXT    NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (clipper_id, key)
+  );
+
+  -- File d'attente des messages privés à envoyer par Neptune
+  CREATE TABLE fan_notifications (
+    id         INTEGER PRIMARY KEY,
+    clipper_id INTEGER NOT NULL REFERENCES clippers(id) ON DELETE CASCADE,
+    discord_id TEXT    NOT NULL,
+    kind       TEXT    NOT NULL,
+    text       TEXT    NOT NULL,
+    created_at INTEGER NOT NULL,
+    sent_at    INTEGER,
+    error      TEXT
+  );
+  CREATE INDEX fan_notifications_pending ON fan_notifications(sent_at, error);
+  `,
 ];

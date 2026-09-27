@@ -166,6 +166,76 @@ export class FanRepo {
     return r.n;
   }
 
+  // --- Notifications ------------------------------------------------------------------
+
+  notifyEnabled(clipperId: number): boolean {
+    const r = this.db.prepare('SELECT notify FROM clippers WHERE id = ?').get(clipperId) as Row | undefined;
+    return r ? r.notify === 1 : false;
+  }
+
+  setNotify(clipperId: number, on: boolean): void {
+    this.db.prepare('UPDATE clippers SET notify = ? WHERE id = ?').run(on ? 1 : 0, clipperId);
+  }
+
+  notifyState(clipperId: number): { earnedBase: number; level: number; lastSentAt: number | null } | null {
+    const r = this.db.prepare('SELECT * FROM fan_notify_state WHERE clipper_id = ?').get(clipperId) as Row | undefined;
+    return r ? { earnedBase: r.earned_base, level: r.level, lastSentAt: r.last_sent_at } : null;
+  }
+
+  saveNotifyState(clipperId: number, st: { earnedBase: number; level: number; lastSentAt: number | null }): void {
+    this.db
+      .prepare(
+        `INSERT INTO fan_notify_state (clipper_id, earned_base, level, last_sent_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT (clipper_id) DO UPDATE SET earned_base = excluded.earned_base, level = excluded.level, last_sent_at = excluded.last_sent_at`,
+      )
+      .run(clipperId, st.earnedBase, st.level, st.lastSentAt);
+  }
+
+  wasNotified(clipperId: number, key: string): boolean {
+    return !!this.db.prepare('SELECT 1 FROM fan_notified WHERE clipper_id = ? AND key = ?').get(clipperId, key);
+  }
+
+  markNotified(clipperId: number, key: string, now = Date.now()): void {
+    this.db.prepare('INSERT OR IGNORE INTO fan_notified (clipper_id, key, created_at) VALUES (?, ?, ?)').run(clipperId, key, now);
+  }
+
+  queueNotification(clipperId: number, discordId: string, kind: string, text: string, now = Date.now()): void {
+    this.db
+      .prepare('INSERT INTO fan_notifications (clipper_id, discord_id, kind, text, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(clipperId, discordId, kind, text, now);
+  }
+
+  pendingNotifications(limit = 50): Array<{ id: number; discordId: string; kind: string; text: string }> {
+    return (
+      this.db
+        .prepare('SELECT id, discord_id, kind, text FROM fan_notifications WHERE sent_at IS NULL AND error IS NULL ORDER BY id LIMIT ?')
+        .all(limit) as Row[]
+    ).map((r) => ({ id: r.id, discordId: r.discord_id, kind: r.kind, text: r.text }));
+  }
+
+  ackNotification(id: number, error: string | null, now = Date.now()): void {
+    if (error) this.db.prepare('UPDATE fan_notifications SET error = ? WHERE id = ?').run(error.slice(0, 300), id);
+    else this.db.prepare('UPDATE fan_notifications SET sent_at = ? WHERE id = ?').run(now, id);
+  }
+
+  notificationStats(since: number): { sent: number; failed: number; pending: number } {
+    const r = this.db
+      .prepare(
+        `SELECT SUM(sent_at IS NOT NULL AND sent_at >= ?) AS sent, SUM(error IS NOT NULL AND created_at >= ?) AS failed,
+                SUM(sent_at IS NULL AND error IS NULL) AS pending FROM fan_notifications`,
+      )
+      .get(since, since) as Row;
+    return { sent: r.sent ?? 0, failed: r.failed ?? 0, pending: r.pending ?? 0 };
+  }
+
+  /** Commandes livrées pas encore annoncées. */
+  deliveredOrders(since: number): ShopOrder[] {
+    return this.db
+      .prepare("SELECT * FROM shop_orders WHERE status = 'delivered' AND delivered_at >= ? ORDER BY id")
+      .all(since)
+      .map((r) => toOrder(r as Row));
+  }
+
   // --- Boutique ----------------------------------------------------------------------
 
   items(opts: { activeOnly?: boolean } = {}): ShopItem[] {

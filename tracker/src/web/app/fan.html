@@ -227,6 +227,13 @@
   .row input { flex: 1; width: auto; }
   .list-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-top: 2px solid var(--soft); font-weight: 700; }
   .list-row:first-of-type { border-top: 0; }
+  .switch { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; font-weight: 800; }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch span { width: 58px; height: 34px; border-radius: 99px; background: var(--soft-2); position: relative; transition: background .2s; }
+  .switch span::after { content: ''; position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: transform .25s cubic-bezier(.3,1.6,.5,1); }
+  .switch input:checked + span { background: var(--green); }
+  .switch input:checked + span::after { transform: translateX(24px); }
+  .switch input:focus-visible + span { outline: 3px solid var(--purple); outline-offset: 2px; }
   .st { font: 800 12px Inter, sans-serif; padding: 5px 10px; border-radius: 99px; white-space: nowrap; }
   .st.pending { background: var(--yellow-soft); } .st.delivered { background: var(--green-soft); color: #0e7a42; } .st.refunded { background: var(--soft); color: var(--muted); }
 
@@ -589,6 +596,8 @@ function pageProfile() {
         <div class="badges">${badges.map(([e, n, on]) => `<div class="badge ${on ? '' : 'off'}"><div class="e">${e}</div><b>${n}</b></div>`).join('')}</div></div>
       <div class="card panel reveal"><h3>🎮 Compte Roblox</h3><p>${ME.roblox.username ? `Relié à <b style="color:var(--ink)">${esc(ME.roblox.username)}</b> : tes récompenses arrivent dans le jeu.` : 'Relie-le pour recevoir tes récompenses dans le jeu.'}</p>
         <form class="row" id="roblox"><input name="username" placeholder="Ton pseudo Roblox" value="${esc(ME.roblox.username ?? '')}" required minlength="3" maxlength="20" autocomplete="off"><button class="btn purple">${ME.roblox.username ? 'Changer' : 'Relier'}</button></form></div>
+      <div class="card panel reveal"><h3>🔔 Notifications Discord</h3><p>Neptune t'envoie un message quand tu gagnes des coins, montes de niveau ou peux t'offrir une récompense (1 par jour maximum).</p>
+        <label class="switch"><input type="checkbox" id="notify" ${ME.notify ? 'checked' : ''}><span></span><b>${ME.notify ? 'Activées' : 'Désactivées'}</b></label></div>
       <div class="card panel reveal"><h3>📦 Mes échanges</h3>${ME.orders.length ? ME.orders.map((o) => `<div class="list-row"><span>${esc(o.itemName)} · ${fmt(o.price)} 🪙</span><span class="st ${o.status}">${STATUS[o.status]}</span></div>`).join('') : '<p style="margin:0">Aucun échange pour l\'instant. <a href="#/recompenses" style="color:var(--purple);font-weight:800">Voir les récompenses →</a></p>'}</div>
       <div><button class="btn white small" id="logout">Se déconnecter</button></div>
     </div></div></section>`;
@@ -610,6 +619,10 @@ function route() {
     e.preventDefault();
     try { const x = await api('/api/fan/roblox', { method: 'PUT', body: { username: new FormData(e.target).get('username') } }); toast(`Relié à ${x.username} ✅`, 'ok'); await refresh(); } catch (err) { toast(err.message, 'err'); }
   };
+  $('#notify')?.addEventListener('change', async (e) => {
+    try { await api('/api/fan/notify', { method: 'PUT', body: { on: e.target.checked } }); ME.notify = e.target.checked; e.target.nextElementSibling.nextElementSibling.textContent = e.target.checked ? 'Activées' : 'Désactivées'; toast(e.target.checked ? 'Notifications activées 🔔' : 'Notifications coupées', 'ok'); }
+    catch (err) { toast(err.message, 'err'); e.target.checked = !e.target.checked; }
+  });
   $('#logout')?.addEventListener('click', async () => { await api('/fan/logout', { method: 'POST' }).catch(() => {}); ME = null; location.hash = '#/'; route(); });
 }
 

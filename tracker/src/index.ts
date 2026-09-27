@@ -107,6 +107,9 @@ if (config.NEPTUNE_TOKEN) {
   }
 }
 
+// Messages privés des fans (coins, niveau, objet abordable, top 3, livraison) : envoyés par Neptune
+const stopFanNotify = config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
+
 const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () => collectAll(repo, fetchers));
 const notifier = bot?.notifier;
 const stopRelance = notifier
@@ -126,6 +129,7 @@ const stopRelance = notifier
 async function shutdown() {
   log.info('arrêt…');
   stopCollect();
+  stopFanNotify();
   stopRelance();
   stopWeb();
   await bot?.stop();

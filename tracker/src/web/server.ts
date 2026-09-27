@@ -185,6 +185,12 @@ export function createApp(deps: WebDeps): Hono {
     return fan ? c.json(fans.me(fan)) : c.json({ error: 'not_logged_in' }, 401);
   });
   // Les comptes TikTok / Insta / YouTube des fans sont reliés par le staff (Management), pas par les fans.
+  app.put('/api/fan/notify', async (c) => {
+    const fan = requireFan(c);
+    const { on } = z.object({ on: z.boolean() }).parse(await c.req.json());
+    fans.fans.setNotify(fan.id, on);
+    return c.json({ ok: true });
+  });
   app.put('/api/fan/roblox', async (c) => {
     const fan = requireFan(c);
     const { username } = z.object({ username: z.string().trim().min(3).max(20) }).parse(await c.req.json());
@@ -208,6 +214,21 @@ export function createApp(deps: WebDeps): Hono {
     const fan = fans.ensureFan(body.discordId, body.username);
     return c.json({ url: fans.loginUrl(fan.id) });
   });
+  // Messages privés à envoyer par Neptune, puis accusé de réception
+  app.get('/api/neptune/notifications', (c) => {
+    requireNeptune(c);
+    return c.json({ notifications: fans.fans.pendingNotifications(), siteUrl: '/fan' });
+  });
+  app.post('/api/neptune/notifications/ack', async (c) => {
+    requireNeptune(c);
+    const body = z
+      .object({ sent: z.array(z.number().int()).max(200).default([]), failed: z.array(z.object({ id: z.number().int(), error: z.string().max(300) })).max(200).default([]) })
+      .parse(await c.req.json());
+    for (const id of body.sent) fans.fans.ackNotification(id, null);
+    for (const f of body.failed) fans.fans.ackNotification(f.id, f.error);
+    return c.json({ ok: true });
+  });
+
   app.post('/api/neptune/points', async (c) => {
     requireNeptune(c);
     const body = NeptuneBody.parse(await c.req.json());
@@ -606,7 +627,7 @@ export function createApp(deps: WebDeps): Hono {
 
   // --- Programme fans : boutique (staff) ----------------------------------------------
 
-  app.get('/api/fans', async (c) => c.json({ ...fans.overview(), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
+  app.get('/api/fans', async (c) => c.json({ ...fans.overview(), notifications: fans.fans.notificationStats(Date.now() - 7 * 86_400_000), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
   app.put('/api/fans/settings', async (c) => {
     const body = z
       .object({

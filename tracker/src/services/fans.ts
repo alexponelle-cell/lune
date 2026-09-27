@@ -58,6 +58,17 @@ export function parseFeatured(text: string): Array<{ kind: FeaturedKind; title: 
 }
 
 const LOGIN_TTL = 10 * 60_000;
+
+/** Niveaux des fans (mêmes seuils que le site). */
+export const FAN_LEVELS = [
+  { name: 'Débutant', emoji: '🌱', min: 0 },
+  { name: 'Clippeur', emoji: '⚡', min: 10_000 },
+  { name: 'Pro', emoji: '🔥', min: 100_000 },
+  { name: '1%', emoji: '👑', min: 1_000_000 },
+];
+export const levelOf = (views: number) => FAN_LEVELS.reduce((acc, l, i) => (views >= l.min ? i : acc), 0);
+const DAY_MS = 86_400_000;
+const nf = (n: number) => n.toLocaleString('fr-FR').replace(/\u202f|\u00a0/g, ' ');
 const SESSION_TTL = 30 * 86_400_000;
 
 export interface FanBalance {
@@ -168,6 +179,7 @@ export class FanService {
       clips,
       clipCount: this.fans.clipCount(clipper.id),
       weekRank: this.leaderboard(now, 100).find((r) => r.id === clipper.id)?.rank ?? null,
+      notify: this.fans.notifyEnabled(clipper.id),
       programName: s.programName,
       pointsPer1000: s.pointsPer1000,
       username: clipper.username,
@@ -209,6 +221,76 @@ export class FanService {
   buy(clipper: Clipper, itemId: number, now = Date.now()): ShopOrder {
     if (!this.fans.roblox(clipper.id).userId) throw new Error("Relie d'abord ton compte Roblox pour recevoir l'objet en jeu");
     return this.fans.placeOrder(clipper.id, itemId, this.balance(clipper.id, now).earned, now);
+  }
+
+  // --- Notifications Discord (envoyées par Neptune) -----------------------------------
+
+  /**
+   * Prépare les messages privés : au plus 1 par fan et par jour (commande livrée : toujours),
+   * par ordre d'importance : niveau supérieur > objet abordable > top 3 de la semaine > coins gagnés.
+   */
+  generateNotifications(now = Date.now()): number {
+    const s = this.settings();
+    if (!s.clientId) return 0;
+    let queued = 0;
+    const fans = this.repo.listClippers({ clientId: s.clientId }).filter((c) => !c.discordId.startsWith('manual:'));
+    const views = this.viewsByClipper(now);
+    const top3 = new Map(this.leaderboard(now, 3).map((r) => [r.id, r.rank]));
+    const week = new Date(now - ((new Date(now).getUTCDay() + 6) % 7) * DAY_MS).toISOString().slice(0, 10);
+    const items = this.fans.items({ activeOnly: true }).sort((a, b) => b.price - a.price);
+
+    // Commandes livrées (toujours annoncées, même si un autre message est parti aujourd'hui)
+    for (const o of this.fans.deliveredOrders(now - 7 * DAY_MS)) {
+      const fan = this.repo.getClipper(o.clipperId);
+      if (!fan || fan.discordId.startsWith('manual:') || this.fans.wasNotified(fan.id, `order:${o.id}`)) continue;
+      this.fans.markNotified(fan.id, `order:${o.id}`, now);
+      if (!this.fans.notifyEnabled(fan.id)) continue;
+      this.fans.queueNotification(fan.id, fan.discordId, 'delivered', `✅ Ton **${o.itemName}** est arrivé dans le jeu !`, now);
+      queued++;
+    }
+
+    for (const fan of fans) {
+      const v = views.get(fan.id) ?? 0;
+      const earned = this.points(v);
+      const balance = earned - this.fans.spent(fan.id);
+      const level = levelOf(v);
+      const st = this.fans.notifyState(fan.id);
+      if (!st) {
+        // Premier passage : on part de l'état actuel, sans message (pas de « +176 000 coins » d'un coup)
+        this.fans.saveNotifyState(fan.id, { earnedBase: earned, level, lastSentAt: null });
+        for (const i of items) if (balance >= i.price) this.fans.markNotified(fan.id, `afford:${i.id}`, now);
+        continue;
+      }
+      if (!this.fans.notifyEnabled(fan.id)) continue;
+      if (st.lastSentAt !== null && now - st.lastSentAt < 20 * 3_600_000) continue;
+
+      let msg: { kind: string; text: string; key?: string } | null = null;
+      if (level > st.level) {
+        const l = FAN_LEVELS[level]!;
+        msg = { kind: 'level', text: `⚡ **Niveau supérieur !** Tu passes **${l.emoji} ${l.name}**.` };
+      }
+      const affordable = items.find((i) => balance >= i.price && (i.stock === null || i.stock > 0) && !this.fans.wasNotified(fan.id, `afford:${i.id}`));
+      if (!msg && affordable) {
+        msg = { kind: 'afford', text: `🎁 Tu as assez de coins pour **${affordable.name}** ! (${nf(affordable.price)} coins)`, key: `afford:${affordable.id}` };
+      }
+      const rank = top3.get(fan.id);
+      if (!msg && rank && !this.fans.wasNotified(fan.id, `rank:${week}`)) {
+        msg = { kind: 'rank', text: `🏆 Tu es **#${rank}** du classement cette semaine !`, key: `rank:${week}` };
+      }
+      if (!msg && earned > st.earnedBase) {
+        msg = { kind: 'coins', text: `🪙 **+${nf(earned - st.earnedBase)} coins** gagnés ! Tu as maintenant **${nf(balance)} coins**.` };
+      }
+      if (!msg) continue;
+      this.fans.queueNotification(fan.id, fan.discordId, msg.kind, msg.text, now);
+      if (msg.key) this.fans.markNotified(fan.id, msg.key, now);
+      this.fans.saveNotifyState(fan.id, {
+        earnedBase: msg.kind === 'coins' ? earned : st.earnedBase,
+        level: msg.kind === 'level' ? level : st.level,
+        lastSentAt: now,
+      });
+      queued++;
+    }
+    return queued;
   }
 
   // --- Photos HD du créateur (YouTube + Roblox), mises en cache 12 h -----------------

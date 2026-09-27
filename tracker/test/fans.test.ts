@@ -161,4 +161,62 @@ describe('programme fans (Neptune)', () => {
     expect(me.username).toBe('Zoé');
     expect(repo.getClipperByDiscordId('777777')?.clientId).toBe(fans.settings().clientId);
   });
+
+  it('notifications : état initial silencieux, 1 message par jour, priorités, livraison, désactivation', async () => {
+    const fan = fans.ensureFan('d1', 'Paul', now - 3 * HOUR);
+    fans.addAccounts(fan, 'https://www.tiktok.com/@paul.clips');
+    const account = repo.listAccountsForClipper(fan.id)[0]!;
+    const collect = (views: number, at: number) => repo.recordCollection(account.id, [{ platformVideoId: 'v1', views, publishedAt: now - 3 * HOUR }], at);
+    collect(100, now - 2 * HOUR);
+    collect(5100, now - HOUR); // 5 000 vues = 50 coins
+    const item = fans.saveItem(null, { name: 'VIP', price: 80, kind: 'gamepass', ref: '1' });
+
+    const T0 = now;
+    expect(fans.generateNotifications(T0)).toBe(0); // premier passage : on mémorise l'état
+    collect(9100, T0 + HOUR); // +4 000 vues → 90 coins
+    expect(fans.generateNotifications(T0 + 2 * HOUR)).toBe(1);
+    let q = fans.fans.pendingNotifications();
+    expect(q).toHaveLength(1);
+    expect(q[0]).toMatchObject({ discordId: 'd1', kind: 'afford' }); // objet abordable avant les coins
+    expect(q[0]!.text).toContain('VIP');
+    fans.fans.ackNotification(q[0]!.id, null);
+
+    // Même jour : rien d'autre
+    expect(fans.generateNotifications(T0 + 3 * HOUR)).toBe(0);
+
+    // Lendemain : passage Clippeur (≥ 10 000 vues) prioritaire sur les coins
+    collect(12_100, T0 + 20 * HOUR);
+    expect(fans.generateNotifications(T0 + 24 * HOUR)).toBe(1);
+    q = fans.fans.pendingNotifications();
+    expect(q[0]!.kind).toBe('level');
+    fans.fans.ackNotification(q[0]!.id, 'Cannot send messages to this user');
+
+    // Jour suivant : top 3 de la semaine (une fois par semaine)
+    expect(fans.generateNotifications(T0 + 48 * HOUR)).toBe(1);
+    q = fans.fans.pendingNotifications();
+    expect(q[0]).toMatchObject({ kind: 'rank' });
+    expect(q[0]!.text).toContain('#1');
+    fans.fans.ackNotification(q[0]!.id, null);
+
+    // Puis les coins gagnés depuis le dernier message sur les coins
+    expect(fans.generateNotifications(T0 + 72 * HOUR)).toBe(1);
+    q = fans.fans.pendingNotifications();
+    expect(q[0]).toMatchObject({ kind: 'coins' });
+    expect(q[0]!.text).toContain('+70 coins');
+    fans.fans.ackNotification(q[0]!.id, null);
+
+    // Livraison : toujours annoncée, même le même jour
+    await fans.linkRoblox(fan, 'paulrbx');
+    const order = fans.buy(fan, item.id, T0 + 73 * HOUR);
+    fans.fans.markDelivered([order.id], 42, T0 + 73 * HOUR);
+    expect(fans.generateNotifications(T0 + 74 * HOUR)).toBe(1);
+    expect(fans.fans.pendingNotifications()[0]).toMatchObject({ kind: 'delivered' });
+    expect(fans.generateNotifications(T0 + 75 * HOUR)).toBe(0);
+
+    // Désactivées : plus rien
+    fans.fans.setNotify(fan.id, false);
+    collect(50_000, T0 + 90 * HOUR);
+    expect(fans.generateNotifications(T0 + 100 * HOUR)).toBe(0);
+    expect(fans.fans.notificationStats(0)).toMatchObject({ sent: 3, failed: 1, pending: 1 });
+  });
 });
