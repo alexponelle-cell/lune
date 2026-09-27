@@ -43,6 +43,8 @@ export interface WebDeps {
   robloxApiKey?: string;
   /** Clé partagée avec le bot Neptune (Python). */
   neptuneApiKey?: string;
+  /** Clé YouTube Data API (photo HD du créateur). */
+  youtubeApiKey?: string;
   /** « Se connecter avec Discord » sur la boutique fans. */
   discordOAuth?: { clientId: string; clientSecret: string; redirectUri: string };
   /** Rempli quand le bot est connecté (sinon les actions Discord sont indisponibles). */
@@ -122,8 +124,15 @@ export function createApp(deps: WebDeps): Hono {
 
   app.get('/fan', (c) => c.html(ASSETS.fan));
   // Visuels de la boutique (avatars, bannière du créateur)
-  app.get('/fan/assets/:name', (c) => {
-    const file = FAN_FILES[c.req.param('name')];
+  app.get('/fan/assets/:name', async (c) => {
+    const name = c.req.param('name');
+    // Photos HD du créateur si disponibles (YouTube / Roblox), sinon les visuels intégrés
+    if (name === 'beone.png' || name === 'beone-roblox.png') {
+      const hd = await fans.creatorAvatars(deps.youtubeApiKey);
+      const url = name === 'beone.png' ? hd.youtube : hd.roblox;
+      if (url) return c.redirect(url, 302);
+    }
+    const file = FAN_FILES[name];
     if (!file) return c.notFound();
     return c.body(file.data, 200, { 'content-type': file.type, 'cache-control': 'public, max-age=86400' });
   });
@@ -608,6 +617,8 @@ export function createApp(deps: WebDeps): Hono {
         heroMediaUrl: z.string().max(500).optional(),
         discordInviteUrl: z.string().max(500).optional(),
         featured: z.string().max(5000).optional(),
+        creatorYoutube: z.string().max(60).optional(),
+        creatorRoblox: z.string().max(20).optional(),
       })
       .parse(await c.req.json());
     return c.json(fans.saveSettings(body));

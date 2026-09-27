@@ -40,6 +40,7 @@ const botHolder: { current?: Bot['bridge'] } = {};
 
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
+    youtubeApiKey: config.YOUTUBE_API_KEY,
     discordOAuth:
       config.OAUTH_CLIENT_SECRET && (config.OAUTH_CLIENT_ID ?? config.DISCORD_CLIENT_ID)
         ? {

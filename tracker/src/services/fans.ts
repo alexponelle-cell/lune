@@ -19,6 +19,10 @@ export interface FanSettings {
   discordInviteUrl: string;
   /** Contenus mis en avant, une ligne par contenu : « type | titre | lien » (type : video, podcast, best). */
   featured: string;
+  /** Chaîne YouTube du créateur (@pseudo) : sa photo HD est utilisée sur le site. */
+  creatorYoutube: string;
+  /** Pseudo Roblox du créateur : son avatar Roblox est utilisé sur le site. */
+  creatorRoblox: string;
 }
 
 export const DEFAULT_FANS: FanSettings = {
@@ -29,6 +33,8 @@ export const DEFAULT_FANS: FanSettings = {
   heroMediaUrl: '',
   discordInviteUrl: '',
   featured: '',
+  creatorYoutube: 'BeOnePourcent',
+  creatorRoblox: 'BeOnePourcentt',
 };
 
 const FEATURED_KINDS = ['video', 'podcast', 'best'] as const;
@@ -85,6 +91,8 @@ export class FanService {
     if (patch.heroMediaUrl !== undefined && url(patch.heroMediaUrl) !== null) next.heroMediaUrl = url(patch.heroMediaUrl)!;
     if (patch.discordInviteUrl !== undefined && url(patch.discordInviteUrl) !== null) next.discordInviteUrl = url(patch.discordInviteUrl)!;
     if (patch.featured !== undefined) next.featured = patch.featured.slice(0, 5000);
+    if (patch.creatorYoutube !== undefined) next.creatorYoutube = patch.creatorYoutube.trim().replace(/^@/, '').slice(0, 60);
+    if (patch.creatorRoblox !== undefined) next.creatorRoblox = patch.creatorRoblox.trim().replace(/^@/, '').slice(0, 20);
     this.repo.setSetting('fans', next);
     return next;
   }
@@ -201,6 +209,46 @@ export class FanService {
   buy(clipper: Clipper, itemId: number, now = Date.now()): ShopOrder {
     if (!this.fans.roblox(clipper.id).userId) throw new Error("Relie d'abord ton compte Roblox pour recevoir l'objet en jeu");
     return this.fans.placeOrder(clipper.id, itemId, this.balance(clipper.id, now).earned, now);
+  }
+
+  // --- Photos HD du créateur (YouTube + Roblox), mises en cache 12 h -----------------
+
+  private avatarCache: { key: string; at: number; urls: { youtube: string | null; roblox: string | null } } | null = null;
+
+  async creatorAvatars(youtubeApiKey: string | undefined, now = Date.now()) {
+    const s = this.settings();
+    const key = `${s.creatorYoutube}|${s.creatorRoblox}`;
+    if (this.avatarCache && this.avatarCache.key === key && now - this.avatarCache.at < 12 * 3_600_000) return this.avatarCache.urls;
+    const safe = async <T>(fn: () => Promise<T>) => {
+      try {
+        return await fn();
+      } catch {
+        return null;
+      }
+    };
+    const youtube = s.creatorYoutube && youtubeApiKey
+      ? await safe(async () => {
+          const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=${encodeURIComponent('@' + s.creatorYoutube)}&key=${youtubeApiKey}`;
+          const r = (await (await fetch(url, { signal: AbortSignal.timeout(8000) })).json()) as { items?: Array<{ snippet: { thumbnails: Record<string, { url: string }> } }> };
+          const t = r.items?.[0]?.snippet.thumbnails;
+          const best = t?.high?.url ?? t?.medium?.url ?? t?.default?.url ?? null;
+          return best ? best.replace(/=s\d+/, '=s800') : null;
+        })
+      : null;
+    const roblox = s.creatorRoblox
+      ? await safe(async () => {
+          const user = await this.resolveRoblox(s.creatorRoblox);
+          if (!user) return null;
+          const r = (await (
+            await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=420x420&format=Png&isCircular=false`, { signal: AbortSignal.timeout(8000) })
+          ).json()) as { data?: Array<{ imageUrl?: string; state?: string }> };
+          const d = r.data?.[0];
+          return d?.state === 'Completed' && d.imageUrl ? d.imageUrl : null;
+        })
+      : null;
+    // Échec (réseau, API) : on réessaie dans 10 min au lieu de 12 h
+    this.avatarCache = { key, at: youtube || roblox ? now : now - 12 * 3_600_000 + 10 * 60_000, urls: { youtube, roblox } };
+    return this.avatarCache.urls;
   }
 
   // --- Page publique (accueil de la communauté) --------------------------------------
