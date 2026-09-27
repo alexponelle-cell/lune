@@ -1,4 +1,8 @@
 import {
+  ActionRowBuilder,
+  ActivityType,
+  ButtonBuilder,
+  ButtonStyle,
   Client as DiscordClient,
   EmbedBuilder,
   Events,
@@ -58,24 +62,63 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
   });
 }
 
-/** Bot Neptune : bot séparé, installé sur le serveur du créateur, qui ne fait que le programme fans. */
-export async function startNeptune(opts: { token: string; clientId?: string; guildId?: string; fans: FanService }): Promise<() => Promise<void>> {
+/**
+ * Bot des fans (ex. « BeOne Rewards ») : bot séparé, installé sur le serveur du créateur.
+ * /site, /coins, et envoi des messages privés préparés par le tracker (coins, niveau, livraison…).
+ */
+export async function startFansBot(opts: { token: string; clientId?: string; guildIds: string[]; fans: FanService; siteUrl: string }): Promise<() => Promise<void>> {
   if (opts.clientId) {
-    try {
-      const rest = new REST().setToken(opts.token);
-      const route = opts.guildId ? Routes.applicationGuildCommands(opts.clientId, opts.guildId) : Routes.applicationCommands(opts.clientId);
-      await rest.put(route, { body: fanCommandDefinitions });
-    } catch (err) {
-      log.error('Neptune : enregistrement des commandes', err);
+    const rest = new REST().setToken(opts.token);
+    const routes = opts.guildIds.length
+      ? opts.guildIds.map((g) => Routes.applicationGuildCommands(opts.clientId!, g))
+      : [Routes.applicationCommands(opts.clientId)];
+    for (const route of routes) {
+      await rest.put(route, { body: fanCommandDefinitions }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
     }
   }
   const discord = new DiscordClient({ intents: [GatewayIntentBits.Guilds] });
+  let timer: NodeJS.Timeout | undefined;
   discord.once(Events.ClientReady, (c) => {
     status.neptune = { state: 'ready', tag: c.user.tag, guilds: c.guilds.cache.size };
-    log.info(`Neptune connecté en tant que ${c.user.tag}`);
+    c.user.setActivity('🪙 /site pour la boutique', { type: ActivityType.Custom });
+    log.info(`bot fans connecté en tant que ${c.user.tag}`);
+    timer = setInterval(() => void sendNotifications().catch((err) => log.error('messages privés fans', err)), 2 * 60_000);
+    void sendNotifications().catch(() => {});
   });
-  discord.on(Events.Error, (err) => log.error('neptune', err));
+  discord.on(Events.Error, (err) => log.error('bot fans', err));
   attachFanCommands(discord, opts.fans);
+
+  const shopButton = () =>
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Voir la boutique').setEmoji('🪙').setURL(opts.siteUrl),
+    );
+  let sending = false;
+  async function sendNotifications() {
+    if (sending) return;
+    sending = true;
+    try {
+      for (const n of opts.fans.fans.pendingNotifications()) {
+        try {
+          const user = await discord.users.fetch(n.discordId);
+          await user.send({
+            embeds: [new EmbedBuilder().setColor(0xffd83d).setDescription(n.text).setFooter({ text: 'BeOne Rewards · 🪙 Fais des vues, gagne des coins' })],
+            components: [shopButton()],
+          });
+          opts.fans.fans.ackNotification(n.id, null);
+        } catch (err) {
+          const code = (err as { code?: number }).code;
+          opts.fans.fans.ackNotification(n.id, code === 50007 ? 'DM fermés' : String(err).slice(0, 200));
+        }
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+    } finally {
+      sending = false;
+    }
+  }
+
   await discord.login(opts.token);
-  return () => discord.destroy();
+  return async () => {
+    if (timer) clearInterval(timer);
+    await discord.destroy();
+  };
 }

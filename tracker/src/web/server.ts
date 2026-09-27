@@ -43,6 +43,8 @@ export interface WebDeps {
   robloxApiKey?: string;
   /** Clé partagée avec le bot Neptune (Python). */
   neptuneApiKey?: string;
+  /** Le bot des fans (BeOne Rewards) envoie lui-même les messages privés : Neptune n'en reçoit plus. */
+  fansBotSends?: boolean;
   /** Clé YouTube Data API (photo HD du créateur). */
   youtubeApiKey?: string;
   /** « Se connecter avec Discord » sur la boutique fans. */
@@ -217,7 +219,7 @@ export function createApp(deps: WebDeps): Hono {
   // Messages privés à envoyer par Neptune, puis accusé de réception
   app.get('/api/neptune/notifications', (c) => {
     requireNeptune(c);
-    return c.json({ notifications: fans.fans.pendingNotifications(), siteUrl: '/fan' });
+    return c.json({ notifications: deps.fansBotSends ? [] : fans.fans.pendingNotifications(), siteUrl: '/fan' });
   });
   app.post('/api/neptune/notifications/ack', async (c) => {
     requireNeptune(c);
@@ -627,7 +629,7 @@ export function createApp(deps: WebDeps): Hono {
 
   // --- Programme fans : boutique (staff) ----------------------------------------------
 
-  app.get('/api/fans', async (c) => c.json({ ...fans.overview(), notifications: fans.fans.notificationStats(Date.now() - 7 * 86_400_000), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
+  app.get('/api/fans', async (c) => c.json({ ...fans.overview(), notifications: fans.fans.notificationStats(Date.now() - 7 * 86_400_000), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, fansBot: !!deps.fansBotSends, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
   app.put('/api/fans/settings', async (c) => {
     const body = z
       .object({

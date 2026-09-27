@@ -10,7 +10,7 @@ import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
 import { FanRepo } from './db/fans.js';
 import { RecruitmentRepo } from './db/recruitment.js';
-import { startNeptune } from './bot/fans.js';
+import { startFansBot } from './bot/fans.js';
 import { FanService } from './services/fans.js';
 import { AgencyService } from './services/agency.js';
 import { RecruitmentService } from './services/recruitment.js';
@@ -40,6 +40,7 @@ const botHolder: { current?: Bot['bridge'] } = {};
 
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
+    fansBotSends: !!config.FANS_BOT_TOKEN,
     youtubeApiKey: config.YOUTUBE_API_KEY,
     discordOAuth:
       config.OAUTH_CLIENT_SECRET && (config.OAUTH_CLIENT_ID ?? config.DISCORD_CLIENT_ID)
@@ -63,7 +64,7 @@ if (config.DISCORD_TOKEN) {
         token: config.DISCORD_TOKEN,
         clientId: config.DISCORD_CLIENT_ID,
         guildId: config.DISCORD_GUILD_ID,
-        withFans: !config.NEPTUNE_TOKEN && !config.NEPTUNE_API_KEY,
+        withFans: !config.FANS_BOT_TOKEN && !config.NEPTUNE_API_KEY,
       });
       status.bot.commandsRegistered = result;
       log.info(result);
@@ -82,7 +83,7 @@ if (config.DISCORD_TOKEN) {
       recruitment,
       dashboardUrl,
       guildId: config.DISCORD_GUILD_ID,
-      fans: config.NEPTUNE_TOKEN || config.NEPTUNE_API_KEY ? undefined : fans,
+      fans: config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? undefined : fans,
     });
     botHolder.current = bot.bridge;
   } catch (err) {
@@ -96,19 +97,25 @@ if (config.DISCORD_TOKEN) {
   log.warn('DISCORD_TOKEN absent : bot désactivé, seuls le site et la collecte tournent');
 }
 
-// Bot Neptune : programme fans sur le serveur du créateur (optionnel)
-let stopNeptune: (() => Promise<void>) | undefined;
-if (config.NEPTUNE_TOKEN) {
+// Bot des fans (« BeOne Rewards ») : /site, /coins et messages privés
+let stopFansBot: (() => Promise<void>) | undefined;
+if (config.FANS_BOT_TOKEN) {
   try {
-    stopNeptune = await startNeptune({ token: config.NEPTUNE_TOKEN, clientId: config.NEPTUNE_CLIENT_ID, guildId: config.NEPTUNE_GUILD_ID, fans });
+    stopFansBot = await startFansBot({
+      token: config.FANS_BOT_TOKEN,
+      clientId: config.FANS_BOT_CLIENT_ID,
+      guildIds: (config.FANS_BOT_GUILD_ID ?? '').split(',').map((g) => g.trim()).filter((g) => /^\d+$/.test(g)),
+      fans,
+      siteUrl: `${dashboardUrl.replace(/\/$/, '')}/fan`,
+    });
   } catch (err) {
     status.neptune = { state: 'error', error: err instanceof Error ? err.message : String(err) };
-    log.error('connexion du bot Neptune impossible', err);
+    log.error('connexion du bot fans impossible', err);
   }
 }
 
-// Messages privés des fans (coins, niveau, objet abordable, top 3, livraison) : envoyés par Neptune
-const stopFanNotify = config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
+// Messages privés des fans (coins, niveau, objet abordable, top 3, livraison)
+const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
 const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () => collectAll(repo, fetchers));
 const notifier = bot?.notifier;
@@ -133,7 +140,7 @@ async function shutdown() {
   stopRelance();
   stopWeb();
   await bot?.stop();
-  await stopNeptune?.();
+  await stopFansBot?.();
   db.close();
   process.exit(0);
 }

@@ -13,10 +13,13 @@ const schema = z.object({
   DISCORD_CLIENT_ID: optionalString,
   DISCORD_GUILD_ID: optionalString,
 
-  /** Bot Neptune (programme fans, sur le serveur du créateur). Optionnel. */
-  NEPTUNE_TOKEN: optionalString,
-  NEPTUNE_CLIENT_ID: optionalString,
-  NEPTUNE_GUILD_ID: optionalString,
+  /**
+   * Bot « BeOne Rewards » (programme fans) : /site, /coins et messages privés aux fans.
+   * FANS_BOT_GUILD_ID : serveur(s) où enregistrer les commandes, séparés par des virgules (sinon global, ~1 h).
+   */
+  FANS_BOT_TOKEN: optionalString,
+  FANS_BOT_CLIENT_ID: optionalString,
+  FANS_BOT_GUILD_ID: optionalString,
   /** Clé partagée avec le bot Neptune (Python) : il demande les liens /site et les points. */
   NEPTUNE_API_KEY: optionalString,
   /**
