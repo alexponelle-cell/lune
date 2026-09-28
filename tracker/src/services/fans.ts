@@ -335,7 +335,7 @@ export class FanService {
 
   // --- Photos HD du créateur (YouTube + Roblox), mises en cache 12 h -----------------
 
-  private avatarCache: { key: string; at: number; urls: { youtube: string | null; roblox: string | null } } | null = null;
+  private avatarCache: { key: string; at: number; urls: { youtube: string | null; roblox: string | null; banner: string | null } } | null = null;
   /** Dernière erreur de récupération des photos (affichée dans le dashboard). */
   avatarErrors: { youtube: string | null; roblox: string | null } = { youtube: null, roblox: null };
 
@@ -355,13 +355,17 @@ export class FanService {
     };
     this.avatarErrors = { youtube: null, roblox: null };
     if (!youtubeApiKey) this.avatarErrors.youtube = 'YOUTUBE_API_KEY absente';
+    let banner: string | null = null;
     const youtube = s.creatorYoutube && youtubeApiKey
       ? await safe('youtube', async () => {
-          const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=${encodeURIComponent('@' + s.creatorYoutube)}&key=${youtubeApiKey}`;
+          const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&forHandle=${encodeURIComponent('@' + s.creatorYoutube)}&key=${youtubeApiKey}`;
           const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-          const r = (await res.json()) as { items?: Array<{ snippet: { thumbnails: Record<string, { url: string }> } }>; error?: { message?: string } };
+          const r = (await res.json()) as { items?: Array<{ snippet: { thumbnails: Record<string, { url: string }> }; brandingSettings?: { image?: { bannerExternalUrl?: string } } }>; error?: { message?: string } };
           if (!res.ok) throw new Error(`YouTube HTTP ${res.status} : ${r.error?.message ?? ''}`);
           if (!r.items?.length) throw new Error(`chaîne @${s.creatorYoutube} introuvable`);
+          // Bannière de la chaîne en HD (bande centrale 2560×423, même cadrage que la bannière intégrée)
+          const b = r.items?.[0]?.brandingSettings?.image?.bannerExternalUrl;
+          if (b) banner = `${b}=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj`;
           const t = r.items?.[0]?.snippet.thumbnails;
           const best = t?.high?.url ?? t?.medium?.url ?? t?.default?.url ?? null;
           return best ? best.replace(/=s\d+/, '=s800') : null;
@@ -380,7 +384,7 @@ export class FanService {
         })
       : null;
     // Échec (réseau, API) : on réessaie dans 10 min au lieu de 12 h
-    this.avatarCache = { key, at: youtube || roblox ? now : now - 12 * 3_600_000 + 10 * 60_000, urls: { youtube, roblox } };
+    this.avatarCache = { key, at: youtube || roblox ? now : now - 12 * 3_600_000 + 10 * 60_000, urls: { youtube, roblox, banner } };
     return this.avatarCache.urls;
   }
 

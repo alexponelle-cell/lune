@@ -129,9 +129,9 @@ export function createApp(deps: WebDeps): Hono {
   app.get('/fan/assets/:name', async (c) => {
     const name = c.req.param('name');
     // Photos HD du créateur si disponibles (YouTube / Roblox), sinon les visuels intégrés
-    if (name === 'beone.png' || name === 'beone-roblox.png') {
+    if (name === 'beone.png' || name === 'beone-roblox.png' || name === 'banner.jpg') {
       const hd = await fans.creatorAvatars(deps.youtubeApiKey);
-      const url = name === 'beone.png' ? hd.youtube : hd.roblox;
+      const url = name === 'beone.png' ? hd.youtube : name === 'banner.jpg' ? hd.banner : hd.roblox;
       if (url) {
         c.header('cache-control', 'public, max-age=3600');
         return c.redirect(url, 302);
