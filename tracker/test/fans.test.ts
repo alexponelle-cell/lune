@@ -9,6 +9,7 @@ import { RecruitmentRepo } from '../src/db/recruitment.js';
 import { RecruitmentService } from '../src/services/recruitment.js';
 import { createApp } from '../src/web/server.js';
 import { collectAll } from '../src/jobs/collect.js';
+import { isAccountsChannel } from '../src/bot/fans.js';
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -238,5 +239,10 @@ describe('programme fans (Neptune)', () => {
     t += 24 * HOUR;
     await collectAll(repo, fetchers, () => t, skip);
     expect(calls).toBe(2);
+  });
+
+  it('reconnaît le salon des comptes', () => {
+    for (const n of ['👤│comptes', 'mes-comptes', '📱・mes-comptes', 'comptes']) expect(isAccountsChannel(n)).toBe(true);
+    for (const n of ['tuto-comptes', '📊│comptes-staff', 'général']) expect(isAccountsChannel(n)).toBe(false);
   });
 });

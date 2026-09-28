@@ -64,12 +64,18 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
 
 const PF: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
 
+/** « 👤│comptes », « mes-comptes »… mais pas « tuto-comptes ». */
+export function isAccountsChannel(name: string): boolean {
+  const n = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z-]/g, '').replace(/^-+|-+$/g, '');
+  return n === 'comptes' || n === 'mes-comptes' || n === 'mescomptes';
+}
+
 /** Salon #mes-comptes : le fan y colle ses liens TikTok / Insta / YouTube, ils sont reliés automatiquement. */
 export function attachAccountsChannel(discord: DiscordClient, fans: FanService): void {
   discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.inGuild()) return;
     const channel = message.channel;
-    if (!('name' in channel) || !/mes[-_ ]?comptes/i.test(channel.name.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return;
+    if (!('name' in channel) || !isAccountsChannel(channel.name)) return;
     try {
       const fan = fans.ensureFan(message.author.id, message.member?.displayName ?? message.author.username);
       let result;
