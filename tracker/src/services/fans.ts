@@ -1,6 +1,6 @@
 import type { FanRepo, ItemInput, ShopOrder } from '../db/fans.js';
 import type { Clipper, Repo } from '../db/repo.js';
-import { parseAccountLinks, type AccountLink } from '../domain/links.js';
+import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
 
 /** Programme fans (bot Neptune) : les fans clippent, gagnent des points avec leurs vues et les échangent en boutique. */
@@ -201,6 +201,46 @@ export class FanService {
       else result.added.push(link);
     }
     return result;
+  }
+
+  /**
+   * Formulaire /inscription : un champ par plateforme (@pseudo ou lien). Champ vide = plateforme retirée.
+   * Un compte déjà relié à quelqu'un d'autre est refusé.
+   */
+  setAccounts(clipper: Clipper, input: Partial<Record<Platform, string>>) {
+    const out = { linked: [] as AccountLink[], removed: [] as Platform[], conflicts: [] as AccountLink[], invalid: [] as Platform[] };
+    for (const platform of ['tiktok', 'youtube', 'instagram'] as const) {
+      const raw = input[platform];
+      if (raw === undefined) continue;
+      const current = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.platform === platform);
+      const value = raw.trim();
+      if (!value) {
+        for (const a of current) this.repo.deactivateAccount(a.id);
+        if (current.length) out.removed.push(platform);
+        continue;
+      }
+      const link = parseAccountInput(platform, value);
+      if (!link) {
+        out.invalid.push(platform);
+        continue;
+      }
+      if (current.some((a) => a.handle === link.handle)) {
+        out.linked.push(link);
+        continue;
+      }
+      const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link });
+      if (r.conflict) {
+        out.conflicts.push(link);
+        continue;
+      }
+      for (const a of current) this.repo.deactivateAccount(a.id);
+      out.linked.push(link);
+    }
+    return out;
+  }
+
+  accountsOf(clipperId: number) {
+    return this.repo.listAccountsForClipper(clipperId);
   }
 
   removeAccount(clipper: Clipper, accountId: number): void {

@@ -1,6 +1,9 @@
 import {
   ActionRowBuilder,
   ActivityType,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   ButtonBuilder,
   ButtonStyle,
   Client as DiscordClient,
@@ -22,8 +25,76 @@ export const fanCommandDefinitions = [
   new SlashCommandBuilder().setName('coins').setDescription('Tes vues et tes coins').toJSON(),
 ];
 export const FAN_COMMANDS = new Set(fanCommandDefinitions.map((c) => c.name));
+/** /inscription n'existe que sur le bot des fans (le bot de l'agence a déjà son /inscription). */
+const inscriptionCommand = new SlashCommandBuilder().setName('inscription').setDescription('Relie tes comptes TikTok, YouTube, Instagram (et ton pseudo Roblox)').toJSON();
+const INSCRIPTION_MODAL = 'fans:inscription';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
+const PF: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+
+const PLATFORM_FIELDS = [
+  { id: 'tiktok', label: 'TikTok', placeholder: '@tonpseudo ou lien du profil' },
+  { id: 'youtube', label: 'YouTube', placeholder: '@tachaine ou lien de la chaîne' },
+  { id: 'instagram', label: 'Instagram', placeholder: '@tonpseudo ou lien du profil' },
+] as const;
+
+/** /inscription : formulaire avec un champ par réseau + pseudo Roblox. */
+export function attachInscription(discord: DiscordClient, fans: FanService): void {
+  discord.on(Events.InteractionCreate, async (interaction) => {
+    try {
+      if (interaction.isChatInputCommand() && interaction.commandName === 'inscription') {
+        const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
+        const fan = fans.ensureFan(interaction.user.id, name);
+        const accounts = fans.accountsOf(fan.id);
+        const current = (p: string) => {
+          const a = accounts.find((x) => x.platform === p);
+          return a ? `@${a.handle}` : '';
+        };
+        const modal = new ModalBuilder().setCustomId(INSCRIPTION_MODAL).setTitle('Inscription BeOne Rewards');
+        for (const f of PLATFORM_FIELDS) {
+          const input = new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setPlaceholder(f.placeholder).setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(200);
+          const v = current(f.id);
+          if (v) input.setValue(v);
+          modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+        }
+        const rbx = new TextInputBuilder().setCustomId('roblox').setLabel('Pseudo Roblox (pour recevoir tes récompenses)').setPlaceholder('TonPseudoRoblox').setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(20);
+        const r = fans.fans.roblox(fan.id).username;
+        if (r) rbx.setValue(r);
+        modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(rbx));
+        await interaction.showModal(modal);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId === INSCRIPTION_MODAL) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
+        const fan = fans.ensureFan(interaction.user.id, name);
+        const get = (id: string) => interaction.fields.getTextInputValue(id) ?? '';
+        const res = fans.setAccounts(fan, { tiktok: get('tiktok'), youtube: get('youtube'), instagram: get('instagram') });
+        const lines: string[] = [];
+        if (res.linked.length) lines.push(`✅ Comptes suivis : ${res.linked.map((a) => `**${PF[a.platform]}** @${a.handle}`).join(', ')}`);
+        if (res.removed.length) lines.push(`🗑️ Retiré : ${res.removed.map((p) => PF[p]).join(', ')}`);
+        if (res.conflicts.length) lines.push(`⛔ Déjà relié à quelqu'un d'autre : ${res.conflicts.map((a) => `@${a.handle}`).join(', ')}. Si c'est ton compte, préviens le staff.`);
+        if (res.invalid.length) lines.push(`🤔 Pas compris : ${res.invalid.map((p) => PF[p]).join(', ')}. Mets ton @pseudo ou le lien de ton profil.`);
+        const roblox = get('roblox').trim();
+        if (roblox && roblox.toLowerCase() !== (fans.fans.roblox(fan.id).username ?? '').toLowerCase()) {
+          try {
+            const r = await fans.linkRoblox(fan, roblox);
+            lines.push(`🎮 Roblox relié : **${r.username}**`);
+          } catch (err) {
+            lines.push(`🎮 Roblox : ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+        if (!lines.length) lines.push('Rien à changer 👍');
+        if (res.linked.length) lines.push('\nTes prochaines vues te rapportent des coins 🪙 (mise à jour 1 fois par jour) · `/site` pour la boutique');
+        await interaction.editReply(lines.join('\n'));
+      }
+    } catch (err) {
+      log.error('/inscription (fans)', err);
+      const msg = { content: `Oups : ${String(err)}`.slice(0, 300), flags: MessageFlags.Ephemeral } as const;
+      if (interaction.isRepliable()) await (interaction.deferred ? interaction.editReply(msg.content) : interaction.replied ? Promise.resolve() : interaction.reply(msg)).catch(() => {});
+    }
+  });
+}
 
 export function attachFanCommands(discord: DiscordClient, fans: FanService): void {
   discord.on(Events.InteractionCreate, async (interaction) => {
@@ -34,7 +105,7 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
       if (interaction.commandName === 'site') {
         const url = fans.loginUrl(fan.id);
         await interaction.reply({
-          content: `🔐 **Ton lien de connexion perso** (valable 10 min, ne le partage pas) :\n${url}\n\nTu y suis tes clips, tes vues et tes coins, et tu les échanges dans la boutique.\n📱 Pas encore de compte relié ? Colle le lien de ton profil TikTok / Insta / YouTube dans **#mes-comptes**.`,
+          content: `🔐 **Ton lien de connexion perso** (valable 10 min, ne le partage pas) :\n${url}\n\nTu y suis tes clips, tes vues et tes coins, et tu les échanges dans la boutique.\n📱 Pas encore de compte relié ? Fais **/inscription**.`,
           flags: MessageFlags.Ephemeral,
         });
       } else {
@@ -61,8 +132,6 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
     }
   });
 }
-
-const PF: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
 
 /** « 👤│comptes », « mes-comptes »… mais pas « tuto-comptes ». */
 export function isAccountsChannel(name: string): boolean {
@@ -113,7 +182,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       ? opts.guildIds.map((g) => Routes.applicationGuildCommands(opts.clientId!, g))
       : [Routes.applicationCommands(opts.clientId)];
     for (const route of routes) {
-      await rest.put(route, { body: fanCommandDefinitions }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
+      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
     }
   }
   // Lire le salon #mes-comptes demande « Message Content Intent » (portail Discord, onglet Bot).
@@ -140,6 +209,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     d.once(Events.ClientReady, onReady);
     d.on(Events.Error, (err) => log.error('bot fans', err));
     attachFanCommands(d, opts.fans);
+    attachInscription(d, opts.fans);
     if (readsMessages) attachAccountsChannel(d, opts.fans);
   };
 

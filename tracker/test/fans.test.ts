@@ -259,4 +259,18 @@ describe('programme fans (Neptune)', () => {
     expect(repo.listAccountsForClipper(a.id)).toHaveLength(1);
     expect(repo.listAccountsForClipper(b.id)).toHaveLength(0);
   });
+
+  it('/inscription : un champ par réseau, vide = retiré, compte d’un autre refusé', () => {
+    const a = fans.ensureFan('d1', 'Paul');
+    const b = fans.ensureFan('d2', 'Léa');
+    let r = fans.setAccounts(a, { tiktok: '@Paul.Clips', youtube: 'https://www.youtube.com/@paulyt', instagram: '' });
+    expect(r.linked.map((l) => `${l.platform}:${l.handle}`)).toEqual(['tiktok:paul.clips', 'youtube:paulyt']);
+    r = fans.setAccounts(b, { tiktok: 'paul.clips', youtube: 'pas un lien !!', instagram: '@lea' });
+    expect(r.conflicts.map((l) => l.handle)).toEqual(['paul.clips']);
+    expect(r.invalid).toEqual(['youtube']);
+    expect(fans.accountsOf(b.id).map((x) => x.handle)).toEqual(['lea']);
+    r = fans.setAccounts(a, { tiktok: '@paul.clips', youtube: '', instagram: '' });
+    expect(r.removed).toEqual(['youtube']);
+    expect(fans.accountsOf(a.id).map((x) => x.handle)).toEqual(['paul.clips']);
+  });
 });
