@@ -43,12 +43,12 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setColor(0xf2f2f2)
-              .setTitle(`⭐ ${name}`)
+              .setColor(0xffd83d)
+              .setTitle(`🪙 ${name}`)
               .addFields(
-                { name: 'Vues', value: fmt(b.views), inline: true },
-                { name: 'Coins', value: fmt(b.balance), inline: true },
-                { name: 'Dépensés', value: fmt(b.spent), inline: true },
+                { name: '🪙 Coins', value: `**${fmt(b.balance)}**`, inline: true },
+                { name: '👀 Vues', value: fmt(b.views), inline: true },
+                { name: '🛒 Dépensés', value: fmt(b.spent), inline: true },
               )
               .setFooter({ text: `${s.pointsPer1000} coins pour 1 000 vues · /site pour la boutique` }),
           ],
