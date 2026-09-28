@@ -62,6 +62,37 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
   });
 }
 
+const PF: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+
+/** Salon #mes-comptes : le fan y colle ses liens TikTok / Insta / YouTube, ils sont reliés automatiquement. */
+export function attachAccountsChannel(discord: DiscordClient, fans: FanService): void {
+  discord.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.inGuild()) return;
+    const channel = message.channel;
+    if (!('name' in channel) || !/mes[-_ ]?comptes/i.test(channel.name.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return;
+    try {
+      const fan = fans.ensureFan(message.author.id, message.member?.displayName ?? message.author.username);
+      let result;
+      try {
+        result = fans.addAccounts(fan, message.content);
+      } catch {
+        await message.reply({
+          content: '🤔 Je ne trouve pas de lien de compte. Colle le lien de ton **profil**, par exemple `https://www.tiktok.com/@tonpseudo`',
+          allowedMentions: { repliedUser: false },
+        });
+        return;
+      }
+      const lines: string[] = [];
+      if (result.added.length) lines.push(`✅ C'est relié : ${result.added.map((a) => `**${PF[a.platform]}** @${a.handle}`).join(', ')}\nTes prochaines vues te rapportent des coins 🪙 (mise à jour 1 fois par jour)`);
+      if (result.conflicts.length) lines.push(`⛔ Déjà relié à quelqu'un d'autre : ${result.conflicts.map((a) => `@${a.handle}`).join(', ')}. Si c'est ton compte, préviens le staff.`);
+      await message.react(result.conflicts.length && !result.added.length ? '⛔' : '✅').catch(() => {});
+      await message.reply({ content: lines.join('\n'), allowedMentions: { repliedUser: false } });
+    } catch (err) {
+      log.error('salon mes-comptes', err);
+    }
+  });
+}
+
 /**
  * Bot des fans (ex. « BeOne Rewards ») : bot séparé, installé sur le serveur du créateur.
  * /site, /coins, et envoi des messages privés préparés par le tracker (coins, niveau, livraison…).
@@ -76,17 +107,32 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       await rest.put(route, { body: fanCommandDefinitions }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
     }
   }
-  const discord = new DiscordClient({ intents: [GatewayIntentBits.Guilds] });
+  // Lire le salon #mes-comptes demande « Message Content Intent » (portail Discord, onglet Bot).
+  const make = (withMessages: boolean) =>
+    new DiscordClient({
+      intents: [GatewayIntentBits.Guilds, ...(withMessages ? [GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] : [])],
+    });
+  let discord = make(true);
+  let readsMessages = true;
   let timer: NodeJS.Timeout | undefined;
-  discord.once(Events.ClientReady, (c) => {
-    status.neptune = { state: 'ready', tag: c.user.tag, guilds: c.guilds.cache.size };
+  function onReady(c: DiscordClient<true>) {
+    status.neptune = {
+      state: 'ready',
+      tag: c.user.tag,
+      guilds: c.guilds.cache.size,
+      error: readsMessages ? undefined : 'Active « Message Content Intent » (portail Discord > Bot) pour le salon #mes-comptes',
+    };
     c.user.setActivity('🪙 /site pour la boutique', { type: ActivityType.Custom });
     log.info(`bot fans connecté en tant que ${c.user.tag}`);
     timer = setInterval(() => void sendNotifications().catch((err) => log.error('messages privés fans', err)), 2 * 60_000);
     void sendNotifications().catch(() => {});
-  });
-  discord.on(Events.Error, (err) => log.error('bot fans', err));
-  attachFanCommands(discord, opts.fans);
+  }
+  const wire = (d: DiscordClient) => {
+    d.once(Events.ClientReady, onReady);
+    d.on(Events.Error, (err) => log.error('bot fans', err));
+    attachFanCommands(d, opts.fans);
+    if (readsMessages) attachAccountsChannel(d, opts.fans);
+  };
 
   const shopButton = () =>
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -116,7 +162,18 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     }
   }
 
-  await discord.login(opts.token);
+  wire(discord);
+  try {
+    await discord.login(opts.token);
+  } catch (err) {
+    if (!(err instanceof Error && /disallowed intents/i.test(err.message))) throw err;
+    log.warn('bot fans : « Message Content Intent » non activé, le salon #mes-comptes ne marche pas');
+    await discord.destroy();
+    readsMessages = false;
+    discord = make(false);
+    wire(discord);
+    await discord.login(opts.token);
+  }
   return async () => {
     if (timer) clearInterval(timer);
     await discord.destroy();
