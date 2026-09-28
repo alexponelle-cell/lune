@@ -9,7 +9,7 @@ import { RecruitmentRepo } from '../src/db/recruitment.js';
 import { RecruitmentService } from '../src/services/recruitment.js';
 import { createApp } from '../src/web/server.js';
 import { collectAll } from '../src/jobs/collect.js';
-import { isAccountsChannel } from '../src/bot/fans.js';
+import { isAccountsChannel, isTicketChannel } from '../src/bot/fans.js';
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -272,5 +272,12 @@ describe('programme fans (Neptune)', () => {
     r = fans.setAccounts(a, { tiktok: '@paul.clips', youtube: '', instagram: '' });
     expect(r.removed).toEqual(['youtube']);
     expect(fans.accountsOf(a.id).map((x) => x.handle)).toEqual(['paul.clips']);
+  });
+
+  it('/inscription seulement dans les tickets', () => {
+    expect(isTicketChannel({ name: 'ticket-0042' })).toBe(true);
+    expect(isTicketChannel({ name: 'paul', parent: { name: '🎫 Tickets' } })).toBe(true);
+    expect(isTicketChannel(null)).toBe(true); // ticket privé invisible pour le bot
+    expect(isTicketChannel({ name: 'général', parent: { name: 'général clipper' } })).toBe(false);
   });
 });

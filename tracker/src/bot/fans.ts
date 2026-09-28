@@ -38,11 +38,28 @@ const PLATFORM_FIELDS = [
   { id: 'instagram', label: 'Instagram', placeholder: '@tonpseudo ou lien du profil' },
 ] as const;
 
+/**
+ * /inscription seulement dans les tickets (Ticket Tool : « ticket-0001 », catégorie « Tickets »…).
+ * Salon invisible pour le bot (ticket privé) : autorisé ; salon visible sans « ticket » dans le nom : refusé.
+ */
+export function isTicketChannel(channel: { name?: string | null; parent?: { name?: string | null } | null } | null | undefined): boolean {
+  if (!channel || !channel.name) return true;
+  return /ticket/i.test(channel.name) || /ticket/i.test(channel.parent?.name ?? '');
+}
+
 /** /inscription : formulaire avec un champ par réseau + pseudo Roblox. */
 export function attachInscription(discord: DiscordClient, fans: FanService): void {
   discord.on(Events.InteractionCreate, async (interaction) => {
     try {
       if (interaction.isChatInputCommand() && interaction.commandName === 'inscription') {
+        const ch = interaction.channel as { name?: string | null; parent?: { name?: string | null } | null } | null;
+        if (interaction.inGuild() && !isTicketChannel(ch)) {
+          await interaction.reply({
+            content: '🎫 Ouvre d’abord un **ticket** (bouton **Create ticket**), puis fais **/inscription** dedans.',
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
         const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
         const fan = fans.ensureFan(interaction.user.id, name);
         const accounts = fans.accountsOf(fan.id);
