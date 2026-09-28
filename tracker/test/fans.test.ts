@@ -245,4 +245,18 @@ describe('programme fans (Neptune)', () => {
     for (const n of ['👤│comptes', 'mes-comptes', '📱・mes-comptes', 'comptes']) expect(isAccountsChannel(n)).toBe(true);
     for (const n of ['tuto-comptes', '📊│comptes-staff', 'général']) expect(isAccountsChannel(n)).toBe(false);
   });
+
+  it('un même compte ne peut pas être suivi deux fois (même ID réel sous deux adresses)', async () => {
+    const a = fans.ensureFan('d1', 'Paul');
+    const b = fans.ensureFan('d2', 'Léa');
+    fans.addAccounts(a, 'https://www.youtube.com/@paulclips');
+    // Même pseudo : refusé tout de suite
+    expect(fans.addAccounts(b, 'https://www.youtube.com/@paulclips').conflicts).toHaveLength(1);
+    // Même chaîne via son identifiant : acceptée à l'ajout, désactivée à la collecte
+    expect(fans.addAccounts(b, 'https://www.youtube.com/channel/UCaaaaaaaaaaaaaaaaaaaaaa').added).toHaveLength(1);
+    const fetcher = { platform: 'youtube' as const, fetchAccount: async () => ({ externalId: 'UCaaaaaaaaaaaaaaaaaaaaaa', videos: [{ platformVideoId: 'v', views: 10 }] }) };
+    await collectAll(repo, { tiktok: fetcher as never, instagram: fetcher as never, youtube: fetcher });
+    expect(repo.listAccountsForClipper(a.id)).toHaveLength(1);
+    expect(repo.listAccountsForClipper(b.id)).toHaveLength(0);
+  });
 });

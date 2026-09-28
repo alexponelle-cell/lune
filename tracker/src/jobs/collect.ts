@@ -22,6 +22,17 @@ export async function collectAll(
     if (skip(account, now())) continue;
     try {
       const fetched = await fetchers[account.platform].fetchAccount(account);
+      // Un même compte ne peut être suivi qu'une fois (ex. @pseudo et /channel/UC… sur YouTube, ou pseudo changé) :
+      // le plus récent est désactivé, pour ne jamais compter les vues deux fois.
+      const dup = fetched.externalId ? repo.findDuplicateAccount(account.platform, fetched.externalId, account.id) : undefined;
+      if (dup && dup.id < account.id) {
+        const owner = repo.getClipper(dup.clipperId)?.username ?? '?';
+        repo.deactivateAccount(account.id);
+        repo.markAccountChecked(account.id, now(), { externalId: fetched.externalId, error: `Doublon : ce compte est déjà suivi (@${dup.handle}, ${owner})` });
+        log.warn(`collect ${account.platform}/${account.handle} : doublon de @${dup.handle} (${owner}), désactivé`);
+        result.failed++;
+        continue;
+      }
       const at = now();
       const snap = repo.recordCollection(account.id, fetched.videos, at);
       repo.markAccountChecked(account.id, at, { externalId: fetched.externalId, displayName: fetched.displayName });

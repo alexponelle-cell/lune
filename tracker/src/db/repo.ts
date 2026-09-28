@@ -277,6 +277,14 @@ export class Repo {
       .map((r) => toAccount(r as Row));
   }
 
+  /** Autre compte actif pointant vers le même compte réel (même ID plateforme), ex. @pseudo et /channel/UC… */
+  findDuplicateAccount(platform: Platform, externalId: string, excludeId: number): Account | undefined {
+    const r = this.db
+      .prepare('SELECT * FROM accounts WHERE platform = ? AND external_id = ? AND id != ? AND active = 1 ORDER BY id LIMIT 1')
+      .get(platform, externalId, excludeId);
+    return r ? toAccount(r as Row) : undefined;
+  }
+
   markAccountChecked(id: number, at: number, meta: { externalId?: string; displayName?: string; error?: string }): void {
     this.db
       .prepare(
