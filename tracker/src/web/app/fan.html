@@ -537,7 +537,7 @@ function pageClip() {
   const steps = `<div class="steps">
     <div class="card wiggle reveal"><div class="n">1</div><div class="emo">🎬</div><b>Crée ton clip</b></div>
     <div class="card wiggle reveal"><div class="n">2</div><div class="emo">📱</div><b>Poste-le</b></div>
-    <div class="card wiggle reveal"><div class="n">3</div><div class="emo">👀</div><b>On suit tes vues</b></div>
+    <div class="card wiggle reveal"><div class="n">3</div><div class="emo">🔗</div><b>Colle ton compte dans #mes-comptes</b></div>
     <div class="card wiggle reveal"><div class="n">4</div><div class="emo">🪙</div><b>Gagne des coins</b></div></div>`;
   const head = `<div class="head-row reveal" style="margin-top:34px"><div><span class="eyebrow">🎬 Clipper</span><h2>Clippe & gagne</h2><p class="sub">Poste des clips de BeOnePourcent sur TikTok, Insta ou YouTube. On suit tes vues, chaque vue te rapporte des coins.</p></div></div>`;
   if (!ME) return `<section>${head}${steps}<div style="margin-top:22px">${loginCard('Suis tes clips', 'Connecte-toi avec Discord pour voir tes clips, tes vues et tes coins.', 'camera')}</div></section>`;
@@ -545,7 +545,7 @@ function pageClip() {
   return `<section>${head}${steps}
     <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${ME.accounts.length
       ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, une fois par jour.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
-      : `<h3>Presque prêt !</h3><p>L'équipe relie tes comptes TikTok, Insta ou YouTube à ton profil. Dès que c'est fait, chaque vue te rapporte des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Contacter l'équipe sur Discord</a>` : ''}`}</div></div>
+      : `<h3>Relie tes comptes !</h3><p>Sur Discord, colle le lien de ton profil TikTok, Insta ou YouTube dans le salon <b>#mes-comptes</b>. C'est tout : chaque vue te rapporte ensuite des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Aller sur le Discord</a>` : ''}`}</div></div>
   </section>
   <section>
     <div class="head-row reveal"><div><span class="eyebrow">📈 Tes clips</span><h2>Mes clips</h2></div><div class="coin-pill">${coin('coin')}${fmt(ME.clipCount)}<small>CLIPS</small></div></div>
