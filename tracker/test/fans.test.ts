@@ -8,6 +8,7 @@ import { FanService } from '../src/services/fans.js';
 import { RecruitmentRepo } from '../src/db/recruitment.js';
 import { RecruitmentService } from '../src/services/recruitment.js';
 import { createApp } from '../src/web/server.js';
+import { collectAll } from '../src/jobs/collect.js';
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -218,5 +219,24 @@ describe('programme fans (Neptune)', () => {
     collect(50_000, T0 + 90 * HOUR);
     expect(fans.generateNotifications(T0 + 100 * HOUR)).toBe(0);
     expect(fans.fans.notificationStats(0)).toMatchObject({ sent: 3, failed: 1, pending: 1 });
+  });
+
+  it('collecte : les comptes des fans ne sont relevés qu’une fois par jour', async () => {
+    const fan = fans.ensureFan('d1', 'Paul');
+    fans.addAccounts(fan, 'https://www.tiktok.com/@paul.clips');
+    let calls = 0;
+    const fetcher = { platform: 'tiktok' as const, fetchAccount: async () => (calls++, { videos: [] }) };
+    const fetchers = { tiktok: fetcher, instagram: { ...fetcher, platform: 'instagram' as const }, youtube: { ...fetcher, platform: 'youtube' as const } };
+    const fanClient = fans.settings().clientId;
+    const skip = (a: { clientId: number | null; lastCheckedAt: number | null }, t: number) =>
+      a.clientId === fanClient && a.lastCheckedAt !== null && t - a.lastCheckedAt < 23.5 * HOUR;
+    let t = now;
+    await collectAll(repo, fetchers, () => t, skip);
+    t += 2 * HOUR;
+    await collectAll(repo, fetchers, () => t, skip);
+    expect(calls).toBe(1);
+    t += 24 * HOUR;
+    await collectAll(repo, fetchers, () => t, skip);
+    expect(calls).toBe(2);
   });
 });

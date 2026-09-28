@@ -117,7 +117,14 @@ if (config.FANS_BOT_TOKEN) {
 // Messages privés des fans (coins, niveau, objet abordable, top 3, livraison)
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
-const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () => collectAll(repo, fetchers));
+// Comptes des fans : 1 collecte par jour (coût Apify), les clippers de l'agence au rythme normal
+const FAN_COLLECT_EVERY = 23.5 * 3_600_000;
+const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () =>
+  collectAll(repo, fetchers, Date.now, (account, now) => {
+    const fanClient = fans.settings().clientId;
+    return fanClient !== null && account.clientId === fanClient && account.lastCheckedAt !== null && now - account.lastCheckedAt < FAN_COLLECT_EVERY;
+  }),
+);
 const notifier = bot?.notifier;
 const stopRelance = notifier
   ? every('relances', config.RELANCE_CHECK_INTERVAL_MINUTES, async () => ({

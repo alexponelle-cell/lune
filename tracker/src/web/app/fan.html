@@ -300,7 +300,7 @@
   <div id="me-slot"></div>
 </div></header>
 <main id="app"></main>
-<footer><span>© <span id="year"></span> BeOne Rewards · BeOnePourcent</span><span>Les vues sont mises à jour plusieurs fois par jour.</span></footer>
+<footer><span>© <span id="year"></span> BeOne Rewards · BeOnePourcent</span><span>Les vues sont mises à jour une fois par jour.</span></footer>
 <nav class="tabbar" id="tabbar"></nav>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
@@ -544,7 +544,7 @@ function pageClip() {
   const clips = ME.clips;
   return `<section>${head}${steps}
     <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${ME.accounts.length
-      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, plusieurs fois par jour.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
+      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, une fois par jour.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
       : `<h3>Presque prêt !</h3><p>L'équipe relie tes comptes TikTok, Insta ou YouTube à ton profil. Dès que c'est fait, chaque vue te rapporte des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Contacter l'équipe sur Discord</a>` : ''}`}</div></div>
   </section>
   <section>

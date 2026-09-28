@@ -1,4 +1,4 @@
-import type { Repo } from '../db/repo.js';
+import type { Account, Repo } from '../db/repo.js';
 import type { FetcherRegistry } from '../platforms/types.js';
 import { log } from '../log.js';
 
@@ -7,10 +7,19 @@ export interface CollectResult {
   failed: number;
 }
 
-/** Récupère les stats de tous les comptes actifs et enregistre une capture pour chacun. */
-export async function collectAll(repo: Repo, fetchers: FetcherRegistry, now: () => number = Date.now): Promise<CollectResult> {
+/**
+ * Récupère les stats de tous les comptes actifs et enregistre une capture pour chacun.
+ * `skip` permet d'espacer certains comptes (ex. les fans : 1 fois par jour, pour limiter le coût d'Apify).
+ */
+export async function collectAll(
+  repo: Repo,
+  fetchers: FetcherRegistry,
+  now: () => number = Date.now,
+  skip: (account: Account, now: number) => boolean = () => false,
+): Promise<CollectResult> {
   const result: CollectResult = { ok: 0, failed: 0 };
   for (const account of repo.listActiveAccounts()) {
+    if (skip(account, now())) continue;
     try {
       const fetched = await fetchers[account.platform].fetchAccount(account);
       const at = now();
