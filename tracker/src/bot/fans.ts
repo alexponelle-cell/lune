@@ -76,17 +76,20 @@ export function attachAccountsChannel(discord: DiscordClient, fans: FanService):
       try {
         result = fans.addAccounts(fan, message.content);
       } catch {
-        await message.reply({
-          content: '🤔 Je ne trouve pas de lien de compte. Colle le lien de ton **profil**, par exemple `https://www.tiktok.com/@tonpseudo`',
-          allowedMentions: { repliedUser: false },
-        });
+        const help = '🤔 Je ne trouve pas de lien de compte. Colle le lien de ton **profil**, par exemple `https://www.tiktok.com/@tonpseudo`';
+        await message
+          .reply({ content: help, allowedMentions: { repliedUser: false } })
+          .catch(() => message.channel.send({ content: `<@${message.author.id}> ${help}`, allowedMentions: { users: [message.author.id] } }));
         return;
       }
       const lines: string[] = [];
       if (result.added.length) lines.push(`✅ C'est relié : ${result.added.map((a) => `**${PF[a.platform]}** @${a.handle}`).join(', ')}\nTes prochaines vues te rapportent des coins 🪙 (mise à jour 1 fois par jour)`);
       if (result.conflicts.length) lines.push(`⛔ Déjà relié à quelqu'un d'autre : ${result.conflicts.map((a) => `@${a.handle}`).join(', ')}. Si c'est ton compte, préviens le staff.`);
       await message.react(result.conflicts.length && !result.added.length ? '⛔' : '✅').catch(() => {});
-      await message.reply({ content: lines.join('\n'), allowedMentions: { repliedUser: false } });
+      // Répondre au message demande « Lire l'historique » : sinon simple message qui mentionne le fan
+      await message
+        .reply({ content: lines.join('\n'), allowedMentions: { repliedUser: false } })
+        .catch(() => message.channel.send({ content: `<@${message.author.id}> ${lines.join('\n')}`, allowedMentions: { users: [message.author.id] } }));
     } catch (err) {
       log.error('salon mes-comptes', err);
     }
