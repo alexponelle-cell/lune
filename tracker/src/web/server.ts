@@ -334,6 +334,8 @@ export function createApp(deps: WebDeps): Hono {
     return profile ? c.json(profile) : c.json({ error: 'Clipper introuvable' }, 404);
   });
 
+  app.get('/api/top-clips', (c) => c.json({ clips: agency.topClips(rangeOf(c), clientIdParam(c.req.query('client'))) }));
+
   app.get('/api/inspiration', (c) => {
     const week = Number(c.req.query('week'));
     return c.json(agency.inspiration(Number.isFinite(week) && week > 0 ? week : Date.now(), clientIdParam(c.req.query('client'))));

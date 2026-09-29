@@ -159,7 +159,7 @@ async function copy(text, msg = 'Lien copié') {
 // ---------------------------------------------------------------------------
 
 const store = (() => {
-  let s = { client: '', preset: '7d', from: null, to: null };
+  let s = { client: '', preset: '7d', from: null, to: null, vision: 'full' };
   try {
     s = { ...s, ...JSON.parse(localStorage.getItem('lune.filters') || '{}') };
   } catch {}
@@ -451,6 +451,9 @@ const NAV = [
   ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
 ];
 
+const CLIENT_NAV = [['Vision client', [['client', 'Vue client', 'grid']]]];
+const isClientVision = () => store.vision === 'client';
+
 function renderSidebar() {
   const route = location.hash.replace(/^#\/?/, '').split('/')[0] || 'agence';
   const b = META.status.bot;
@@ -465,9 +468,11 @@ function renderSidebar() {
   $('#sidebar').innerHTML = `
     <div class="brand"><img class="brand-logo" src="/neptune-logo.png" alt=""><div><div class="brand-name">Neptune</div><div class="brand-sub">Clipping OS</div></div><a class="logout" href="/logout" title="Se déconnecter">⎋</a></div>
     <div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Vision</div>
-      <div class="seg"><button aria-pressed="true">Complète</button><button disabled title="Vue Client : bientôt">Client</button></div></div>
-    <div class="box admin"><span class="av">AD</span><div><b style="font-size:13px">Compte admin</b><small>Accès total : agences, clippers, rémunération</small></div></div>
-    <nav class="nav">${NAV.map(
+      <div class="seg" data-vision><button data-v="full" aria-pressed="${!isClientVision()}">Complète</button><button data-v="client" aria-pressed="${isClientVision()}">Client</button></div></div>
+    ${isClientVision()
+      ? '<div class="box admin"><span class="av">👁</span><div><b style="font-size:13px">Vue client</b><small>Ce que voit le client : vues, clips, clippeurs. Aucun montant.</small></div></div>'
+      : '<div class="box admin"><span class="av">AD</span><div><b style="font-size:13px">Compte admin</b><small>Accès total : agences, clippers, rémunération</small></div></div>'}
+    <nav class="nav">${(isClientVision() ? CLIENT_NAV : NAV).map(
       ([group, items, live]) => `<div class="nav-group"><div class="label">${group}${live ? '<span class="dot" style="color:var(--accent)"></span>' : ''}</div>
       ${items.map(([id, label, ic, soon]) => `<a href="#/${id}" class="${route === id || (id === 'clippers' && route === 'clipper') ? 'active' : ''}">${icon(ic)}${label}${soon ? '<span class="soon">bientôt</span>' : ''}</a>`).join('')}</div>`,
     ).join('')}</nav>
@@ -590,6 +595,79 @@ async function pageAgence() {
   onSeg(root, 'chart', (v) => mountChart($('#chart', root), d.series, v));
   onSeg(root, 'sort', (v) => ($('#lb-body', root).innerHTML = leaderboardTable(d.leaderboard, v)));
   bindRows($('#lb', root));
+}
+
+// --- Vision client : page épurée, sans montant ni info interne -------------------------
+
+async function pageClient() {
+  if (!store.client) {
+    main().innerHTML = `
+      <div class="page-head"><div><h1>Vue client</h1><p>Choisis le client à afficher</p></div></div>
+      <div class="client-pick">${
+        META.clients.length
+          ? META.clients.map((c) => `<button class="card client-tile" data-pick="${c.id}">${avatar(c.name, 'lg')}<b>${esc(c.name)}</b><span class="faint">Voir ses résultats →</span></button>`).join('')
+          : '<div class="card empty">Aucun client pour l\'instant.</div>'
+      }</div>`;
+    $$('[data-pick]', main()).forEach((b) =>
+      b.addEventListener('click', () => {
+        store.client = b.dataset.pick;
+        saveStore();
+        pageClient();
+      }),
+    );
+    return;
+  }
+  loading();
+  const [d, top] = await Promise.all([api(`/api/overview?${qs()}`), api(`/api/top-clips?${qs()}`)]);
+  const k = d.kpis;
+  const rows = [...d.leaderboard].sort((a, b) => b.views - a.views);
+  const active = rows.filter((r) => r.posts > 0).length;
+  const name = agencyName(Number(store.client));
+  main().innerHTML = `
+    <div class="page-head"><div><h1>${esc(name)}</h1><p>Résultats du clipping · ${esc(periodLabel())}</p></div>
+      <div class="actions"><select class="select" data-client-pick aria-label="Client">${META.clients.map((c) => `<option value="${c.id}" ${String(c.id) === String(store.client) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>${periodPicker()}</div></div>
+    <div class="stack">
+      <div class="card client-hero"><div class="k-label">Vues générées</div><div class="hero-num num">${fmtK(k.views.value)}</div>
+        <div class="k-foot" style="justify-content:flex-start;gap:10px">${deltaPill(k.views.deltaPercent)}<span>vs période précédente</span></div></div>
+      <div class="kpis">
+        <div class="card kpi"><div class="k-label">Clips publiés</div><div class="k-value num">${k.posts.value}</div><div class="k-foot"><span>${esc(periodLabel())}</span>${deltaPill(k.posts.deltaPercent)}</div></div>
+        <div class="card kpi"><div class="k-label">Clippeurs actifs</div><div class="k-value num">${active} <span class="faint" style="font-size:15px">/ ${rows.length}</span></div><div class="k-foot"><span>ont posté sur la période</span></div></div>
+        <div class="card kpi"><div class="k-label">Vues moyennes / clip</div><div class="k-value num">${k.posts.value ? fmtK(Math.round(k.views.value / k.posts.value)) : '—'}</div><div class="k-foot"><span>sur la période</span></div></div>
+        <div class="card kpi"><div class="k-label">Meilleur clip</div><div class="k-value num">${top.clips[0] ? fmtK(top.clips[0].views) : '—'}</div><div class="k-foot"><span>${top.clips[0] ? esc(top.clips[0].username) : 'aucun clip'}</span></div></div>
+      </div>
+      <div class="card"><div class="card-head"><div><h2>Évolution des vues</h2><p>${esc(periodLabel())}</p></div>
+        ${segTabs('chart', [['views', 'Vues'], ['posts', 'Clips'], ['both', 'Tout']], 'views')}</div>
+        <div class="chart" id="chart"></div></div>
+      <div class="card"><div class="card-head"><div><h2>Meilleurs clips</h2><p>Les clips qui ont le plus tourné sur la période</p></div></div>
+        <div class="videos">${
+          top.clips.length
+            ? top.clips
+                .map(
+                  (v) => `<div class="video"><a class="thumb ${v.platform}" href="${esc(v.url ?? '#')}" target="_blank" rel="noopener">
+              ${v.thumbnailUrl ? `<img src="${esc(v.thumbnailUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
+              <span class="plat-tag">${PLAT_NAME[v.platform]}</span><span class="play"></span>
+              <span class="views">${icon('eye').replace('<svg', '<svg width="12" height="12" stroke="#fff"')} ${fmtK(v.views)}</span></a>
+              <span class="date">${esc(v.username)} · ${v.publishedAt ? dm(v.publishedAt) : ''}</span></div>`,
+                )
+                .join('')
+            : '<div class="empty" style="width:100%">Aucun clip publié sur cette période.</div>'
+        }</div></div>
+      <div class="card"><div class="card-head"><div><h2>Les clippeurs</h2><p>${rows.length} clippeur(s) sur ce compte</p></div></div>
+        ${rows.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Clippeur</th><th class="r">Vues</th><th class="r">Clips</th><th class="r">Évol.</th></tr></thead><tbody>
+          ${rows.map((r, i) => `<tr><td><span class="rank ${i < 3 ? `r${i + 1}` : ''}">${i + 1}</span></td>
+            <td><div class="who">${avatar(r.username)}<div><b>${esc(r.username)}</b>${plats(r.platforms)}</div></div></td>
+            <td class="r num">${fmtK(r.views)}</td><td class="r num faint">${r.posts}</td><td class="r">${deltaPill(r.viewsDeltaPercent)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty">Aucun clippeur sur ce compte.</div>'}</div>
+    </div>`;
+  const root = main();
+  bindFilters(root, pageClient);
+  $('[data-client-pick]', root).addEventListener('change', (e) => {
+    store.client = e.target.value;
+    saveStore();
+    pageClient();
+  });
+  mountChart($('#chart', root), d.series, 'views');
+  onSeg(root, 'chart', (v) => mountChart($('#chart', root), d.series, v));
 }
 
 async function pageClippers() {
@@ -1578,11 +1656,12 @@ const ROUTES = {
   funnel: pageFunnel,
   suivi: pageSuivi,
   boutique: pageBoutique,
+  client: pageClient,
 };
 
 async function router() {
   const [route, arg] = location.hash.replace(/^#\/?/, '').split('/');
-  const page = ROUTES[route] ?? ROUTES.agence;
+  const page = isClientVision() ? ROUTES.client : ROUTES[route] ?? ROUTES.agence;
   renderSidebar();
   window.scrollTo(0, 0);
   try {
@@ -1593,6 +1672,15 @@ async function router() {
 }
 
 window.addEventListener('hashchange', router);
+$('#sidebar').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vision] button[data-v]');
+  if (!b || b.dataset.v === store.vision) return;
+  store.vision = b.dataset.v;
+  saveStore();
+  const target = isClientVision() ? '#/client' : '#/agence';
+  if (location.hash === target) router();
+  else location.hash = target;
+});
 renderTopbar();
 loadMeta()
   .catch(() => {})

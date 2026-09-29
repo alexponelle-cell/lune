@@ -386,6 +386,18 @@ export class AgencyService {
     };
   }
 
+  /** Meilleurs clips publiés sur la période, toutes plateformes (Vision Client). */
+  topClips(range: Range, clientId?: number, limit = 12) {
+    const clipperIds = clientId === undefined ? undefined : this.repo.listClippers({ clientId, includeInactive: true }).map((c) => c.id);
+    const names = new Map(this.repo.listClippers({ includeInactive: true }).map((c) => [c.id, c.username]));
+    const platforms: Platform[] = ['tiktok', 'instagram', 'youtube'];
+    return platforms
+      .flatMap((p) => this.repo.bestVideos(p, range.from, range.to, limit, clipperIds))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, limit)
+      .map((v) => ({ ...v, username: names.get(v.clipperId) ?? '?' }));
+  }
+
   // --- Rémunération ---------------------------------------------------------------
 
   payoutSummary(range: Range, clientId?: number) {
