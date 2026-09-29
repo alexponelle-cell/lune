@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Neptune · Connexion</title>
+<link rel="icon" href="/neptune-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    min-height: 100vh; display: grid; place-items: center; padding: 16px;
+    font: 15px/1.5 'Sora', system-ui, sans-serif; color: #EAF7F5;
+    background: radial-gradient(ellipse at 50% 20%, #0A3346 0%, #02121C 55%, #00070C 100%) fixed, #00070C;
+  }
+  .card {
+    width: min(380px, 100%); padding: 36px 30px 30px; border-radius: 22px; text-align: center;
+    background: rgb(6 27 39 / .75); border: 1px solid #12303F; box-shadow: 0 30px 80px rgb(0 0 0 / .45), 0 0 0 1px rgb(46 230 200 / .04);
+    backdrop-filter: blur(10px);
+  }
+  img { width: 76px; height: 76px; border-radius: 50%; box-shadow: 0 0 40px rgb(46 230 200 / .35); }
+  h1 { margin: 16px 0 2px; font-size: 24px; font-weight: 800; letter-spacing: .02em; }
+  p { margin: 0 0 24px; color: #A8C6C7; font-size: 13px; }
+  input {
+    width: 100%; padding: 13px 15px; border-radius: 12px; border: 1px solid #12303F; background: #041722; color: #EAF7F5;
+    font: inherit; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus { border-color: #2EE6C8; box-shadow: 0 0 0 3px rgb(46 230 200 / .18); }
+  button {
+    width: 100%; margin-top: 12px; padding: 13px; border: 0; border-radius: 12px; cursor: pointer;
+    background: #2EE6C8; color: #00141C; font: 700 15px 'Sora', sans-serif; transition: background .15s, transform .1s;
+  }
+  button:hover { background: #5CFFE4; }
+  button:active { transform: scale(.98); }
+  .err { color: #FF7A86; font-size: 13px; margin: 10px 0 0; display: none; }
+  .err.on { display: block; }
+</style>
+</head>
+<body>
+  <form class="card" method="post" action="/login">
+    <img src="/neptune-logo.png" alt="Neptune">
+    <h1>NEPTUNE</h1>
+    <p>Espace staff · suivi des clippeurs</p>
+    <input type="password" name="password" placeholder="Mot de passe" autocomplete="current-password" required autofocus aria-label="Mot de passe">
+    <button type="submit">Se connecter</button>
+    <div class="err" id="err">Mot de passe incorrect.</div>
+  </form>
+  <script>if (location.search.includes('e=1')) document.getElementById('err').classList.add('on');</script>
+</body>
+</html>

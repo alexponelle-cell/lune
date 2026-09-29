@@ -1,8 +1,7 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { serve } from '@hono/node-server';
 import { type Context, Hono } from 'hono';
-import { basicAuth } from 'hono/basic-auth';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
@@ -24,7 +23,9 @@ const ASSETS = {
   css: asset('app.css'),
   js: asset('app.js'),
   fan: asset('fan.html'),
+  login: asset('login.html'),
 };
+const NEPTUNE_LOGO = new Uint8Array(readFileSync(new URL('./app/neptune-logo.png', import.meta.url)));
 const fanFile = (name: string, type: string) => ({ data: new Uint8Array(readFileSync(new URL(`./app/fan/${name}`, import.meta.url))), type });
 const FAN_FILES: Record<string, { data: Uint8Array<ArrayBuffer>; type: string }> = {
   'beone.png': fanFile('beone.png', 'image/png'),
@@ -258,9 +259,40 @@ export function createApp(deps: WebDeps): Hono {
     return c.json({ ok: true, updated: fans.fans.markDelivered(body.orderIds, body.userId) });
   });
 
+  // --- Accès staff : page de connexion + cookie de session (30 jours) ------------------
+  app.get('/neptune-logo.png', (c) => c.body(NEPTUNE_LOGO, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }));
   if (deps.password) {
     const password = deps.password;
-    app.use('*', basicAuth({ verifyUser: (_user, pass) => pass === password }));
+    // Jeton dérivé du mot de passe : changer DASHBOARD_PASSWORD déconnecte tout le monde
+    const staffToken = createHash('sha256').update(`lune-staff:${password}`).digest('hex');
+    const same = (a: string, b: string) => {
+      const x = createHash('sha256').update(a).digest();
+      const y = createHash('sha256').update(b).digest();
+      return timingSafeEqual(x, y);
+    };
+    app.get('/login', (c) => c.html(ASSETS.login));
+    app.post('/login', async (c) => {
+      const form = await c.req.parseBody();
+      if (typeof form.password === 'string' && same(form.password, password)) {
+        setCookie(c, 'staff', staffToken, { httpOnly: true, secure: isHttps(c), sameSite: 'Lax', path: '/', maxAge: 30 * 86_400 });
+        return c.redirect('/', 303);
+      }
+      await new Promise((r) => setTimeout(r, 600));
+      return c.redirect('/login?e=1', 303);
+    });
+    app.get('/logout', (c) => {
+      deleteCookie(c, 'staff', { path: '/' });
+      return c.redirect('/login', 303);
+    });
+    app.use('*', async (c, next) => {
+      const cookie = getCookie(c, 'staff');
+      if (cookie && same(cookie, staffToken)) return next();
+      // Accès par en-tête (scripts, anciens favoris) toujours accepté
+      const basic = c.req.header('authorization')?.match(/^Basic (.+)$/)?.[1];
+      if (basic && same(Buffer.from(basic, 'base64').toString().split(':').slice(1).join(':'), password)) return next();
+      if (c.req.path.startsWith('/api/')) return c.json({ error: 'Non connecté' }, 401);
+      return c.redirect('/login', 302);
+    });
   }
 
   app.get('/', (c) => c.html(ASSETS.html));

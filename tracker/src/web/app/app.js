@@ -193,6 +193,7 @@ async function api(path, opts = {}) {
     headers: opts.body ? { 'content-type': 'application/json' } : undefined,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
+  if (res.status === 401 && !path.startsWith('/api/fan')) location.href = '/login';
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
   return data;
@@ -332,13 +333,13 @@ function mountChart(el, series, mode = 'views') {
     })
     .join('');
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Évolution par jour">
-    <defs><linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#16a34a" stop-opacity=".22"/><stop offset="1" stop-color="#16a34a" stop-opacity="0"/></linearGradient>
-    <linearGradient id="areaFillBlue" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#4f46e5" stop-opacity=".15"/><stop offset="1" stop-color="#4f46e5" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2EE6C8" stop-opacity=".22"/><stop offset="1" stop-color="#2EE6C8" stop-opacity="0"/></linearGradient>
+    <linearGradient id="areaFillBlue" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3EA7D6" stop-opacity=".18"/><stop offset="1" stop-color="#3EA7D6" stop-opacity="0"/></linearGradient></defs>
     <g class="grid">${ticks.map((t) => `<line x1="${P.l}" x2="${W - P.r}" y1="${t.y}" y2="${t.y}"/>`).join('')}</g>
     <g class="axis">${ticks.map((t) => `<text x="${P.l - 8}" y="${t.y + 3}" text-anchor="end">${fmtK(t.v)}</text>`).join('')}
       ${series.map((d, i) => (i % labelEvery === 0 || i === series.length - 1 ? `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${d.day.slice(8, 10)}/${d.day.slice(5, 7)}</text>` : '')).join('')}</g>
-    ${paths}<line class="hover-line" y1="${P.t}" y2="${H - P.b}" stroke="#16a34a" stroke-width="1" opacity="0"/>
-    <circle class="hover-dot" r="4" fill="#16a34a" stroke="#fff" stroke-width="2" opacity="0"/></svg><div class="tip"></div>`;
+    ${paths}<line class="hover-line" y1="${P.t}" y2="${H - P.b}" stroke="#2EE6C8" stroke-width="1" opacity="0"/>
+    <circle class="hover-dot" r="4" fill="#2EE6C8" stroke="#02121C" stroke-width="2" opacity="0"/></svg><div class="tip"></div>`;
   const svg = $('svg', el);
   const tip = $('.tip', el);
   svg.addEventListener('mousemove', (e) => {
@@ -462,7 +463,7 @@ function renderSidebar() {
           ? '<span class="pill wait"><span class="dot"></span>Connexion…</span>'
           : '<span class="pill gray"><span class="dot"></span>Désactivé</span>';
   $('#sidebar').innerHTML = `
-    <div class="brand"><div class="brand-logo">LT</div><div><div class="brand-name">Lune Tracker</div><div class="brand-sub">Clipping OS</div></div></div>
+    <div class="brand"><img class="brand-logo" src="/neptune-logo.png" alt=""><div><div class="brand-name">Neptune</div><div class="brand-sub">Clipping OS</div></div><a class="logout" href="/logout" title="Se déconnecter">⎋</a></div>
     <div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Vision</div>
       <div class="seg"><button aria-pressed="true">Complète</button><button disabled title="Vue Client : bientôt">Client</button></div></div>
     <div class="box admin"><span class="av">AD</span><div><b style="font-size:13px">Compte admin</b><small>Accès total : agences, clippers, rémunération</small></div></div>
@@ -1290,7 +1291,7 @@ async function pageSuivi() {
   const k = d.kpis;
   const t = d.toTreat;
   const counts = { candidatures: t.candidatures.length, tests: t.tests.length, inscriptions: t.inscriptions.length, avis: t.avis.length, messages: t.messages.length, relancer: t.relancer.length };
-  const ticketBtn = (url) => (url ? `<a class="btn sm" href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--blue);border-color:#c7cbff">${icon('message')} Ticket</a>` : '<span class="faint">—</span>');
+  const ticketBtn = (url) => (url ? `<a class="btn sm" href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--blue);border-color:rgb(62 167 214 / .4)">${icon('message')} Ticket</a>` : '<span class="faint">—</span>');
   const item = (name, sub, actions) => `<div class="todo">${avatar(name)}<div style="flex:1;min-width:0"><b>${esc(name)}</b><small class="faint" style="display:block;overflow:hidden;text-overflow:ellipsis">${sub}</small></div><div class="actions">${actions}</div></div>`;
   const lists = {
     candidatures: () => t.candidatures.map((x) => item(x.username, `Candidature envoyée ${ago(x.submittedAt)} · ${esc([x.answers.niveau, x.answers.logiciel].filter(Boolean).join(' · '))}`,

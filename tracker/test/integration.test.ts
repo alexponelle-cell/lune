@@ -174,7 +174,13 @@ describe('parcours complet', () => {
     const app = createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret' });
     const denied = await app.request('/api/meta');
     expect(denied.status).toBe(401);
-    expect(denied.headers.get('www-authenticate')).toContain('Basic');
+    expect((await app.request('/')).headers.get('location')).toBe('/login');
+    const bad = await app.request('/login', { method: 'POST', body: new URLSearchParams({ password: 'nope' }) });
+    expect(bad.headers.get('location')).toBe('/login?e=1');
+    const ok = await app.request('/login', { method: 'POST', body: new URLSearchParams({ password: 'secret' }) });
+    expect(ok.headers.get('location')).toBe('/');
+    const cookie = ok.headers.get('set-cookie')!.split(';')[0]!;
+    expect((await app.request('/api/meta', { headers: { cookie } })).status).toBe(200);
     const auth = { Authorization: `Basic ${Buffer.from('x:secret').toString('base64')}` };
     expect((await app.request('/api/meta', { headers: auth })).status).toBe(200);
     expect((await app.request('/', { headers: auth })).status).toBe(200);
