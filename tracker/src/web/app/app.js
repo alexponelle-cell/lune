@@ -444,7 +444,7 @@ function modal(title, bodyHtml, { confirm = 'Enregistrer', danger = false, onCon
 // ---------------------------------------------------------------------------
 
 const NAV = [
-  ['Pilotage', [['funnel', 'Funnel', 'funnel'], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users'], ['recruteurs', 'Recruteurs', 'userPlus'], ['classement', 'Classement', 'trophy']]],
+  ['Pilotage', [['funnel', 'Funnel', 'funnel'], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users'], ['classement', 'Classement', 'trophy']]],
   ['Automatisations', [['suivi', 'Suivi', 'pulse']], true],
   ['Découvrir', [['inspiration', 'Inspiration', 'spark']]],
   ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
@@ -1282,53 +1282,6 @@ async function pageFunnel() {
   bindRows($('#people', root));
 }
 
-async function pageRecruteurs() {
-  loading();
-  const d = await api(`/api/recruiters?${qs({}, false)}`);
-  const missing = META.status.bot.state === 'ready' && META.status.bot.membersIntent === false;
-  main().innerHTML = `<div class="page-head"><div><h1>Recruteurs</h1><p>Invitations Discord suivies automatiquement · ${esc(periodLabel())}</p></div><div class="actions">${periodPicker()}</div></div>
-    ${missing ? '<div class="alert warn" style="margin-bottom:14px"><span class="dot"></span><div><b>Suivi des invitations désactivé</b><small>Active « Server Members Intent » dans le Developer Portal Discord (onglet Bot), puis redémarre le service.</small></div></div>' : ''}
-    <div class="card"><div class="table-wrap"><table><thead><tr><th>Recruteur</th><th class="r">Invités</th><th class="r">En test</th><th class="r">Validés</th><th class="r">Confirmés</th><th class="r">Conversion</th><th class="r">À verser</th><th class="r">Total recrues</th><th class="r"></th></tr></thead><tbody>
-    ${d.rows
-      .map(
-        (r) => `<tr><td><div class="who">${avatar(r.name)}<div><b>${esc(r.name)}</b>${r.active ? '' : '<small class="faint">désactivé</small>'}</div></div></td>
-      <td class="r num">${r.invited}</td><td class="r num">${r.inTest}</td><td class="r num">${r.validated}</td><td class="r num">${r.confirmed}</td>
-      <td class="r">${r.conversion == null ? '<span class="faint">—</span>' : `<b class="num">${r.conversion} %</b>`}</td><td class="r num">${euro(r.pay)}</td>
-      <td class="r num faint">${r.totalClippers} / ${r.totalRecruits}</td>
-      <td class="r"><button class="icon-btn" data-edit-rec="${r.id}" style="display:inline-grid" title="Modifier">${icon('edit')}</button> <button class="icon-btn" data-del-rec="${r.id}" style="display:inline-grid" title="Supprimer">${icon('trash')}</button></td></tr>`,
-      )
-      .join('') || '<tr><td colspan="9" class="empty">Aucun recruteur pour l\'instant. Chaque membre dont le lien d\'invitation fait rejoindre quelqu\'un apparaît ici automatiquement.</td></tr>'}
-    </tbody></table></div></div>
-    <p class="faint" style="font-size:12px;margin-top:10px">Rémunération des recruteurs : ${euro(d.settings.recruiterPerValidated)} par test validé, ${euro(d.settings.recruiterPerConfirmed)} par recrue confirmée (réglable dans Rémunération → Recruteurs).</p>`;
-  const root = main();
-  bindFilters(root, pageRecruteurs);
-  root.addEventListener('click', (e) => {
-    const ed = e.target.closest('[data-edit-rec]');
-    if (ed) {
-      const r = d.rows.find((x) => x.id === Number(ed.dataset.editRec));
-      modal(`Modifier ${r.name}`, `<label class="field"><span>Nom</span><input class="input" name="name" required value="${esc(r.name)}"></label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="active" ${r.active ? 'checked' : ''}> Actif</label>`, {
-        onConfirm: async (fd) => {
-          await api(`/api/recruiters/${r.id}`, { method: 'PATCH', body: { name: fd.get('name'), active: fd.get('active') === 'on' } });
-          pageRecruteurs();
-        },
-      });
-    }
-    const del = e.target.closest('[data-del-rec]');
-    if (del) {
-      const r = d.rows.find((x) => x.id === Number(del.dataset.delRec));
-      modal('Supprimer le recruteur', `<p style="margin:0">Supprimer <b>${esc(r.name)}</b> ? Ses recrues restent, sans recruteur.</p>`, {
-        confirm: 'Supprimer',
-        danger: true,
-        onConfirm: async () => {
-          await api(`/api/recruiters/${r.id}`, { method: 'DELETE' });
-          pageRecruteurs();
-        },
-      });
-    }
-  });
-}
-
 let SUIVI_TAB = 'candidatures';
 const CAND_LABELS = { prenom: 'Prénom et âge', niveau: 'Niveau en montage', logiciel: 'Logiciel', dispo: 'Disponibilités', liens: 'Liens' };
 async function pageSuivi() {
@@ -1622,7 +1575,6 @@ const ROUTES = {
   remuneration: pageRemuneration,
   parametres: pageParametres,
   funnel: pageFunnel,
-  recruteurs: pageRecruteurs,
   suivi: pageSuivi,
   boutique: pageBoutique,
 };
