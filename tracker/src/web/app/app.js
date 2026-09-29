@@ -444,10 +444,9 @@ function modal(title, bodyHtml, { confirm = 'Enregistrer', danger = false, onCon
 // ---------------------------------------------------------------------------
 
 const NAV = [
-  ['Pilotage', [['funnel', 'Funnel', 'funnel'], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users'], ['recruteurs', 'Recruteurs', 'userPlus'], ['classement', 'Classement', 'trophy']]],
+  ['Pilotage', [['funnel', 'Funnel', 'funnel'], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users']]],
   ['Automatisations', [['suivi', 'Suivi', 'pulse']], true],
-  ['Découvrir', [['inspiration', 'Inspiration', 'spark']]],
-  ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
+  ['Gestion', [['remuneration', 'Rémunération', 'coins'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
 ];
 
 function renderSidebar() {
@@ -463,9 +462,6 @@ function renderSidebar() {
           : '<span class="pill gray"><span class="dot"></span>Désactivé</span>';
   $('#sidebar').innerHTML = `
     <div class="brand"><div class="brand-logo">LT</div><div><div class="brand-name">Lune Tracker</div><div class="brand-sub">Clipping OS</div></div></div>
-    <div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Vision</div>
-      <div class="seg"><button aria-pressed="true">Complète</button><button disabled title="Vue Client : bientôt">Client</button></div></div>
-    <div class="box admin"><span class="av">AD</span><div><b style="font-size:13px">Compte admin</b><small>Accès total : agences, clippers, rémunération</small></div></div>
     <nav class="nav">${NAV.map(
       ([group, items, live]) => `<div class="nav-group"><div class="label">${group}${live ? '<span class="dot" style="color:var(--accent)"></span>' : ''}</div>
       ${items.map(([id, label, ic, soon]) => `<a href="#/${id}" class="${route === id || (id === 'clippers' && route === 'clipper') ? 'active' : ''}">${icon(ic)}${label}${soon ? '<span class="soon">bientôt</span>' : ''}</a>`).join('')}</div>`,
@@ -625,53 +621,6 @@ async function pageClippers() {
   });
 }
 
-async function pageClassement() {
-  loading();
-  const d = await api(`/api/leaderboard?${qs({}, false)}`);
-  let tab = 'clippers';
-  let sort = 'views';
-  const agencies = () => {
-    const by = new Map();
-    for (const r of d.rows) {
-      const key = r.clientId ?? 0;
-      const a = by.get(key) ?? { name: agencyName(r.clientId), views: 0, posts: 0, clippers: 0, score: 0, payout: 0 };
-      a.views += r.views;
-      a.posts += r.posts;
-      a.clippers += 1;
-      a.score += r.score.total;
-      a.payout += r.reward.total;
-      by.set(key, a);
-    }
-    const list = [...by.values()].sort((a, b) => b.views - a.views);
-    return `<div class="table-wrap"><table><thead><tr><th>#</th><th>Agence</th><th class="r">Clippers</th><th class="r">Vues</th><th class="r">Posts</th><th class="r">Score moyen</th><th class="r">À verser</th></tr></thead>
-      <tbody>${list.map((a, i) => `<tr><td><span class="rank ${i < 3 ? `r${i + 1}` : ''}">${i + 1}</span></td><td><div class="who">${avatar(a.name)}<b>${esc(a.name)}</b></div></td>
-      <td class="r num">${a.clippers}</td><td class="r num">${fmtK(a.views)}</td><td class="r num">${a.posts}</td><td class="r num">${Math.round(a.score / a.clippers)}</td><td class="r num">${euro(a.payout)}</td></tr>`).join('')}</tbody></table></div>`;
-  };
-  const draw = () => {
-    $('#board').innerHTML =
-      tab === 'clippers'
-        ? `<div class="card-head"><div><h2>Classement des clippers</h2><p>${d.rows.length} clippers · ${esc(periodLabel())}</p></div>
-          <div class="actions"><span class="faint" style="font-size:12px">Trier par</span>${segTabs('sort', [['views', 'Vues'], ['posts', 'Posts'], ['score', 'Score']], sort)}</div></div>
-          ${leaderboardTable(d.rows, sort)}`
-        : `<div class="card-head"><div><h2>Classement des agences</h2><p>${esc(periodLabel())}</p></div></div>${agencies()}`;
-    onSeg($('#board'), 'sort', (v) => {
-      sort = v;
-      draw();
-    });
-  };
-  main().innerHTML = `<div class="page-head"><div><h1>Classement</h1><p>${d.rows.length} clippers · ${esc(periodLabel())}</p></div>
-    <div class="actions">${segTabs('tab', [['agences', 'Agences'], ['clippers', 'Clippers'], ['recruteurs', 'Recruteurs', true]], tab)}${periodPicker()}</div></div>
-    <div class="card" id="board"></div>`;
-  const root = main();
-  bindFilters(root, pageClassement);
-  onSeg(root, 'tab', (v) => {
-    tab = v;
-    draw();
-  });
-  draw();
-  bindRows($('#board', root));
-}
-
 async function pageClipper(id) {
   loading();
   const d = await api(`/api/clippers/${id}?${qs({}, false)}`);
@@ -799,134 +748,6 @@ async function pageClipper(id) {
     const del = e.target.closest('[data-del-strike]');
     if (del && confirm('Retirer ce strike ?')) {
       api(`/api/strikes/${del.dataset.delStrike}`, { method: 'DELETE' }).then(() => pageClipper(id));
-    }
-  });
-}
-
-let INSPI_WEEK = null;
-async function pageInspiration() {
-  loading();
-  const d = await api(`/api/inspiration?${new URLSearchParams({ ...(INSPI_WEEK ? { week: INSPI_WEEK } : {}), ...(store.client ? { client: store.client } : {}) })}`);
-  const weekLabel = `${new Date(d.week.from).getDate()} – ${dateLong(d.week.to - DAY)}`;
-  const list = (items) =>
-    items.length
-      ? `<div class="top-list">${items
-          .map(
-            (v, i) => `<a class="top-item" href="${esc(v.url ?? '#')}" target="_blank" rel="noopener">
-        ${i < 3 ? `<span class="rank r${i + 1}">${i + 1}</span>` : `<span class="faint num" style="text-align:center">${i + 1}</span>`}
-        <span class="mini-thumb ${v.platform}">${v.thumbnailUrl ? `<img src="${esc(v.thumbnailUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}</span>
-        <div><b>${esc(v.username)}</b><small>${v.publishedAt ? dm(v.publishedAt) : ''}</small></div>
-        <b class="num">${fmtK(v.views)}</b>${icon('arrow')}</a>`,
-          )
-          .join('')}</div>`
-      : '<div class="empty">Aucune vidéo.</div>';
-  const block = (data, title) =>
-    ['tiktok', 'instagram', 'youtube']
-      .map((p) => `<div class="card"><div class="card-head"><h2><span class="plat-title ${p}">${PLAT_NAME[p]}</span>${title}</h2></div>${list(data[p])}</div>`)
-      .join('');
-  main().innerHTML = `<div class="page-head"><div><h1>Inspiration</h1><p>Top 10 par vues · ${weekLabel}</p></div>
-    <div class="actions">${d.isCurrentWeek ? '<span class="pill ok"><span class="dot"></span>Semaine en cours · mise à jour en direct</span>' : ''}
-      ${agencySelect()}<button class="icon-btn" data-w="-1">${icon('left')}</button>
-      <span class="btn" style="cursor:default">${icon('cal')} ${weekLabel}</span>
-      <button class="icon-btn" data-w="1" ${d.isCurrentWeek ? 'disabled' : ''}>${icon('right')}</button></div></div>
-    <div class="three">${block(d.weekly, 'Top 10 de la semaine')}</div>
-    <div class="section-title"><h2>Top 10 all-time</h2><p>Meilleurs clips sur tout l'historique</p></div>
-    <div class="three">${block(d.allTime, 'Top 10 all-time')}</div>`;
-  const root = main();
-  bindFilters(root, pageInspiration);
-  $$('[data-w]', root).forEach((b) =>
-    b.addEventListener('click', () => {
-      INSPI_WEEK = d.week.from + Number(b.dataset.w) * 7 * DAY + DAY / 2;
-      pageInspiration();
-    }),
-  );
-}
-
-async function pageManagement() {
-  loading();
-  const list = await api(`/api/management?${store.client ? `client=${store.client}` : ''}`);
-  SEARCH_CACHE = null;
-  const acc = (c, p) => {
-    const a = c.accounts.filter((x) => x.platform === p);
-    return a.length ? a.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:${p === 'tiktok' ? 'inherit' : 'var(--red)'}">@${esc(x.handle)}</a>`).join('<br>') : '<span class="faint">—</span>';
-  };
-  main().innerHTML = `<div class="page-head"><div><h1>Management</h1><p>${list.length} clippers · comptes, agence & statut</p></div>
-    <div class="actions">${agencySelect()}<button class="btn" data-import>${icon('refresh')} Importer depuis Discord</button>
-      <button class="btn dark" data-add>${icon('plus')} Ajouter un clipper</button></div></div>
-    <div class="card"><div class="table-wrap"><table><thead><tr><th>Clipper</th><th>Instagram</th><th>TikTok</th><th>YouTube</th><th>Discord</th><th>Statut</th><th class="r">Actions</th></tr></thead>
-    <tbody>${list
-      .map(
-        (c) => `<tr><td><a class="who" href="#/clipper/${c.id}">${avatar(c.username)}<div><b>${esc(c.username)}</b><small class="faint">${esc(c.agency ?? 'Sans agence')}</small></div></a></td>
-      <td>${acc(c, 'instagram')}</td><td>${acc(c, 'tiktok')}</td><td>${acc(c, 'youtube')}</td>
-      <td>${c.hasDiscord ? `<span class="pill gray">${icon('check').replace('<svg', '<svg width="11"')} lié</span>` : '<span class="faint">—</span>'}</td>
-      <td><span class="status-dot ${c.status === 'actif' ? '' : 'off'}"><span class="dot"></span>${c.status === 'actif' ? 'Actif' : 'Inactif'}</span></td>
-      <td class="r"><button class="icon-btn" data-edit="${c.id}" title="Modifier" style="display:inline-grid">${icon('edit')}</button>
-        <button class="icon-btn" data-del="${c.id}" title="Supprimer" style="display:inline-grid">${icon('trash')}</button></td></tr>`,
-      )
-      .join('') || '<tr><td colspan="7" class="empty">Aucun clipper. Ajoute-en un, ou laisse-les poster leurs liens dans le salon COMPTES.</td></tr>'}</tbody></table></div></div>`;
-  const root = main();
-  bindFilters(root, pageManagement);
-  const form = (c = {}) => {
-    const handle = (p) => c.accounts?.find((a) => a.platform === p)?.handle ?? '';
-    return `<label class="field"><span>Nom</span><input class="input" name="username" required value="${esc(c.username ?? '')}"></label>
-      <div class="grid-form"><label class="field"><span>Agence</span><select class="select" name="clientId"><option value="">Sans agence</option>
-        ${META.clients.map((a) => `<option value="${a.id}" ${a.id === c.clientId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
-      <label class="field"><span>Statut</span><select class="select" name="status"><option value="actif">Actif</option><option value="inactif" ${c.status === 'inactif' ? 'selected' : ''}>Inactif</option></select></label></div>
-      ${['tiktok', 'instagram', 'youtube'].map((p) => `<label class="field"><span>${PLAT_NAME[p]}</span><input class="input" name="${p}" value="${esc(handle(p))}" placeholder="@pseudo ou lien du profil"></label>`).join('')}
-      <small class="faint">Laisser vide pour retirer le compte. Les vues d'un nouveau compte comptent à partir de son ajout.</small>`;
-  };
-  const payload = (fd) => ({
-    username: fd.get('username'),
-    clientId: fd.get('clientId') ? Number(fd.get('clientId')) : null,
-    status: fd.get('status'),
-    accounts: { tiktok: fd.get('tiktok'), instagram: fd.get('instagram'), youtube: fd.get('youtube') },
-  });
-  const done = (r) => {
-    (r.warnings ?? []).forEach((w) => toast(w, true));
-    pageManagement();
-  };
-  $('[data-add]', root).addEventListener('click', () =>
-    modal('Ajouter un clipper', form(), { confirm: 'Ajouter', onConfirm: async (fd) => done(await api('/api/clippers', { method: 'POST', body: payload(fd) })) }),
-  );
-  $('[data-import]', root).addEventListener('click', async () => {
-    let roles;
-    try {
-      roles = await api('/api/discord/roles');
-    } catch (err) {
-      return toast(err.message, true);
-    }
-    modal(
-      'Importer depuis Discord',
-      `<p class="muted" style="margin:0">Crée un clipper pour chaque membre du serveur qui a ce rôle (les clippers déjà connus sont conservés).</p>
-      <label class="field"><span>Rôle Discord</span><select class="select" name="roleId" required>${roles.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select></label>
-      <label class="field"><span>Agence</span><select class="select" name="clientId"><option value="">Sans agence</option>${META.clients.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></label>`,
-      {
-        confirm: 'Importer',
-        onConfirm: async (fd) => {
-          const r = await api('/api/discord/import', { method: 'POST', body: { roleId: fd.get('roleId'), clientId: fd.get('clientId') ? Number(fd.get('clientId')) : null } });
-          toast(`${r.found} membre(s) trouvé(s), ${r.created} nouveau(x) clipper(s)`);
-          pageManagement();
-        },
-      },
-    );
-  });
-  root.addEventListener('click', (e) => {
-    const ed = e.target.closest('[data-edit]');
-    if (ed) {
-      const c = list.find((x) => x.id === Number(ed.dataset.edit));
-      modal(`Modifier ${c.username}`, form(c), { onConfirm: async (fd) => done(await api(`/api/clippers/${c.id}`, { method: 'PATCH', body: payload(fd) })) });
-    }
-    const del = e.target.closest('[data-del]');
-    if (del) {
-      const c = list.find((x) => x.id === Number(del.dataset.del));
-      modal('Supprimer le clipper', `<p style="margin:0">Supprimer <b>${esc(c.username)}</b> et tout son historique (comptes, vues, strikes) ? C'est définitif.</p>`, {
-        confirm: 'Supprimer',
-        danger: true,
-        onConfirm: async () => {
-          await api(`/api/clippers/${c.id}`, { method: 'DELETE' });
-          pageManagement();
-        },
-      });
     }
   });
 }
@@ -1282,53 +1103,6 @@ async function pageFunnel() {
   bindRows($('#people', root));
 }
 
-async function pageRecruteurs() {
-  loading();
-  const d = await api(`/api/recruiters?${qs({}, false)}`);
-  const missing = META.status.bot.state === 'ready' && META.status.bot.membersIntent === false;
-  main().innerHTML = `<div class="page-head"><div><h1>Recruteurs</h1><p>Invitations Discord suivies automatiquement · ${esc(periodLabel())}</p></div><div class="actions">${periodPicker()}</div></div>
-    ${missing ? '<div class="alert warn" style="margin-bottom:14px"><span class="dot"></span><div><b>Suivi des invitations désactivé</b><small>Active « Server Members Intent » dans le Developer Portal Discord (onglet Bot), puis redémarre le service.</small></div></div>' : ''}
-    <div class="card"><div class="table-wrap"><table><thead><tr><th>Recruteur</th><th class="r">Invités</th><th class="r">En test</th><th class="r">Validés</th><th class="r">Confirmés</th><th class="r">Conversion</th><th class="r">À verser</th><th class="r">Total recrues</th><th class="r"></th></tr></thead><tbody>
-    ${d.rows
-      .map(
-        (r) => `<tr><td><div class="who">${avatar(r.name)}<div><b>${esc(r.name)}</b>${r.active ? '' : '<small class="faint">désactivé</small>'}</div></div></td>
-      <td class="r num">${r.invited}</td><td class="r num">${r.inTest}</td><td class="r num">${r.validated}</td><td class="r num">${r.confirmed}</td>
-      <td class="r">${r.conversion == null ? '<span class="faint">—</span>' : `<b class="num">${r.conversion} %</b>`}</td><td class="r num">${euro(r.pay)}</td>
-      <td class="r num faint">${r.totalClippers} / ${r.totalRecruits}</td>
-      <td class="r"><button class="icon-btn" data-edit-rec="${r.id}" style="display:inline-grid" title="Modifier">${icon('edit')}</button> <button class="icon-btn" data-del-rec="${r.id}" style="display:inline-grid" title="Supprimer">${icon('trash')}</button></td></tr>`,
-      )
-      .join('') || '<tr><td colspan="9" class="empty">Aucun recruteur pour l\'instant. Chaque membre dont le lien d\'invitation fait rejoindre quelqu\'un apparaît ici automatiquement.</td></tr>'}
-    </tbody></table></div></div>
-    <p class="faint" style="font-size:12px;margin-top:10px">Rémunération des recruteurs : ${euro(d.settings.recruiterPerValidated)} par test validé, ${euro(d.settings.recruiterPerConfirmed)} par recrue confirmée (réglable dans Rémunération → Recruteurs).</p>`;
-  const root = main();
-  bindFilters(root, pageRecruteurs);
-  root.addEventListener('click', (e) => {
-    const ed = e.target.closest('[data-edit-rec]');
-    if (ed) {
-      const r = d.rows.find((x) => x.id === Number(ed.dataset.editRec));
-      modal(`Modifier ${r.name}`, `<label class="field"><span>Nom</span><input class="input" name="name" required value="${esc(r.name)}"></label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="active" ${r.active ? 'checked' : ''}> Actif</label>`, {
-        onConfirm: async (fd) => {
-          await api(`/api/recruiters/${r.id}`, { method: 'PATCH', body: { name: fd.get('name'), active: fd.get('active') === 'on' } });
-          pageRecruteurs();
-        },
-      });
-    }
-    const del = e.target.closest('[data-del-rec]');
-    if (del) {
-      const r = d.rows.find((x) => x.id === Number(del.dataset.delRec));
-      modal('Supprimer le recruteur', `<p style="margin:0">Supprimer <b>${esc(r.name)}</b> ? Ses recrues restent, sans recruteur.</p>`, {
-        confirm: 'Supprimer',
-        danger: true,
-        onConfirm: async () => {
-          await api(`/api/recruiters/${r.id}`, { method: 'DELETE' });
-          pageRecruteurs();
-        },
-      });
-    }
-  });
-}
-
 let SUIVI_TAB = 'candidatures';
 const CAND_LABELS = { prenom: 'Prénom et âge', niveau: 'Niveau en montage', logiciel: 'Logiciel', dispo: 'Disponibilités', liens: 'Liens' };
 async function pageSuivi() {
@@ -1616,13 +1390,9 @@ const ROUTES = {
   agence: pageAgence,
   clippers: pageClippers,
   clipper: (id) => pageClipper(id),
-  classement: pageClassement,
-  inspiration: pageInspiration,
-  management: pageManagement,
   remuneration: pageRemuneration,
   parametres: pageParametres,
   funnel: pageFunnel,
-  recruteurs: pageRecruteurs,
   suivi: pageSuivi,
   boutique: pageBoutique,
 };
