@@ -13,6 +13,7 @@ import { dayKey } from '../domain/time.js';
 import type { AgencyService } from '../services/agency.js';
 import { FanRepo } from '../db/fans.js';
 import { FanService } from '../services/fans.js';
+import type { GameClient } from '../services/game.js';
 import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
 
@@ -41,6 +42,8 @@ export interface WebDeps {
   /** Programme fans (créé par défaut si absent, ex. dans les tests). */
   fans?: FanService;
   password?: string;
+  /** API du jeu (catalogue + livraison des achats), si configurée. */
+  game?: GameClient;
   /** Clé partagée avec le jeu Roblox (livraison des achats). */
   robloxApiKey?: string;
   /** Clé partagée avec le bot Neptune (Python). */
@@ -668,7 +671,7 @@ export function createApp(deps: WebDeps): Hono {
 
   // --- Programme fans : boutique (staff) ----------------------------------------------
 
-  app.get('/api/fans', async (c) => c.json({ ...fans.overview(), notifications: fans.fans.notificationStats(Date.now() - 7 * 86_400_000), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, fansBot: !!deps.fansBotSends, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey }));
+  app.get('/api/fans', async (c) => c.json({ ...fans.overview(), notifications: fans.fans.notificationStats(Date.now() - 7 * 86_400_000), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, fansBot: !!deps.fansBotSends, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey, gameApi: !!deps.game }));
   app.put('/api/fans/settings', async (c) => {
     const body = z
       .object({
@@ -690,6 +693,15 @@ export function createApp(deps: WebDeps): Hono {
   app.delete('/api/shop/items/:id', (c) => {
     fans.fans.deleteItem(Number(c.req.param('id')));
     return c.json({ ok: true });
+  });
+  app.get('/api/shop/game-products', async (c) => {
+    if (!deps.game) return c.json({ error: 'API du jeu non configurée (GAME_API_URL + GAME_API_TOKEN sur Railway)' }, 503);
+    try {
+      const inShop = new Set(fans.fans.items().map((i) => i.ref));
+      return c.json({ products: (await deps.game.products()).map((p) => ({ ...p, inShop: inShop.has(String(p.id)) })) });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
+    }
   });
   app.post('/api/shop/orders/:id/refund', (c) => c.json({ ok: fans.fans.refund(Number(c.req.param('id'))) }));
   app.post('/api/shop/orders/:id/delivered', (c) => c.json({ ok: fans.fans.markDelivered([Number(c.req.param('id'))], null) > 0 }));

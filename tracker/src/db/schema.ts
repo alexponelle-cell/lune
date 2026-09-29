@@ -343,4 +343,11 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   );
   CREATE INDEX fan_notifications_pending ON fan_notifications(sent_at, error);
   `,
+
+  // v9 : livraison par l'API du jeu (nouvelles tentatives, dernière erreur)
+  `
+  ALTER TABLE shop_orders ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE shop_orders ADD COLUMN next_try_at INTEGER;
+  ALTER TABLE shop_orders ADD COLUMN delivery_error TEXT;
+  `,
 ];

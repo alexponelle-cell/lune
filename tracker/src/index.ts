@@ -13,6 +13,7 @@ import { RecruitmentRepo } from './db/recruitment.js';
 import { startFansBot } from './bot/fans.js';
 import { FanService } from './services/fans.js';
 import { AgencyService } from './services/agency.js';
+import { deliverPendingOrders, GameClient } from './services/game.js';
 import { RecruitmentService } from './services/recruitment.js';
 import { Analytics } from './services/analytics.js';
 import { status } from './status.js';
@@ -37,10 +38,13 @@ const agency = new AgencyService(repo, {
 const recruitment = new RecruitmentService(repo, new RecruitmentRepo(db), agency);
 const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl);
 const botHolder: { current?: Bot['bridge'] } = {};
+// API du jeu Roblox (serveur du dev du jeu) : catalogue + livraison des achats
+const game = config.GAME_API_URL && config.GAME_API_TOKEN ? new GameClient(config.GAME_API_URL, config.GAME_API_TOKEN) : undefined;
 
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
+    game,
     youtubeApiKey: config.YOUTUBE_API_KEY,
     discordOAuth:
       config.OAUTH_CLIENT_SECRET && (config.OAUTH_CLIENT_ID ?? config.DISCORD_CLIENT_ID)
@@ -115,6 +119,7 @@ if (config.FANS_BOT_TOKEN) {
 }
 
 // Messages privés des fans (coins, niveau, objet abordable, top 3, livraison)
+const stopGameDelivery = game ? every('livraison jeu', 1, () => deliverPendingOrders(game, fans.fans)) : () => {};
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
 // Comptes des fans : 1 collecte par jour (coût Apify), les clippers de l'agence au rythme normal
@@ -144,6 +149,7 @@ async function shutdown() {
   log.info('arrêt…');
   stopCollect();
   stopFanNotify();
+  stopGameDelivery();
   stopRelance();
   stopWeb();
   await bot?.stop();

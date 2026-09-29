@@ -30,6 +30,8 @@ export interface ShopOrder {
   status: OrderStatus;
   createdAt: number;
   deliveredAt: number | null;
+  /** Dernière erreur de livraison par l'API du jeu (null si aucune). */
+  deliveryError: string | null;
 }
 
 export interface Roblox {
@@ -61,6 +63,7 @@ const toOrder = (r: Row): ShopOrder => ({
   status: r.status,
   createdAt: r.created_at,
   deliveredAt: r.delivered_at,
+  deliveryError: r.delivery_error ?? null,
 });
 
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -342,6 +345,23 @@ export class FanRepo {
   }
 
   /** Marque livrées les commandes de ce joueur (le jeu confirme). Renvoie le nombre mis à jour. */
+  /** Commandes à livrer par l'API du jeu (fan relié à Roblox, pas en attente de nouvel essai). */
+  pendingForGame(now = Date.now(), limit = 50): Array<ShopOrder & { robloxUserId: number; attempts: number }> {
+    return (
+      this.db
+        .prepare(
+          `SELECT o.*, c.roblox_user_id FROM shop_orders o JOIN clippers c ON c.id = o.clipper_id
+           WHERE o.status = 'pending' AND c.roblox_user_id IS NOT NULL AND (o.next_try_at IS NULL OR o.next_try_at <= ?)
+           ORDER BY o.id LIMIT ?`,
+        )
+        .all(now, limit) as Row[]
+    ).map((r) => ({ ...toOrder(r), robloxUserId: r.roblox_user_id, attempts: r.attempts }));
+  }
+
+  deliveryFailed(orderId: number, error: string, nextTryAt: number): void {
+    this.db.prepare('UPDATE shop_orders SET attempts = attempts + 1, delivery_error = ?, next_try_at = ? WHERE id = ?').run(error, nextTryAt, orderId);
+  }
+
   markDelivered(orderIds: readonly number[], robloxUserId: number | null, now = Date.now()): number {
     let n = 0;
     const stmt =

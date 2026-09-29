@@ -31,6 +31,9 @@ const schema = z.object({
   OAUTH_CLIENT_SECRET: optionalString,
   /** Clé partagée avec le jeu Roblox pour livrer les achats de la boutique. */
   ROBLOX_API_KEY: optionalString,
+  /** API du jeu (serveur du dev) : adresse + token, pour importer le catalogue et livrer les achats. */
+  GAME_API_URL: optionalString,
+  GAME_API_TOKEN: optionalString,
 
   DATABASE_PATH: z.string().default('./data/tracker.db'),
 

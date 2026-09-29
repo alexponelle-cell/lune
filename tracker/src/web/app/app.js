@@ -1514,7 +1514,7 @@ async function pageBoutique() {
     <div class="actions"><a class="btn" href="/fan" target="_blank" rel="noopener">Voir l'espace fan</a></div></div>
     <div class="stack">
       <form class="card card-pad stack" id="fan-settings"><div><h2 style="margin:0;font-size:15px">Réglages</h2>
-        <p class="faint" style="margin:2px 0 0;font-size:12px">Bot des fans : <b>${d.fansBot ? (nep.state === 'ready' ? `${esc(nep.tag)} connecté ✅${nep.error ? ` · ⚠️ ${esc(nep.error)}` : ''}` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'connexion…') : 'non configuré'}</b> · Neptune : <b>${d.neptuneKey ? 'relié' : 'non relié'}</b> · Jeu Roblox : <b>${d.robloxKey ? 'clé configurée' : 'ROBLOX_API_KEY manquante'}</b> · Messages privés (7 j) : <b>${d.notifications.sent} envoyés</b>${d.notifications.failed ? `, ${d.notifications.failed} impossibles (DM fermés)` : ''}${d.notifications.pending ? `, ${d.notifications.pending} en attente` : ''}</p></div>
+        <p class="faint" style="margin:2px 0 0;font-size:12px">Bot des fans : <b>${d.fansBot ? (nep.state === 'ready' ? `${esc(nep.tag)} connecté ✅${nep.error ? ` · ⚠️ ${esc(nep.error)}` : ''}` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'connexion…') : 'non configuré'}</b> · Neptune : <b>${d.neptuneKey ? 'relié' : 'non relié'}</b> · API du jeu : <b>${d.gameApi ? 'connectée ✅' : 'non configurée'}</b> · Messages privés (7 j) : <b>${d.notifications.sent} envoyés</b>${d.notifications.failed ? `, ${d.notifications.failed} impossibles (DM fermés)` : ''}${d.notifications.pending ? `, ${d.notifications.pending} en attente` : ''}</p></div>
         <div class="grid-form">
           <label class="field"><span>Titre du site</span><input class="input" name="programName" value="${esc(s.programName)}"><small>Nom de la boutique (ex. BEONE REWARDS)</small></label>
           <label class="field"><span>Agence des fans</span><select class="select" name="clientId"><option value="">Aucune</option>${d.clients.map((c) => `<option value="${c.id}" ${c.id === s.clientId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select><small>Les fans qui se connectent y sont rattachés (ex. BeOne)</small></label>
@@ -1537,16 +1537,16 @@ async function pageBoutique() {
           : '<div class="empty">Tous les fans ont au moins un compte relié 🎉</div>'}</div>`;
       })()}
 
-      <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence = ce que le jeu comprend (ID du gamepass, nom de l'objet…)</p></div><button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div>
+      <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence jeu = l'ID du produit côté jeu (rempli automatiquement à l'import)</p></div><div class="actions"><button class="btn" data-import-game>${icon('download')} Importer depuis le jeu</button><button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div></div>
         <div class="table-wrap"><table><thead><tr><th>Objet</th><th>Type</th><th>Référence jeu</th><th class="r">Prix</th><th class="r">Stock</th><th>État</th><th class="r"></th></tr></thead><tbody>
         ${d.items.map((i) => `<tr><td><b>${esc(i.name)}</b>${i.description ? `<small class="faint" style="display:block">${esc(i.description)}</small>` : ''}</td><td>${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</td>
           <td class="num">${esc(i.ref)}</td><td class="r num">${n(i.price)} coins</td><td class="r num">${i.stock ?? '∞'}</td><td>${i.active ? '<span class="pill ok">En vente</span>' : '<span class="pill gray">Masqué</span>'}</td>
           <td class="r"><button class="icon-btn" data-edit-item="${i.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-item="${i.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucun objet. Ajoute le premier gamepass ou objet.</td></tr>'}
         </tbody></table></div></div>
 
-      <div class="card"><div class="card-head"><div><h2>Commandes</h2><p>« À livrer » : le jeu les donne au joueur à sa prochaine connexion</p></div></div>
+      <div class="card"><div class="card-head"><div><h2>Commandes</h2><p>« À livrer » : envoyé automatiquement au jeu (le joueur le reçoit en jeu ou à sa prochaine connexion)</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Date</th><th>Fan</th><th>Roblox</th><th>Objet</th><th class="r">Prix</th><th>État</th><th class="r"></th></tr></thead><tbody>
-        ${d.orders.map((o) => `<tr><td class="num faint">${dm(o.createdAt)}</td><td>${esc(o.username)}</td><td>${esc(o.roblox ?? '—')}</td><td>${esc(o.itemName)}</td><td class="r num">${n(o.price)}</td><td>${ORDER_PILL[o.status]}</td>
+        ${d.orders.map((o) => `<tr><td class="num faint">${dm(o.createdAt)}</td><td>${esc(o.username)}</td><td>${esc(o.roblox ?? '—')}</td><td>${esc(o.itemName)}</td><td class="r num">${n(o.price)}</td><td>${ORDER_PILL[o.status]}${o.status === 'pending' && o.deliveryError ? `<small style="display:block;color:var(--orange);white-space:normal;max-width:260px">⚠️ ${esc(o.deliveryError)}</small>` : ''}</td>
           <td class="r">${o.status === 'pending' ? `<button class="btn sm" data-delivered="${o.id}">Marquer livré</button> <button class="btn sm danger" data-refund="${o.id}">Rembourser</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucune commande.</td></tr>'}
         </tbody></table></div></div>
 
@@ -1594,6 +1594,41 @@ async function pageBoutique() {
     stock: fd.get('stock') === '' ? null : Number(fd.get('stock')),
     imageUrl: fd.get('imageUrl') || null,
     active: fd.get('active') === 'on',
+  });
+  $('[data-import-game]', root).addEventListener('click', async () => {
+    let list;
+    try {
+      list = (await api('/api/shop/game-products')).products;
+    } catch (err) {
+      return toast(err.message, true);
+    }
+    const form = modal(
+      'Importer depuis le jeu',
+      list.length
+        ? `<p class="faint" style="margin:0;font-size:13px">Choisis un produit, puis fixe son prix en coins.</p><div class="stack" style="gap:8px;max-height:55vh;overflow-y:auto">${list
+            .map(
+              (p) => `<div class="todo" style="flex-wrap:nowrap">${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="" style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex:none" referrerpolicy="no-referrer">` : ''}
+            <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><small class="faint" style="display:block">${p.type === 'gamepass' ? 'Gamepass' : 'Dev product'} · ID ${p.id}${p.priceRobux != null ? ` · ${n(p.priceRobux)} Robux` : ''}</small></div>
+            ${p.inShop ? '<span class="pill ok">Déjà en boutique</span>' : `<button type="button" class="btn sm dark" data-import="${p.id}">Ajouter</button>`}</div>`,
+            )
+            .join('')}</div>`
+        : '<div class="empty">Le jeu ne renvoie aucun produit.</div>',
+      { confirm: 'Fermer' },
+    );
+    form.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-import]');
+      if (!b) return;
+      const p = list.find((x) => String(x.id) === b.dataset.import);
+      form.parentElement.remove();
+      modal(`Ajouter ${p.name}`, itemForm({ name: p.name, description: p.description, kind: p.type === 'gamepass' ? 'gamepass' : 'item', ref: String(p.id), imageUrl: p.imageUrl ?? '' }), {
+        confirm: 'Ajouter à la boutique',
+        onConfirm: async (fd) => {
+          await api('/api/shop/items', { method: 'POST', body: itemBody(fd) });
+          toast(`${p.name} ajouté ✅`);
+          pageBoutique();
+        },
+      });
+    });
   });
   $('[data-add-item]', root).addEventListener('click', () =>
     modal('Nouvel objet', itemForm(), { confirm: 'Créer', onConfirm: async (fd) => { await api('/api/shop/items', { method: 'POST', body: itemBody(fd) }); pageBoutique(); } }),

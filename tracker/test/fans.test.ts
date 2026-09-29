@@ -10,6 +10,7 @@ import { RecruitmentService } from '../src/services/recruitment.js';
 import { createApp } from '../src/web/server.js';
 import { collectAll } from '../src/jobs/collect.js';
 import { isAccountsChannel, isTicketChannel } from '../src/bot/fans.js';
+import { deliverPendingOrders, GameClient } from '../src/services/game.js';
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -36,6 +37,41 @@ describe('programme fans (Neptune)', () => {
     repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 5100, publishedAt: now - 2 * HOUR }], now - HOUR);
     return fan;
   }
+
+  it('livre les achats via l\'API du jeu (200, 409, 429, référence invalide)', async () => {
+    const fan = fanWithViews();
+    await fans.linkRoblox(fan, 'paulrbx');
+    const vip = fans.saveItem(null, { name: 'VIP', price: 10, kind: 'gamepass', ref: '111' });
+    const pet = fans.saveItem(null, { name: 'Pet', price: 10, kind: 'item', ref: '222' });
+    const bad = fans.saveItem(null, { name: 'Épée', price: 10, kind: 'item', ref: 'epee' });
+    const o1 = fans.buy(fan, vip.id);
+    const o2 = fans.buy(fan, pet.id);
+    const o3 = fans.buy(fan, bad.id);
+    const calls: unknown[] = [];
+    const answers = [200, 429];
+    const game = new GameClient('https://jeu.test/', 'tok', (async (url: string, init: RequestInit) => {
+      calls.push({ url, auth: (init.headers as Record<string, string>).authorization, body: JSON.parse(String(init.body)) });
+      return new Response('{}', { status: answers.shift() ?? 200 });
+    }) as typeof fetch);
+    const t = Date.now();
+    expect(await deliverPendingOrders(game, fans.fans, t)).toEqual({ livrées: 1, échecs: 1 });
+    expect(calls[0]).toEqual({ url: 'https://jeu.test/grant', auth: 'Bearer tok', body: { userId: 42, productId: 111, orderId: String(o1.id) } });
+    expect(fans.fans.order(o1.id)!.status).toBe('delivered');
+    expect(fans.fans.order(o2.id)!.deliveryError).toMatch(/Limite/);
+    expect(fans.fans.order(o3.id)!.deliveryError).toBeNull(); // on s'arrête au rate limit
+    // o2 n'est pas renvoyé avant l'heure du nouvel essai, puis 409 (déjà possédé) = livré
+    expect(await deliverPendingOrders(game, fans.fans, t + 1000)).toEqual({ livrées: 0, échecs: 1 });
+    expect(fans.fans.order(o3.id)!.deliveryError).toMatch(/numérique/);
+    answers.push(409);
+    expect(await deliverPendingOrders(game, fans.fans, t + 61_000)).toEqual({ livrées: 1, échecs: 0 });
+    expect(fans.fans.order(o2.id)!.status).toBe('delivered');
+  });
+
+  it('lit le catalogue du jeu', async () => {
+    const game = new GameClient('https://jeu.test', 'tok', (async () =>
+      Response.json([{ id: 5, type: 'devproduct', name: 'Boost', description: 'x2', imageUrl: 'https://img', priceRobux: 49 }, { name: 'sans id' }])) as unknown as typeof fetch);
+    expect(await game.products()).toEqual([{ id: 5, type: 'devproduct', name: 'Boost', description: 'x2', imageUrl: 'https://img', priceRobux: 49 }]);
+  });
 
   it('lien de connexion à usage unique puis session', () => {
     const fan = fans.ensureFan('d1', 'Paul');
