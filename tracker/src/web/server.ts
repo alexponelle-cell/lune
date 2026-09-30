@@ -875,7 +875,12 @@ export function createApp(deps: WebDeps): Hono {
     return c.json({ ok: true });
   });
   app.post('/api/shop/orders/:id/refund', (c) => c.json({ ok: fans.fans.refund(Number(c.req.param('id'))) }));
-  app.post('/api/shop/orders/:id/delivered', (c) => c.json({ ok: fans.fans.markDelivered([Number(c.req.param('id'))], null) > 0 }));
+  app.post('/api/shop/orders/:id/delivered', (c) => {
+    const ok = fans.fans.markDelivered([Number(c.req.param('id'))], null) > 0;
+    // Message privé « livré » préparé tout de suite (sinon au prochain passage, jusqu'à 30 min)
+    if (ok && (deps.fansBotSends || deps.neptuneApiKey)) fans.generateNotifications();
+    return c.json({ ok });
+  });
 
   // Toute autre route GET renvoie l'application (navigation côté navigateur).
   app.get('*', (c) => c.html(ASSETS.html));
