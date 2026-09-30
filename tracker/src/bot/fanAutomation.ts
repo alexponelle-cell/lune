@@ -17,7 +17,7 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function channel(guild: Guild, name: string): TextChannel | undefined {
   return guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(name)) as TextChannel | undefined;
 }
-const roleNamed = (guild: Guild, name: string): Role | undefined => guild.roles.cache.find((r) => r.name === name);
+const roleNamed = (guild: Guild, name: string): Role | undefined => guild.roles.cache.find((r) => r.name.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr"));
 /** Serveurs montés par /setup (jamais les autres serveurs où le bot est présent). */
 const setupGuilds = (client: Client<true>, fans: FanService) => {
   const ids = new Set(fans.botState<string[]>('setup-guilds', []));

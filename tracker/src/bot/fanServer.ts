@@ -129,7 +129,7 @@ function overwrites(guild: Guild, access: Access, staffRoleId: string): Overwrit
   const everyone = guild.roles.everyone.id;
   if (access.who === 'staff') return [{ id: everyone, deny: [V.ViewChannel] }, staff, bot];
   if (access.who === 'everyone') return [{ id: everyone, allow: [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads, V.AddReactions] }, staff, bot];
-  const role = guild.roles.cache.find((r) => r.name === access.role);
+  const role = guild.roles.cache.find((r) => sameName(r.name, access.role));
   return [
     { id: everyone, deny: [V.ViewChannel] },
     ...(role ? [{ id: role.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] }] : []),
@@ -138,21 +138,24 @@ function overwrites(guild: Guild, access: Access, staffRoleId: string): Overwrit
   ];
 }
 
+/** Noms de rôles comparés sans tenir compte des majuscules (un admin peut écrire « Squiduu » au lieu de « SQUIDUU »). */
+const sameName = (a: string, b: string) => a.toLocaleLowerCase('fr') === b.toLocaleLowerCase('fr');
+
 export const bare = (name: string) => name.replace(/^[^\p{L}\p{N}]+/u, '').replace(/[^\p{L}\p{N}-]/gu, '').toLowerCase();
 
 export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl: string) {
   const c = fans.creator;
   const created: string[] = [];
   const role = async (name: string, colour: number, hoist: boolean) => {
-    const found = guild.roles.cache.find((r) => r.name === name);
+    const found = guild.roles.cache.find((r) => sameName(r.name, name));
     if (found) return found;
     created.push(`rôle ${name}`);
     return guild.roles.create({ name, colors: { primaryColor: colour }, hoist, reason: 'Serveur clippeurs' });
   };
   // Créés du plus haut au plus bas (Discord place chaque nouveau rôle en bas de la liste)
   const creatorName = creatorRoleName(c.creatorName);
-  const legacy = guild.roles.cache.find((r) => r.name === LEGACY_CREATOR_ROLE);
-  if (legacy && !guild.roles.cache.some((r) => r.name === creatorName)) await legacy.setName(creatorName).catch(() => {});
+  const legacy = guild.roles.cache.find((r) => sameName(r.name, LEGACY_CREATOR_ROLE));
+  if (legacy && !guild.roles.cache.some((r) => sameName(r.name, creatorName))) await legacy.setName(creatorName).catch(() => {});
   await role(creatorName, color(fans), true);
   const staff = await role(ROLE_STAFF, 0xf5f5f7, true);
   await role(ROLE_TOP, 0xffd24a, true);
@@ -211,7 +214,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   const row = (id: string, label: string, emoji: string) =>
     new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(id).setStyle(ButtonStyle.Success).setLabel(label).setEmoji(emoji));
   const rate = fans.settings().pointsPer1000;
-  const creatorRole = guild.roles.cache.find((r) => r.name === creatorName);
+  const creatorRole = guild.roles.cache.find((r) => sameName(r.name, creatorName));
   const fill = (t: string) => t.replaceAll('{creator}', creatorRole ? `${creatorRole}` : `**${c.creatorName}**`).replaceAll('{rate}', String(rate));
   const steps = c.texts.steps.map((s, i) => `**${String(i + 1).padStart(2, '0')} · ${s.title}**\n${s.text}`).join('\n\n');
   const posts: Array<[string, () => { embeds: EmbedBuilder[]; components?: ActionRowBuilder<ButtonBuilder>[] }]> = [
@@ -338,7 +341,7 @@ export async function handleStepButtons(interaction: Interaction) {
   if (!step) return;
   try {
     const names = step === 'read' ? [ROLE_READER] : [ROLE_READER, ROLE_RULES];
-    const roles = names.map((n) => interaction.guild.roles.cache.find((r) => r.name === n)).filter((r) => !!r);
+    const roles = names.map((n) => interaction.guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => !!r);
     if (roles.length !== names.length) return void (await interaction.reply({ content: 'Rôle introuvable : un admin doit refaire /setup.', flags: MessageFlags.Ephemeral }));
     await interaction.member.roles.add(roles.map((r) => r!.id), 'Parcours d’accueil');
     const ch = (name: string) => interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(name));
@@ -359,7 +362,7 @@ export async function handleStepButtons(interaction: Interaction) {
 async function privateChannelFor(guild: Guild, member: GuildMember): Promise<TextChannel | null> {
   const existing = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${member.id}]`)) as TextChannel | undefined;
   if (existing) return existing;
-  const staff = guild.roles.cache.find((r) => r.name === ROLE_STAFF);
+  const staff = guild.roles.cache.find((r) => sameName(r.name, ROLE_STAFF));
   // Discord : 50 salons maximum par catégorie → « 🔒 ESPACES PRIVÉS 2 », etc.
   const cats = guild.channels.cache.filter((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY)).sort((a, b) => a.name.localeCompare(b.name));
   let cat = cats.find((c) => guild.channels.cache.filter((x) => 'parentId' in x && x.parentId === c.id).size < 50);
@@ -386,7 +389,7 @@ async function privateChannelFor(guild: Guild, member: GuildMember): Promise<Tex
 export async function handleAlertsButton(interaction: Interaction) {
   if (!interaction.isButton() || interaction.customId !== ALERTS_BUTTON || !interaction.inCachedGuild()) return;
   try {
-    const role = interaction.guild.roles.cache.find((r) => r.name === ROLE_ALERTS);
+    const role = interaction.guild.roles.cache.find((r) => sameName(r.name, ROLE_ALERTS));
     if (!role) return void (await interaction.reply({ content: 'Rôle introuvable : un admin doit refaire /setup.', flags: MessageFlags.Ephemeral }));
     const has = interaction.member.roles.cache.has(role.id);
     if (has) await interaction.member.roles.remove(role);
@@ -429,9 +432,9 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
 /** Après une inscription réussie : rôles, salon privé et trace dans le salon staff (si le serveur a été monté par /setup). */
 export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string) {
   try {
-    const roles = [ROLE_CLIPPER, ROLE_READER, ROLE_RULES].map((n) => guild.roles.cache.find((r) => r.name === n)).filter((r) => r && !member.roles.cache.has(r.id));
+    const roles = [ROLE_CLIPPER, ROLE_READER, ROLE_RULES].map((n) => guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => r && !member.roles.cache.has(r.id));
     if (roles.length) await member.roles.add(roles.map((r) => r!.id), 'Inscription clippeur');
-    if (guild.roles.cache.some((r) => r.name === ROLE_CLIPPER) && guild.channels.cache.some((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY))) {
+    if (guild.roles.cache.some((r) => sameName(r.name, ROLE_CLIPPER)) && guild.channels.cache.some((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY))) {
       const priv = await privateChannelFor(guild, member);
       const fresh = priv && !(await priv.messages.fetch({ limit: 1 }).catch(() => null))?.size;
       if (priv && fresh) {
