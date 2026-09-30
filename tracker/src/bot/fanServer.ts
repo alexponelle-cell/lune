@@ -256,10 +256,12 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
     const set = new Set(fans.botState<string[]>('setup-guilds', []));
     set.add(interaction.guild.id);
     fans.setBotState('setup-guilds', [...set]);
+    const who = `\n-# ${process.env.RAILWAY_SERVICE_NAME ?? 'local'} · ${(process.env.RAILWAY_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)} · ${fans.creator.id}`;
+    log.info(`/setup sur ${interaction.guild.name} : ${created.length} élément(s) créé(s)`);
     await interaction.editReply(
-      created.length
+      (created.length
         ? `✅ Serveur prêt. Créé : ${created.join(', ')}.\nPense à mettre le rôle du bot tout en haut (Paramètres → Rôles) pour qu’il puisse donner le rôle Clippeur.`
-        : '✅ Tout est déjà en place, rien à créer.',
+        : '✅ Tout est déjà en place, rien à créer.') + who,
     );
   } catch (err) {
     log.error('/setup (serveur fans)', err);
