@@ -480,7 +480,10 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
     if (roles.length) await member.roles.add(roles.map((r) => r!.id), 'Inscription clippeur');
     if (guild.roles.cache.some((r) => sameName(r.name, ROLE_CLIPPER)) && guild.channels.cache.some((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY))) {
       const priv = await privateChannelFor(guild, member);
-      const fresh = priv && !(await priv.messages.fetch({ limit: 1 }).catch(() => null))?.size;
+      // Clippeur parti puis revenu : son ancien salon existe mais il n'y a plus accès → accès rendu + message
+      const back = !!priv && !priv.permissionOverwrites.cache.has(member.id);
+      if (priv && back) await priv.permissionOverwrites.edit(member.id, { ViewChannel: true, SendMessages: true, AttachFiles: true, ReadMessageHistory: true });
+      const fresh = priv && (back || !(await priv.messages.fetch({ limit: 1 }).catch(() => null))?.size);
       if (priv && fresh) {
         await priv.send({
           content: `${member}`,
