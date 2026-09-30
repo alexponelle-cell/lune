@@ -10,6 +10,7 @@ import {
   type Interaction,
   MessageFlags,
   type OverwriteResolvable,
+  type Role,
   PermissionFlagsBits,
   SlashCommandBuilder,
   type TextChannel,
@@ -43,6 +44,30 @@ export const LEVELUP_CHANNEL = '🎉│level-up';
 export const ALERTS_BUTTON = 'fans:alerts';
 /** Nom du rôle d'un niveau (ex. « 🔥 Pro »). */
 export const levelRoleName = (l: { emoji: string; name: string }) => `${l.emoji} ${l.name}`;
+/** Rôles de palier : un par objet de la boutique (ex. « 🎁 1 mois de Squiduuverse »). */
+export const TIER_PREFIX = '🎁 ';
+export const tierRoleName = (itemName: string) => `${TIER_PREFIX}${itemName}`.slice(0, 100);
+
+/**
+ * Crée les rôles de palier manquants, supprime ceux des objets retirés de la boutique
+ * et les anciens rôles de niveau (Débutant, Confirmé…). Renvoie les rôles dans l'ordre des paliers.
+ */
+export async function ensureTierRoles(guild: Guild, fans: FanService): Promise<Role[]> {
+  const tiers = fans.shopTiers();
+  const wanted = tiers.map((t) => tierRoleName(t.name));
+  for (const r of guild.roles.cache.values()) {
+    const oldLevel = fans.creator.levels.some((l) => sameName(r.name, levelRoleName(l)));
+    const oldTier = r.name.startsWith(TIER_PREFIX) && !wanted.some((w) => sameName(w, r.name));
+    if ((oldLevel || oldTier) && r.editable) await r.delete('Paliers = objets de la boutique').catch(() => {});
+  }
+  const roles: Role[] = [];
+  // Du plus cher au moins cher : Discord place chaque nouveau rôle en bas, le plus gros palier reste au-dessus
+  for (let i = wanted.length - 1; i >= 0; i--) {
+    const name = wanted[i]!;
+    roles[i] = guild.roles.cache.find((r) => sameName(r.name, name)) ?? (await guild.roles.create({ name, colors: { primaryColor: color(fans) }, hoist: true, reason: 'Palier de la boutique' }));
+  }
+  return roles;
+}
 
 /**
  * Accès d'un salon. Parcours : @everyone → 📖 Lecteur (a lu la bienvenue) → ✅ Règles acceptées → 🎬 Clippeur (inscrit).
@@ -107,7 +132,7 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
     channels: [
       { name: VIDEOS_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Chaque nouvelle vidéo, dès sa sortie : clippe-la en premier' },
       { name: RANKING_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Le top 10 de la semaine, chaque lundi' },
-      { name: LEVELUP_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Les passages de niveau' },
+      { name: LEVELUP_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Les paliers de la boutique débloqués' },
     ],
   },
   {
@@ -159,8 +184,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   await role(creatorName, color(fans), true);
   const staff = await role(ROLE_STAFF, 0xf5f5f7, true);
   await role(ROLE_TOP, 0xffd24a, true);
-  const LEVEL_COLORS = [0x9b9aa3, 0x22c55e, 0xf97316, color(fans)];
-  for (let i = c.levels.length - 1; i >= 0; i--) await role(levelRoleName(c.levels[i]!), LEVEL_COLORS[i] ?? color(fans), i > 0);
+  await ensureTierRoles(guild, fans);
   await role(ROLE_CLIPPER, color(fans), false);
   await role(ROLE_RULES, 0x9b9aa3, false);
   await role(ROLE_READER, 0x6b6a73, false);

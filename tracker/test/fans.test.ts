@@ -430,6 +430,14 @@ describe('automatisations du serveur', () => {
     repo.recordCollection(a.id, [{ platformVideoId: 'v1', views: 150_000, publishedAt: now - 2 * HOUR }], now - HOUR);
     expect(fans.fanLevels()).toEqual([{ clipperId: fan.id, discordId: '777', username: 'Léa', views: 150_000, level: 2 }]);
     expect(fans.weeklyTop()[0]).toMatchObject({ rank: 1, discordId: '777', views: 150_000 });
+    // Paliers Discord = objets de la boutique (coins gagnés, un achat ne fait pas redescendre)
+    expect(fans.fanTiers()[0]!.tier).toBe(-1);
+    fans.saveItem(null, { name: 'Gros', price: 5000, kind: 'item', ref: 'b' });
+    fans.saveItem(null, { name: 'Petit', price: 1000, kind: 'item', ref: 'a' });
+    expect(fans.shopTiers().map((t) => t.name).slice(0, 2)).toEqual(['Petit', 'Gros']);
+    expect(fans.fanTiers()[0]).toMatchObject({ discordId: '777', earned: 1500, tier: 0 });
+    fans.fans.addBonus(fan.id, 4000);
+    expect(fans.fanTiers()[0]!.tier).toBe(1);
     fans.setBotState('x', [1, 2]);
     expect(fans.botState('x', [])).toEqual([1, 2]);
   });

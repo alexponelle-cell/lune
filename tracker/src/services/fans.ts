@@ -223,6 +223,29 @@ export class FanService {
       });
   }
 
+  /** Paliers Discord = les objets en vente, du moins cher au plus cher. */
+  shopTiers(): Array<{ itemId: number; name: string; price: number }> {
+    return this.fans
+      .items({ activeOnly: true })
+      .map((i) => ({ itemId: i.id, name: i.name, price: i.price }))
+      .sort((x, y) => x.price - y.price);
+  }
+
+  /** Palier atteint par chaque fan (coins gagnés au total, achats non déduits : un achat ne fait pas perdre le palier). -1 = aucun. */
+  fanTiers(now = Date.now()): Array<{ clipperId: number; discordId: string; earned: number; tier: number }> {
+    const s = this.settings();
+    if (!s.clientId) return [];
+    const tiers = this.shopTiers();
+    const views = this.viewsByClipper(now);
+    return this.repo
+      .listClippers({ clientId: s.clientId })
+      .filter((c) => !c.discordId.startsWith('manual:'))
+      .map((c) => {
+        const earned = this.points(views.get(c.id) ?? 0) + this.fans.bonus(c.id);
+        return { clipperId: c.id, discordId: c.discordId, earned, tier: tiers.reduce((acc, t, i) => (earned >= t.price ? i : acc), -1) };
+      });
+  }
+
   /** Classement de la semaine avec l'ID Discord (pour mentionner et donner le rôle Top 3). */
   weeklyTop(now = Date.now(), limit = 10) {
     return this.leaderboard(now, limit).map((r) => ({ ...r, discordId: this.repo.getClipper(r.id)?.discordId ?? null }));

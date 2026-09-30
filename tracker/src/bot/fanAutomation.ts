@@ -1,11 +1,11 @@
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
-import { bare, LEVELUP_CHANNEL, levelRoleName, RANKING_CHANNEL, ROLE_ALERTS, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
+import { bare, ensureTierRoles, LEVELUP_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
 
 /**
  * Automatisations des serveurs montés par /setup (sans effet ailleurs : rôles et salons introuvables).
- *  - rôles de niveau mis à jour selon les vues, avec annonce dans #level-up
+ *  - rôles de palier (= objets de la boutique) selon les coins gagnés, avec annonce dans #level-up
  *  - chaque lundi 10 h (Paris) : top 10 dans #classement + rôle Top 3
  *  - chaque nouvelle vidéo YouTube du créateur postée dans #nouvelles-vidéos
  */
@@ -24,33 +24,45 @@ const setupGuilds = (client: Client<true>, fans: FanService) => {
   return [...client.guilds.cache.values()].filter((g) => ids.has(g.id));
 };
 
-/** Rôles de niveau : exactement un par fan, celui de ses vues. Renvoie le nombre de changements. */
-export async function syncLevelRoles(client: Client<true>, fans: FanService): Promise<number> {
-  const levels = fans.creator.levels;
-  const people = fans.fanLevels();
+/**
+ * Rôles de palier = objets de la boutique : chaque fan a le rôle du plus gros objet que ses coins gagnés
+ * lui ont débloqué, annoncé dans #level-up. Renvoie le nombre de changements.
+ */
+export async function syncTierRoles(client: Client<true>, fans: FanService): Promise<number> {
+  const tiers = fans.shopTiers();
+  const people = fans.fanTiers();
   let changes = 0;
   for (const guild of setupGuilds(client, fans)) {
-    const roles = levels.map((l) => roleNamed(guild, levelRoleName(l)));
-    if (roles.some((r) => !r)) continue; // serveur non monté par /setup
+    const roles = await ensureTierRoles(guild, fans).catch((err) => {
+      log.warn(`rôles de palier (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    });
+    if (!roles) continue;
     const levelUp = channel(guild, LEVELUP_CHANNEL);
     for (const f of people) {
       const member = await guild.members.fetch(f.discordId).catch(() => null);
       if (!member) continue;
-      const current = roles.findIndex((r) => member.roles.cache.has(r!.id));
-      const extra = roles.filter((r, i) => i !== f.level && member.roles.cache.has(r!.id));
-      if (current === f.level && extra.length === 0) continue;
+      const current = roles.reduce((acc, r, i) => (member.roles.cache.has(r.id) ? i : acc), -1);
+      const extra = roles.filter((r, i) => i !== f.tier && member.roles.cache.has(r.id));
+      if (current === f.tier && extra.length === 0) continue;
       try {
-        if (extra.length) await member.roles.remove(extra.map((r) => r!.id));
-        if (!member.roles.cache.has(roles[f.level]!.id)) await member.roles.add(roles[f.level]!.id);
+        if (extra.length) await member.roles.remove(extra.map((r) => r.id));
+        if (f.tier >= 0 && !member.roles.cache.has(roles[f.tier]!.id)) await member.roles.add(roles[f.tier]!.id);
         changes++;
-        if (current >= 0 && f.level > current && levelUp) {
-          const l = levels[f.level]!;
+        if (f.tier > current && levelUp) {
+          const t = tiers[f.tier]!;
           await levelUp.send({
-            embeds: [new EmbedBuilder().setColor(accent(fans)).setDescription(`🎉 ${member} passe **${l.emoji} ${l.name}** avec **${compact(f.views)} vues** !`)],
+            content: `${member}`,
+            embeds: [
+              new EmbedBuilder()
+                .setColor(accent(fans))
+                .setDescription(`🎉 ${member} a débloqué **${t.name}** en atteignant **${nf(t.price)} coins** !\n👉 [Échange-le sur le site](${fans.publicSiteUrl()})`),
+            ],
+            allowedMentions: { users: [member.id] },
           });
         }
       } catch (err) {
-        log.warn(`rôles de niveau (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`);
+        log.warn(`rôles de palier (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`);
       }
       await pause(300);
     }
