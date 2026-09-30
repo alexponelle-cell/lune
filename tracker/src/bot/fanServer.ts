@@ -182,6 +182,8 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
       // Salon existant ailleurs (ex. #général par défaut) : rangé dans sa catégorie, accès mis à jour
       if (ch.parentId !== cat.id) await ch.setParent(cat.id, { lockPermissions: false }).catch(() => {});
       await ch.permissionOverwrites.set(overwrites(guild, plan.access, staff.id)).catch(() => {});
+      // Ordre du plan dans la catégorie (ex. #tutos avant #inscription)
+      await ch.setPosition(group.channels.indexOf(plan)).catch(() => {});
       channels.set(bare(plan.name), ch);
     }
     cats.push(cat.id);
