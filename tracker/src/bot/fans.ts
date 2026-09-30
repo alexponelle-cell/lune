@@ -16,6 +16,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
+import { onFanRegistered, setupCommand, handleSetup } from './fanServer.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -32,6 +33,8 @@ const inscriptionCommand = (fans: FanService) =>
     .setDescription(`Relie tes comptes TikTok, YouTube, Instagram (et ton ${fans.creator.rewardAccount.kind === 'email' ? 'e-mail' : 'pseudo Roblox'})`)
     .toJSON();
 const INSCRIPTION_MODAL = 'fans:inscription';
+/** Bouton « S'inscrire » posté par /setup (ouvre le même formulaire que /inscription). */
+export const SIGNUP_BUTTON = 'fans:signup';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
 const PF: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
@@ -55,9 +58,12 @@ export function isTicketChannel(channel: { name?: string | null; parent?: { name
 export function attachInscription(discord: DiscordClient, fans: FanService): void {
   discord.on(Events.InteractionCreate, async (interaction) => {
     try {
-      if (interaction.isChatInputCommand() && interaction.commandName === 'inscription') {
+      const signupButton = interaction.isButton() && interaction.customId === SIGNUP_BUTTON;
+      if ((interaction.isChatInputCommand() && interaction.commandName === 'inscription') || signupButton) {
+        if (!interaction.isChatInputCommand() && !interaction.isButton()) return;
         const ch = interaction.channel as { name?: string | null; parent?: { name?: string | null } | null } | null;
-        if (interaction.inGuild() && !isTicketChannel(ch)) {
+        // Serveur monté par /setup : salon #inscription ; serveur avec Ticket Tool : dans un ticket
+        if (!signupButton && interaction.inGuild() && !isTicketChannel(ch) && !/inscription/i.test(ch?.name ?? '')) {
           await interaction.reply({
             content: '🎫 Ouvre d’abord un **ticket** (bouton **Create ticket**), puis fais **/inscription** dedans.',
             flags: MessageFlags.Ephemeral,
@@ -115,6 +121,9 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
           }
         }
         if (!lines.length) lines.push('Rien à changer 👍');
+        if (res.linked.length && interaction.inCachedGuild()) {
+          await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`));
+        }
         if (res.linked.length) lines.push('\nTes prochaines vues te rapportent des coins 🪙 (mise à jour 1 fois par jour) · `/site` pour la boutique');
         await interaction.editReply(lines.join('\n'));
       }
@@ -212,7 +221,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       ? opts.guildIds.map((g) => Routes.applicationGuildCommands(opts.clientId!, g))
       : [Routes.applicationCommands(opts.clientId)];
     for (const route of routes) {
-      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand(opts.fans)] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
+      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand(opts.fans), setupCommand] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
     }
   }
   // Lire le salon #mes-comptes demande « Message Content Intent » (portail Discord, onglet Bot).
@@ -240,6 +249,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     d.on(Events.Error, (err) => log.error('bot fans', err));
     attachFanCommands(d, opts.fans);
     attachInscription(d, opts.fans);
+    d.on(Events.InteractionCreate, (i) => void handleSetup(i, opts.fans, opts.siteUrl));
     if (readsMessages) attachAccountsChannel(d, opts.fans);
   };
 

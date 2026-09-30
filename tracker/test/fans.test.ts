@@ -387,3 +387,15 @@ describe('créateur configurable (SQUIDUU)', () => {
   });
 });
 
+
+describe('serveur fans monté par /setup', () => {
+  it('plan : noms uniques, salons de bienvenue / règles / inscription / log présents', async () => {
+    const { SERVER_PLAN, LOG_CHANNEL, setupCommand } = await import('../src/bot/fanServer.js');
+    const names = SERVER_PLAN.flatMap((g) => g.channels.map((c) => c.name));
+    expect(new Set(names).size).toBe(names.length);
+    for (const key of ['bienvenue', 'règles', 'inscription']) expect(names.some((n) => n.includes(key))).toBe(true);
+    expect(names).toContain(LOG_CHANNEL);
+    expect(SERVER_PLAN.find((g) => g.channels.some((c) => c.name === LOG_CHANNEL))!.access).toBe('staff');
+    expect(setupCommand.default_member_permissions).toBe('8');
+  });
+});
