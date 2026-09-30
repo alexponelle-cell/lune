@@ -27,7 +27,9 @@ export const setupCommand = new SlashCommandBuilder()
   .setDMPermission(false)
   .toJSON();
 
-export const ROLE_CREATOR = '👑 Créateur';
+/** Rôle du créateur : « 👑 SQUIDUU » (ancien nom « 👑 Créateur », renommé automatiquement). */
+export const creatorRoleName = (creatorName: string) => `👑 ${creatorName}`;
+const LEGACY_CREATOR_ROLE = '👑 Créateur';
 export const ROLE_STAFF = '🛡️ Staff';
 export const ROLE_CLIPPER = '🎬 Clippeur';
 export const ROLE_TOP = '🏆 Top 3 de la semaine';
@@ -110,7 +112,10 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     return guild.roles.create({ name, colors: { primaryColor: colour }, hoist, reason: 'Serveur clippeurs' });
   };
   // Créés du plus haut au plus bas (Discord place chaque nouveau rôle en bas de la liste)
-  await role(ROLE_CREATOR, color(fans), true);
+  const creatorName = creatorRoleName(c.creatorName);
+  const legacy = guild.roles.cache.find((r) => r.name === LEGACY_CREATOR_ROLE);
+  if (legacy && !guild.roles.cache.some((r) => r.name === creatorName)) await legacy.setName(creatorName).catch(() => {});
+  await role(creatorName, color(fans), true);
   const staff = await role(ROLE_STAFF, 0xf5f5f7, true);
   await role(ROLE_TOP, 0xffd24a, true);
   const LEVEL_COLORS = [0x9b9aa3, 0x22c55e, 0xf97316, color(fans)];
@@ -150,7 +155,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Ouvrir le site').setURL(siteUrl),
   );
   const rate = fans.settings().pointsPer1000;
-  const creatorRole = guild.roles.cache.find((r) => r.name === ROLE_CREATOR);
+  const creatorRole = guild.roles.cache.find((r) => r.name === creatorName);
   const fill = (t: string) => t.replaceAll('{creator}', creatorRole ? `${creatorRole}` : `**${c.creatorName}**`).replaceAll('{rate}', String(rate));
   const steps = c.texts.steps.map((s, i) => `**${String(i + 1).padStart(2, '0')} · ${s.title}**\n${s.text}`).join('\n\n');
   const posts: Array<[string, () => { embeds: EmbedBuilder[]; components?: ActionRowBuilder<ButtonBuilder>[] }]> = [
