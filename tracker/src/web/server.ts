@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { serve } from '@hono/node-server';
 import { type Context, Hono } from 'hono';
@@ -52,6 +52,10 @@ export interface WebDeps {
   /** Programme fans (créé par défaut si absent, ex. dans les tests). */
   fans?: FanService;
   password?: string;
+  /** Menu « Programme » : les Mars de chaque créateur (bascule sans se reconnecter). */
+  marsSites?: Array<{ name: string; url: string }>;
+  /** Adresse publique de ce Mars. */
+  selfUrl?: string;
   /** API du jeu (catalogue + livraison des achats), si configurée. */
   game?: GameClient;
   /** Clé partagée avec le jeu Roblox (livraison des achats). */
@@ -310,6 +314,7 @@ export function createApp(deps: WebDeps): Hono {
   // --- Accès staff : page de connexion + cookie de session (30 jours) ------------------
   app.get('/mars-logo.png', (c) => c.body(MARS_LOGO, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }));
   app.get('/neptune-logo.png', (c) => c.body(NEPTUNE_LOGO, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }));
+  let ssoLink = (to: string) => to;
   if (deps.password) {
     const password = deps.password;
     // Jeton dérivé du mot de passe : changer DASHBOARD_PASSWORD déconnecte tout le monde
@@ -320,6 +325,20 @@ export function createApp(deps: WebDeps): Hono {
       return timingSafeEqual(x, y);
     };
     app.get('/login', (c) => c.html(ASSETS.login));
+    // Bascule entre les Mars des créateurs : lien signé (valable 2 min) avec la clé dérivée du mot de passe commun
+    const ssoKey = createHash('sha256').update(`lune-sso:${password}`).digest();
+    const ssoSign = (exp: number) => createHmac('sha256', ssoKey).update(String(exp)).digest('hex');
+    ssoLink = (to: string) => {
+      const exp = Date.now() + 2 * 60_000;
+      return `${to}/sso?t=${exp}.${ssoSign(exp)}`;
+    };
+    app.get('/sso', (c) => {
+      const [exp, sig] = (c.req.query('t') ?? '').split('.');
+      const e = Number(exp);
+      if (!Number.isFinite(e) || e < Date.now() || e > Date.now() + 5 * 60_000 || !sig || !same(sig, ssoSign(e))) return c.redirect('/login', 302);
+      setCookie(c, 'staff', staffToken, { httpOnly: true, secure: isHttps(c), sameSite: 'Lax', path: '/', maxAge: 30 * 86_400 });
+      return c.redirect('/', 302);
+    });
     app.post('/login', async (c) => {
       const form = await c.req.parseBody();
       if (typeof form.password === 'string' && same(form.password, password)) {
@@ -366,8 +385,14 @@ export function createApp(deps: WebDeps): Hono {
         discordChannelId: cl.discordChannelId,
         monthlyFee: cl.monthlyFeeCents / 100,
       })),
+      sites: (deps.marsSites ?? []).map((s) => ({ ...s, current: s.url === deps.selfUrl })),
     }),
   );
+  app.get('/api/sso-link', (c) => {
+    const to = (deps.marsSites ?? []).find((s) => s.url === c.req.query('to'));
+    if (!to) return c.json({ error: 'Mars inconnu' }, 404);
+    return c.json({ url: ssoLink(to.url) });
+  });
 
   // --- Tableaux de bord ------------------------------------------------------------
 

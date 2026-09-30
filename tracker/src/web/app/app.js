@@ -467,6 +467,8 @@ function renderSidebar() {
           : '<span class="pill gray"><span class="dot"></span>Désactivé</span>';
   $('#sidebar').innerHTML = `
     <div class="brand"><img class="brand-logo" src="/mars-logo.png" alt=""><div><div class="brand-name">Mars</div><div class="brand-sub">Clipping OS</div></div><a class="logout" href="/logout" title="Se déconnecter">⎋</a></div>
+    ${META.sites?.length > 1 ? `<div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Programme</div>
+      <select class="select" data-site aria-label="Programme" style="width:100%">${META.sites.map((x) => `<option value="${esc(x.url)}" ${x.current ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
     <div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Vision</div>
       <div class="seg" data-vision><button data-v="full" aria-pressed="${!isClientVision()}">Complète</button><button data-v="client" aria-pressed="${isClientVision()}">Client</button></div></div>
     ${isClientVision()
@@ -1707,6 +1709,15 @@ async function router() {
 }
 
 window.addEventListener('hashchange', router);
+$('#sidebar').addEventListener('change', async (e) => {
+  const sel = e.target.closest('[data-site]');
+  if (!sel) return;
+  try {
+    location.href = (await api(`/api/sso-link?to=${encodeURIComponent(sel.value)}`)).url;
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
 $('#sidebar').addEventListener('click', (e) => {
   const b = e.target.closest('[data-vision] button[data-v]');
   if (!b || b.dataset.v === store.vision) return;

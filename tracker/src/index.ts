@@ -48,6 +48,12 @@ const game = config.GAME_API_URL && config.GAME_API_TOKEN ? new GameClient(confi
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
+    marsSites: (config.MARS_SITES ?? '')
+      .split(',')
+      .map((x) => x.split('='))
+      .filter((p) => p.length === 2 && /^https?:\/\//.test(p[1]!.trim()))
+      .map(([name, url]) => ({ name: name!.trim(), url: url!.trim().replace(/\/+$/, '') })),
+    selfUrl: dashboardUrl.replace(/\/+$/, ''),
     game,
     youtubeApiKey: config.YOUTUBE_API_KEY,
     discordOAuth:

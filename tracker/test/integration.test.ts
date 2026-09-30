@@ -170,6 +170,24 @@ describe('parcours complet', () => {
     expect(sent).toEqual(['⚠️ Tu as reçu un **strike** : Absent au call']);
   });
 
+  it('bascule entre les Mars des créateurs sans se reconnecter', async () => {
+    const sites = [{ name: 'BeOne', url: 'https://a.test' }, { name: 'SQUIDUU', url: 'https://b.test' }];
+    const make = (selfUrl: string) => createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret', marsSites: sites, selfUrl });
+    const a = make('https://a.test');
+    const b = make('https://b.test');
+    const auth = { Authorization: `Basic ${Buffer.from('x:secret').toString('base64')}` };
+    const meta = await (await a.request('/api/meta', { headers: auth })).json();
+    expect(meta.sites).toEqual([{ ...sites[0], current: true }, { ...sites[1], current: false }]);
+    expect((await a.request('/api/sso-link?to=https://evil.test', { headers: auth })).status).toBe(404);
+    const { url } = await (await a.request('/api/sso-link?to=https://b.test', { headers: auth })).json();
+    expect(url).toMatch(/^https:\/\/b\.test\/sso\?t=/);
+    const res = await b.request(url.replace('https://b.test', ''));
+    expect(res.headers.get('location')).toBe('/');
+    expect(res.headers.get('set-cookie')).toContain('staff=');
+    const forged = await b.request(`/sso?t=${Date.now() + 60_000}.abc`);
+    expect(forged.headers.get('location')).toBe('/login');
+  });
+
   it('protège le dashboard par mot de passe', async () => {
     const app = createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret' });
     const denied = await app.request('/api/meta');

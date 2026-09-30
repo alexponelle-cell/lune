@@ -43,6 +43,11 @@ const schema = z.object({
   /** URL publique du dashboard (affichée dans les messages du bot). */
   PUBLIC_URL: optionalString,
   DASHBOARD_PASSWORD: optionalString,
+  /**
+   * Menu « Programme » de Mars : les autres Mars (un par créateur) entre lesquels basculer sans se reconnecter.
+   * Format : « Nom=https://adresse,Nom=https://adresse » (même valeur et même DASHBOARD_PASSWORD sur chaque service).
+   */
+  MARS_SITES: optionalString,
 
   FETCHER_MODE: z.enum(['mock', 'live']).default('mock'),
   YOUTUBE_API_KEY: optionalString,
