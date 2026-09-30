@@ -170,22 +170,33 @@ describe('parcours complet', () => {
     expect(sent).toEqual(['⚠️ Tu as reçu un **strike** : Absent au call']);
   });
 
-  it('bascule entre les Mars des créateurs sans se reconnecter', async () => {
+  it('un seul Mars : vue de tous les clients et bascule vers un autre créateur', async () => {
     const sites = [{ name: 'BeOne', url: 'https://a.test' }, { name: 'SQUIDUU', url: 'https://b.test' }];
-    const make = (selfUrl: string) => createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret', marsSites: sites, selfUrl });
-    const a = make('https://a.test');
-    const b = make('https://b.test');
+    const other = new Repo(openDatabase(':memory:'));
+    other.upsertClient({ name: 'Client de B', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
+    let remotePassword = 'secret';
+    const b = () => createApp({ repo: other, agency: new AgencyService(other), recruitment: recruitmentOf(other, new AgencyService(other)), bot: {}, password: remotePassword });
+    const a = createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret', marsSites: sites, selfUrl: 'https://a.test',
+      fetchFn: (async (url: string, init: RequestInit) => b().request(url.replace('https://b.test', ''), init)) as typeof fetch });
     const auth = { Authorization: `Basic ${Buffer.from('x:secret').toString('base64')}` };
-    const meta = await (await a.request('/api/meta', { headers: auth })).json();
-    expect(meta.sites).toEqual([{ ...sites[0], current: true }, { ...sites[1], current: false }]);
-    expect((await a.request('/api/sso-link?to=https://evil.test', { headers: auth })).status).toBe(404);
-    const { url } = await (await a.request('/api/sso-link?to=https://b.test', { headers: auth })).json();
-    expect(url).toMatch(/^https:\/\/b\.test\/sso\?t=/);
-    const res = await b.request(url.replace('https://b.test', ''));
-    expect(res.headers.get('location')).toBe('/');
-    expect(res.headers.get('set-cookie')).toContain('staff=');
-    const forged = await b.request(`/sso?t=${Date.now() + 60_000}.abc`);
-    expect(forged.headers.get('location')).toBe('/login');
+
+    expect(await (await a.request('/api/mars/sites', { headers: auth })).json()).toEqual([{ name: 'BeOne', current: true }, { name: 'SQUIDUU', current: false }]);
+    const all = await (await a.request('/api/mars/overview', { headers: auth })).json();
+    expect(all.map((r: { name: string }) => r.name)).toEqual(['BeOne', 'SQUIDUU']);
+    expect(all[1]).toMatchObject({ fans: 0, pendingOrders: 0 });
+
+    expect((await a.request('/api/mars/site', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Inconnu' }) })).status).toBe(404);
+    const sw = await a.request('/api/mars/site', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'SQUIDUU' }) });
+    expect(sw.headers.get('set-cookie')).toContain('mars_site=SQUIDUU');
+    const cookie = { ...auth, cookie: 'mars_site=SQUIDUU' };
+    const meta = await (await a.request('/api/meta', { headers: cookie })).json();
+    expect(meta.clients.map((c: { name: string }) => c.name)).toContain('Client de B');
+    expect(await (await a.request('/api/mars/sites', { headers: cookie })).json()).toEqual([{ name: 'BeOne', current: false }, { name: 'SQUIDUU', current: true }]);
+
+    remotePassword = 'autre';
+    const bad = await a.request('/api/meta', { headers: cookie });
+    expect(bad.status).toBe(502);
+    expect((await bad.json()).error).toMatch(/mot de passe/);
   });
 
   it('protège le dashboard par mot de passe', async () => {

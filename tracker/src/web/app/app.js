@@ -200,7 +200,8 @@ async function api(path, opts = {}) {
 }
 
 async function loadMeta() {
-  META = await api('/api/meta');
+  const [meta, sites] = await Promise.all([api('/api/meta'), api('/api/mars/sites').catch(() => [])]);
+  META = { ...meta, sites };
   if (store.client && !META.clients.some((c) => String(c.id) === String(store.client))) {
     store.client = '';
     saveStore();
@@ -451,11 +452,16 @@ const NAV = [
   ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
 ];
 
+const multi = () => META?.sites?.length > 1;
+const currentSite = () => META?.sites?.find((x) => x.current)?.name ?? '';
+const navFor = () => (multi() ? [['Mars', [['clients', 'Tous les clients', 'grid']]], ...NAV] : NAV);
+const homeRoute = () => (multi() ? 'clients' : 'agence');
+
 const CLIENT_NAV = [['Vision client', [['client', 'Vue client', 'grid']]]];
 const isClientVision = () => store.vision === 'client';
 
 function renderSidebar() {
-  const route = location.hash.replace(/^#\/?/, '').split('/')[0] || 'agence';
+  const route = location.hash.replace(/^#\/?/, '').split('/')[0] || homeRoute();
   const b = META.status.bot;
   const botLine =
     b.state === 'ready'
@@ -467,14 +473,14 @@ function renderSidebar() {
           : '<span class="pill gray"><span class="dot"></span>Désactivé</span>';
   $('#sidebar').innerHTML = `
     <div class="brand"><img class="brand-logo" src="/mars-logo.png" alt=""><div><div class="brand-name">Mars</div><div class="brand-sub">Clipping OS</div></div><a class="logout" href="/logout" title="Se déconnecter">⎋</a></div>
-    ${META.sites?.length > 1 ? `<div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Programme</div>
-      <select class="select" data-site aria-label="Programme" style="width:100%">${META.sites.map((x) => `<option value="${esc(x.url)}" ${x.current ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
+    ${multi() ? `<div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Client affiché</div>
+      <select class="select" data-site aria-label="Client affiché" style="width:100%">${META.sites.map((x) => `<option value="${esc(x.name)}" ${x.current ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
     <div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Vision</div>
       <div class="seg" data-vision><button data-v="full" aria-pressed="${!isClientVision()}">Complète</button><button data-v="client" aria-pressed="${isClientVision()}">Client</button></div></div>
     ${isClientVision()
       ? '<div class="box admin"><span class="av">👁</span><div><b style="font-size:13px">Vue client</b><small>Ce que voit le client : vues, clips, clippeurs. Aucun montant.</small></div></div>'
       : '<div class="box admin"><span class="av">AD</span><div><b style="font-size:13px">Compte admin</b><small>Accès total : agences, clippers, rémunération</small></div></div>'}
-    <nav class="nav">${(isClientVision() ? CLIENT_NAV : NAV).map(
+    <nav class="nav">${(isClientVision() ? CLIENT_NAV : navFor()).map(
       ([group, items, live]) => `<div class="nav-group"><div class="label">${group}${live ? '<span class="dot" style="color:var(--accent)"></span>' : ''}</div>
       ${items.map(([id, label, ic, soon]) => `<a href="#/${id}" class="${route === id || (id === 'clippers' && route === 'clipper') ? 'active' : ''}">${icon(ic)}${label}${soon ? '<span class="soon">bientôt</span>' : ''}</a>`).join('')}</div>`,
     ).join('')}</nav>
@@ -1694,7 +1700,48 @@ async function pageBoutique() {
   });
 }
 
+async function switchSite(name, hash = '#/agence') {
+  await api('/api/mars/site', { method: 'POST', body: { name } });
+  SEARCH_CACHE = null;
+  store.client = '';
+  saveStore();
+  await loadMeta();
+  if (location.hash === hash) router();
+  else location.hash = hash;
+}
+
+async function pageClients() {
+  loading();
+  const rows = await api('/api/mars/overview');
+  const n = (x) => Number(x ?? 0).toLocaleString('fr-FR');
+  const ok = rows.filter((r) => !r.error);
+  const tot = (k) => ok.reduce((a, r) => a + (r[k] ?? 0), 0);
+  main().innerHTML = `<div class="page-head"><div><h1>Tous les clients</h1><p>${rows.length} programme(s) · clique sur un client pour ouvrir son tableau de bord</p></div>
+      <div class="actions"><button class="btn" data-refresh>${icon('refresh')} Actualiser</button></div></div>
+    <div class="stack">
+      <div class="kpis">
+        <div class="card kpi"><div class="k-label">Vues (7 j)</div><div class="k-value num">${fmtK(tot('views7d'))}</div><div class="k-foot"><span>${n(tot('clippers'))} clippers</span></div></div>
+        <div class="card kpi"><div class="k-label">Posts (7 j)</div><div class="k-value num">${n(tot('posts7d'))}</div><div class="k-foot"><span>tous clients</span></div></div>
+        <div class="card kpi"><div class="k-label">Fans inscrits</div><div class="k-value num">${n(tot('fans'))}</div><div class="k-foot"><span>${fmtK(tot('views'))} vues depuis inscription</span></div></div>
+        <div class="card kpi"><div class="k-label">Commandes à livrer</div><div class="k-value num">${n(tot('pendingOrders'))}</div><div class="k-foot"><span>${n(tot('deliveredOrders'))} livrées</span></div></div>
+      </div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Client</th><th class="r">Vues 7 j</th><th class="r">Posts 7 j</th><th class="r">Clippers</th><th class="r">Fans</th><th class="r">Coins en circulation</th><th class="r">À livrer</th><th>Bot</th><th class="r"></th></tr></thead><tbody>
+      ${rows.map((r) => r.error
+        ? `<tr><td><b>${esc(r.name)}</b></td><td colspan="7"><span class="pill ko">${esc(r.error)}</span></td><td></td></tr>`
+        : `<tr><td><div class="who"><span class="dot" style="color:${esc(r.accent ?? 'var(--accent)')}"></span><div><b>${esc(r.name)}</b><small class="faint" style="display:block">${esc(r.program ?? '')}</small></div></div></td>
+          <td class="r num">${fmtK(r.views7d)}</td><td class="r num">${n(r.posts7d)}</td><td class="r num">${n(r.clippers)}</td><td class="r num">${n(r.fans)}</td><td class="r num">${n(r.coins)}</td>
+          <td class="r num">${r.pendingOrders ? `<span class="pill wait">${n(r.pendingOrders)}</span>` : '0'}</td>
+          <td>${r.bot === 'ready' ? '<span class="pill ok"><span class="dot"></span>En ligne</span>' : `<span class="pill gray">${esc(r.bot ?? '—')}</span>`}</td>
+          <td class="r" style="white-space:nowrap">${r.siteUrl ? `<a class="btn sm" href="${esc(r.siteUrl)}" target="_blank" rel="noopener">Site</a> ` : ''}<button class="btn sm dark" data-open-site="${esc(r.name)}">Ouvrir</button></td></tr>`).join('')}
+      </tbody></table></div></div>
+    </div>`;
+  const root = main();
+  $('[data-refresh]', root).addEventListener('click', pageClients);
+  root.querySelectorAll('[data-open-site]').forEach((b) => b.addEventListener('click', () => switchSite(b.dataset.openSite).catch((err) => toast(err.message, true))));
+}
+
 const ROUTES = {
+  clients: pageClients,
   agence: pageAgence,
   clippers: pageClippers,
   clipper: (id) => pageClipper(id),
@@ -1711,7 +1758,7 @@ const ROUTES = {
 
 async function router() {
   const [route, arg] = location.hash.replace(/^#\/?/, '').split('/');
-  const page = isClientVision() ? ROUTES.client : ROUTES[route] ?? ROUTES.agence;
+  const page = isClientVision() ? ROUTES.client : ROUTES[route] ?? ROUTES[homeRoute()];
   renderSidebar();
   window.scrollTo(0, 0);
   try {
@@ -1726,7 +1773,8 @@ $('#sidebar').addEventListener('change', async (e) => {
   const sel = e.target.closest('[data-site]');
   if (!sel) return;
   try {
-    location.href = (await api(`/api/sso-link?to=${encodeURIComponent(sel.value)}`)).url;
+    const cur = location.hash.split('/').slice(0, 2).join('/');
+    await switchSite(sel.value, ['#/clients', '#/clipper', '#', ''].includes(cur) ? '#/agence' : cur);
   } catch (err) {
     toast(err.message, true);
   }

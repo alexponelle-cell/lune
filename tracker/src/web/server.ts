@@ -56,6 +56,8 @@ export interface WebDeps {
   marsSites?: Array<{ name: string; url: string }>;
   /** Adresse publique de ce Mars. */
   selfUrl?: string;
+  /** Appels vers les autres Mars (remplaçable en test). */
+  fetchFn?: typeof fetch;
   /** API du jeu (catalogue + livraison des achats), si configurée. */
   game?: GameClient;
   /** Clé partagée avec le jeu Roblox (livraison des achats). */
@@ -366,6 +368,84 @@ export function createApp(deps: WebDeps): Hono {
   app.get('/', (c) => c.html(ASSETS.html));
   app.get('/app.css', (c) => c.body(ASSETS.css, 200, { 'content-type': 'text/css; charset=utf-8' }));
   app.get('/app.js', (c) => c.body(ASSETS.js, 200, { 'content-type': 'text/javascript; charset=utf-8' }));
+
+  // --- Mars unique : ce Mars affiche aussi les autres créateurs --------------------------
+  // Le programme choisi est gardé dans un cookie ; ses appels /api/* sont relayés vers son
+  // service Railway (même DASHBOARD_PASSWORD partout). /api/mars/* reste toujours local.
+  const selfName = deps.marsSites?.find((x) => x.url === deps.selfUrl)?.name ?? fans.creator.creatorName;
+  const remotes = (deps.marsSites ?? []).filter((x) => x.url !== deps.selfUrl && x.name.toLowerCase() !== selfName.toLowerCase());
+  const remoteOf = (c: Context) => remotes.find((x) => x.name === getCookie(c, 'mars_site'));
+  const remoteFetch = (site: { url: string }, path: string, init: RequestInit = {}) =>
+    (deps.fetchFn ?? fetch)(site.url + path, {
+      ...init,
+      headers: { ...(init.headers as Record<string, string> | undefined), ...(deps.password ? { authorization: `Basic ${Buffer.from(`mars:${deps.password}`).toString('base64')}` } : {}) },
+      signal: AbortSignal.timeout(20_000),
+    });
+  app.use('/api/*', async (c, next) => {
+    const site = c.req.path.startsWith('/api/mars/') ? undefined : remoteOf(c);
+    if (!site) return next();
+    const url = new URL(c.req.url);
+    const method = c.req.method;
+    const type = c.req.header('content-type');
+    try {
+      const res = await remoteFetch(site, url.pathname + url.search, {
+        method,
+        headers: type ? { 'content-type': type } : {},
+        body: method === 'GET' || method === 'HEAD' ? undefined : await c.req.arrayBuffer(),
+      });
+      if (res.status === 401) return c.json({ error: `${site.name} : mot de passe différent (DASHBOARD_PASSWORD doit être identique sur chaque service)` }, 502);
+      return new Response(res.body, { status: res.status, headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' } });
+    } catch {
+      return c.json({ error: `${site.name} injoignable` }, 502);
+    }
+  });
+  const marsSummary = () => {
+    const o = fans.overview();
+    const week = agency.overview(agency.range({ preset: '7d' }));
+    return {
+      name: selfName,
+      program: o.settings.programName,
+      accent: fans.creator.colors.accent,
+      siteUrl: fans.publicSiteUrl(),
+      fans: o.fans.length,
+      views: o.fans.reduce((a, f) => a + f.views, 0),
+      coins: o.fans.reduce((a, f) => a + Math.max(0, f.balance), 0),
+      pendingOrders: o.orders.filter((x) => x.status === 'pending').length,
+      deliveredOrders: o.orders.filter((x) => x.status === 'delivered').length,
+      views7d: week.kpis.views.value,
+      posts7d: week.kpis.posts.value,
+      clippers: week.kpis.views.clippers,
+      alerts: week.alerts.length,
+      bot: status.bot.state,
+    };
+  };
+  app.get('/api/mars/summary', (c) => c.json(marsSummary()));
+  app.get('/api/mars/sites', (c) => {
+    const cur = remoteOf(c)?.name ?? selfName;
+    return c.json([selfName, ...remotes.map((x) => x.name)].map((name) => ({ name, current: name === cur })));
+  });
+  app.post('/api/mars/site', async (c) => {
+    const { name } = z.object({ name: z.string() }).parse(await c.req.json());
+    const site = remotes.find((x) => x.name === name);
+    if (!site && name !== selfName) return c.json({ error: 'Programme inconnu' }, 404);
+    if (site) setCookie(c, 'mars_site', site.name, { httpOnly: true, secure: isHttps(c), sameSite: 'Lax', path: '/', maxAge: 30 * 86_400 });
+    else deleteCookie(c, 'mars_site', { path: '/' });
+    return c.json({ ok: true });
+  });
+  app.get('/api/mars/overview', async (c) => {
+    const others = await Promise.all(
+      remotes.map(async (site) => {
+        try {
+          const res = await remoteFetch(site, '/api/mars/summary');
+          if (!res.ok) return { name: site.name, error: res.status === 401 ? 'mot de passe différent' : `erreur ${res.status}` };
+          return { ...((await res.json()) as object), name: site.name };
+        } catch {
+          return { name: site.name, error: 'injoignable' };
+        }
+      }),
+    );
+    return c.json([marsSummary(), ...others]);
+  });
 
   const rangeOf = (c: { req: { query: (k: string) => string | undefined } }) =>
     agency.range({ preset: c.req.query('preset'), from: c.req.query('from'), to: c.req.query('to') });
