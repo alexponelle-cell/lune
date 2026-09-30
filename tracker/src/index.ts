@@ -115,6 +115,7 @@ if (config.FANS_BOT_TOKEN) {
       guildIds: (config.FANS_BOT_GUILD_ID ?? '').split(',').map((g) => g.trim()).filter((g) => /^\d+$/.test(g)),
       fans,
       siteUrl: `${dashboardUrl.replace(/\/$/, '')}/fan`,
+      youtubeApiKey: config.YOUTUBE_API_KEY,
     });
   } catch (err) {
     status.neptune = { state: 'error', error: err instanceof Error ? err.message : String(err) };

@@ -16,7 +16,8 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { onFanRegistered, setupCommand, handleSetup } from './fanServer.js';
+import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton } from './fanServer.js';
+import { announceNewVideos, syncLevelRoles, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -214,7 +215,7 @@ export function attachAccountsChannel(discord: DiscordClient, fans: FanService):
  * Bot des fans (ex. « BeOne Rewards ») : bot séparé, installé sur le serveur du créateur.
  * /site, /coins, et envoi des messages privés préparés par le tracker (coins, niveau, livraison…).
  */
-export async function startFansBot(opts: { token: string; clientId?: string; guildIds: string[]; fans: FanService; siteUrl: string }): Promise<() => Promise<void>> {
+export async function startFansBot(opts: { token: string; clientId?: string; guildIds: string[]; fans: FanService; siteUrl: string; youtubeApiKey?: string }): Promise<() => Promise<void>> {
   if (opts.clientId) {
     const rest = new REST().setToken(opts.token);
     const routes = opts.guildIds.length
@@ -232,6 +233,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
   let discord = make(true);
   let readsMessages = true;
   let timer: NodeJS.Timeout | undefined;
+  let autoTimer: NodeJS.Timeout | undefined;
   // Commandes enregistrées sur chaque serveur où est le bot (au démarrage et dès qu'on l'invite)
   const commandBody = () => [...fanCommandDefinitions, inscriptionCommand(opts.fans), setupCommand];
   const registerIn = (appId: string, guildId: string) =>
@@ -251,6 +253,18 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     log.info(`bot fans connecté en tant que ${c.user.tag}`);
     timer = setInterval(() => void sendNotifications().catch((err) => log.error('messages privés fans', err)), 2 * 60_000);
     void sendNotifications().catch(() => {});
+    // Serveur monté par /setup : rôles de niveau (toutes les 6 h), classement du lundi, nouvelles vidéos (toutes les 15 min)
+    let lastSync = 0;
+    const automations = async () => {
+      if (Date.now() - lastSync > 6 * 3_600_000) {
+        lastSync = Date.now();
+        await syncLevelRoles(c, opts.fans).catch((err) => log.error('rôles de niveau', err));
+      }
+      await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
+      if (opts.youtubeApiKey) await announceNewVideos(c, opts.fans, opts.youtubeApiKey).catch((err) => log.error('nouvelles vidéos', err));
+    };
+    autoTimer = setInterval(() => void automations(), 15 * 60_000);
+    setTimeout(() => void automations(), 60_000);
   }
   const wire = (d: DiscordClient) => {
     d.once(Events.ClientReady, onReady);
@@ -262,6 +276,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       if (d.application) void registerIn(d.application.id, g.id);
     });
     d.on(Events.InteractionCreate, (i) => void handleSetup(i, opts.fans, opts.siteUrl));
+    d.on(Events.InteractionCreate, (i) => void handleAlertsButton(i));
     if (readsMessages) attachAccountsChannel(d, opts.fans);
   };
 
@@ -307,6 +322,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
   }
   return async () => {
     if (timer) clearInterval(timer);
+    if (autoTimer) clearInterval(autoTimer);
     await discord.destroy();
   };
 }

@@ -27,9 +27,19 @@ export const setupCommand = new SlashCommandBuilder()
   .setDMPermission(false)
   .toJSON();
 
+export const ROLE_CREATOR = '👑 Créateur';
 export const ROLE_STAFF = '🛡️ Staff';
 export const ROLE_CLIPPER = '🎬 Clippeur';
+export const ROLE_TOP = '🏆 Top 3 de la semaine';
+export const ROLE_ALERTS = '🔔 Alerte vidéos';
 export const LOG_CHANNEL = '🧾│inscriptions-log';
+export const VIDEOS_CHANNEL = '📰│nouvelles-vidéos';
+export const RANKING_CHANNEL = '🏆│classement';
+export const LEVELUP_CHANNEL = '🎉│level-up';
+/** Bouton « 🔔 Alerte vidéos » (ajoute / retire le rôle). */
+export const ALERTS_BUTTON = 'fans:alerts';
+/** Nom du rôle d'un niveau (ex. « 🔥 Pro »). */
+export const levelRoleName = (l: { emoji: string; name: string }) => `${l.emoji} ${l.name}`;
 
 type Access = 'public' | 'readonly' | 'staff';
 interface ChannelPlan {
@@ -59,6 +69,15 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
     ],
   },
   {
+    category: '📈 ACTIVITÉ',
+    access: 'readonly',
+    channels: [
+      { name: VIDEOS_CHANNEL, access: 'readonly', topic: 'Chaque nouvelle vidéo, dès sa sortie : clippe-la en premier' },
+      { name: RANKING_CHANNEL, access: 'readonly', topic: 'Le top 10 de la semaine, chaque lundi' },
+      { name: LEVELUP_CHANNEL, access: 'readonly', topic: 'Les passages de niveau' },
+    ],
+  },
+  {
     category: '🛡️ STAFF',
     access: 'staff',
     channels: [
@@ -79,7 +98,7 @@ function overwrites(guild: Guild, access: Access, staffRoleId: string): Overwrit
   return [{ id: guild.roles.everyone.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }, bot];
 }
 
-const bare = (name: string) => name.replace(/^[^\p{L}\p{N}]+/u, '').replace(/[^\p{L}\p{N}-]/gu, '').toLowerCase();
+export const bare = (name: string) => name.replace(/^[^\p{L}\p{N}]+/u, '').replace(/[^\p{L}\p{N}-]/gu, '').toLowerCase();
 
 export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl: string) {
   const c = fans.creator;
@@ -90,8 +109,14 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     created.push(`rôle ${name}`);
     return guild.roles.create({ name, colors: { primaryColor: colour }, hoist, reason: 'Serveur clippeurs' });
   };
+  // Créés du plus haut au plus bas (Discord place chaque nouveau rôle en bas de la liste)
+  await role(ROLE_CREATOR, color(fans), true);
   const staff = await role(ROLE_STAFF, 0xf5f5f7, true);
-  await role(ROLE_CLIPPER, color(fans), true);
+  await role(ROLE_TOP, 0xffd24a, true);
+  const LEVEL_COLORS = [0x9b9aa3, 0x22c55e, 0xf97316, color(fans)];
+  for (let i = c.levels.length - 1; i >= 0; i--) await role(levelRoleName(c.levels[i]!), LEVEL_COLORS[i] ?? color(fans), i > 0);
+  await role(ROLE_CLIPPER, color(fans), false);
+  await role(ROLE_ALERTS, 0x5ab0e0, false);
 
   await guild.channels.fetch();
   const channels = new Map<string, TextChannel>();
@@ -166,6 +191,18 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
       }),
     ],
   ];
+  posts.push([
+    bare(VIDEOS_CHANNEL),
+    () => ({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(color(fans))
+          .setTitle('Nouvelles vidéos')
+          .setDescription(`Chaque nouvelle vidéo de ${c.creatorName} est postée ici dès sa sortie. Les premiers clips sont ceux qui font le plus de vues.\n\nClique sur **🔔 Alerte vidéos** pour être mentionné à chaque sortie.`),
+      ],
+      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(ALERTS_BUTTON).setStyle(ButtonStyle.Secondary).setLabel('Alerte vidéos').setEmoji('🔔'))],
+    }),
+  ]);
   const me = guild.members.me!.id;
   for (const [key, build] of posts) {
     const ch = channels.get(key);
@@ -178,6 +215,22 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   return created;
 }
 
+/** Bouton « 🔔 Alerte vidéos » : ajoute ou retire le rôle. */
+export async function handleAlertsButton(interaction: Interaction) {
+  if (!interaction.isButton() || interaction.customId !== ALERTS_BUTTON || !interaction.inCachedGuild()) return;
+  try {
+    const role = interaction.guild.roles.cache.find((r) => r.name === ROLE_ALERTS);
+    if (!role) return void (await interaction.reply({ content: 'Rôle introuvable : un admin doit refaire /setup.', flags: MessageFlags.Ephemeral }));
+    const has = interaction.member.roles.cache.has(role.id);
+    if (has) await interaction.member.roles.remove(role);
+    else await interaction.member.roles.add(role);
+    await interaction.reply({ content: has ? '🔕 Alertes vidéos désactivées.' : '🔔 Alertes activées : tu seras mentionné à chaque nouvelle vidéo.', flags: MessageFlags.Ephemeral });
+  } catch (err) {
+    log.warn(`alerte vidéos : ${err instanceof Error ? err.message : String(err)}`);
+    await interaction.reply({ content: 'Impossible de changer ton rôle : le rôle du bot doit être tout en haut (Paramètres → Rôles).', flags: MessageFlags.Ephemeral }).catch(() => {});
+  }
+}
+
 /** /setup : réservé aux admins du serveur. */
 export async function handleSetup(interaction: Interaction, fans: FanService, siteUrl: string) {
   if (!interaction.isChatInputCommand() || interaction.commandName !== 'setup' || !interaction.inCachedGuild()) return;
@@ -188,6 +241,10 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const created = await scaffoldFanServer(interaction.guild, fans, siteUrl);
+    // Les automatisations (niveaux, classement, vidéos) ne tournent que sur les serveurs montés par /setup
+    const set = new Set(fans.botState<string[]>('setup-guilds', []));
+    set.add(interaction.guild.id);
+    fans.setBotState('setup-guilds', [...set]);
     await interaction.editReply(
       created.length
         ? `✅ Serveur prêt. Créé : ${created.join(', ')}.\nPense à mettre le rôle du bot tout en haut (Paramètres → Rôles) pour qu’il puisse donner le rôle Clippeur.`

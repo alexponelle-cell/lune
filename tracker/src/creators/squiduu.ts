@@ -30,7 +30,7 @@ export const squiduu: CreatorConfig = {
   },
   levels: [
     { name: 'Débutant', emoji: '🌱', min: 0 },
-    { name: 'Clippeur', emoji: '⚡', min: 10_000 },
+    { name: 'Confirmé', emoji: '⚡', min: 10_000 },
     { name: 'Pro', emoji: '🔥', min: 100_000 },
     { name: 'Élite', emoji: '💎', min: 1_000_000 },
   ],

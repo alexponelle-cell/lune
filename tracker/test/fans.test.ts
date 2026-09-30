@@ -399,3 +399,29 @@ describe('serveur fans monté par /setup', () => {
     expect(setupCommand.default_member_permissions).toBe('8');
   });
 });
+
+describe('automatisations du serveur', () => {
+  it('heure de Paris et classement du lundi', async () => {
+    const { parisClock } = await import('../src/bot/fanAutomation.js');
+    // Lundi 5 octobre 2026, 10 h 30 à Paris (UTC+2)
+    expect(parisClock(Date.UTC(2026, 9, 5, 8, 30))).toEqual({ weekday: 1, hour: 10, day: '2026-10-05' });
+    expect(parisClock(Date.UTC(2026, 9, 5, 7, 30)).hour).toBe(9);
+  });
+
+  it('niveaux et top de la semaine des fans', () => {
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('squiduu'));
+    fans.bootstrap();
+    const now = Date.now();
+    const fan = fans.ensureFan('777', 'Léa', now - 3 * HOUR);
+    fans.setAccounts(fan, { tiktok: '@lea.clips' });
+    const a = repo.listAccountsForClipper(fan.id)[0]!;
+    repo.recordCollection(a.id, [{ platformVideoId: 'v1', views: 0, publishedAt: now - 2 * HOUR }], now - 2 * HOUR);
+    repo.recordCollection(a.id, [{ platformVideoId: 'v1', views: 150_000, publishedAt: now - 2 * HOUR }], now - HOUR);
+    expect(fans.fanLevels()).toEqual([{ clipperId: fan.id, discordId: '777', username: 'Léa', views: 150_000, level: 2 }]);
+    expect(fans.weeklyTop()[0]).toMatchObject({ rank: 1, discordId: '777', views: 150_000 });
+    fans.setBotState('x', [1, 2]);
+    expect(fans.botState('x', [])).toEqual([1, 2]);
+  });
+});

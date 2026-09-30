@@ -202,6 +202,61 @@ export class FanService {
     return rows.map((r, i) => ({ rank: i + 1, id: r.clipper.id, name: r.clipper.username, avatar: avatars.get(r.clipper.id) ?? null, views: r.views, coins: this.points(r.views) }));
   }
 
+  // --- Automatisations du serveur Discord (rôles de niveau, classement, vidéos) ---------
+
+  /** Niveau actuel de chaque fan relié à Discord. */
+  fanLevels(now = Date.now()): Array<{ clipperId: number; discordId: string; username: string; views: number; level: number }> {
+    const s = this.settings();
+    if (!s.clientId) return [];
+    const views = this.viewsByClipper(now);
+    return this.repo
+      .listClippers({ clientId: s.clientId })
+      .filter((c) => !c.discordId.startsWith('manual:'))
+      .map((c) => {
+        const v = views.get(c.id) ?? 0;
+        return { clipperId: c.id, discordId: c.discordId, username: c.username, views: v, level: levelOf(v, this.creator.levels) };
+      });
+  }
+
+  /** Classement de la semaine avec l'ID Discord (pour mentionner et donner le rôle Top 3). */
+  weeklyTop(now = Date.now(), limit = 10) {
+    return this.leaderboard(now, limit).map((r) => ({ ...r, discordId: this.repo.getClipper(r.id)?.discordId ?? null }));
+  }
+
+  /** Petit état persistant des automatisations (dernière vidéo vue, semaine postée…). */
+  botState<T>(key: string, fallback: T): T {
+    return this.repo.getSetting<T>(`bot:${key}`, fallback);
+  }
+
+  setBotState(key: string, value: unknown): void {
+    this.repo.setSetting(`bot:${key}`, value);
+  }
+
+  /** Dernières vidéos de la chaîne YouTube du créateur (API YouTube, playlist « uploads »). */
+  async latestVideos(apiKey: string, limit = 5): Promise<Array<{ id: string; title: string; url: string; thumbnail: string | null; publishedAt: string }>> {
+    const handle = this.settings().creatorYoutube;
+    if (!handle) return [];
+    let uploads = this.botState<{ handle: string; playlist: string } | null>('yt-uploads', null);
+    if (!uploads || uploads.handle !== handle) {
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${encodeURIComponent('@' + handle)}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
+      const r = (await res.json()) as { items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }> };
+      const playlist = r.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!playlist) throw new Error(`chaîne @${handle} introuvable`);
+      uploads = { handle, playlist };
+      this.setBotState('yt-uploads', uploads);
+    }
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${limit}&playlistId=${uploads.playlist}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`YouTube HTTP ${res.status}`);
+    const r = (await res.json()) as { items?: Array<{ snippet: { title: string; publishedAt: string; resourceId: { videoId: string }; thumbnails?: Record<string, { url: string }> } }> };
+    return (r.items ?? []).map((i) => ({
+      id: i.snippet.resourceId.videoId,
+      title: i.snippet.title,
+      url: `https://www.youtube.com/watch?v=${i.snippet.resourceId.videoId}`,
+      thumbnail: i.snippet.thumbnails?.maxres?.url ?? i.snippet.thumbnails?.high?.url ?? null,
+      publishedAt: i.snippet.publishedAt,
+    }));
+  }
+
   me(clipper: Clipper, now = Date.now()) {
     const s = this.settings();
     const clips = this.fans.clips(clipper.id).map((c) => ({ ...c, coins: this.points(c.gained) }));
