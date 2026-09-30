@@ -72,4 +72,9 @@ export interface CreatorConfig {
     finalTitle?: string;
     finalText?: string;
   };
+  /**
+   * Messages du serveur Discord monté par /setup. {creator} = mention du rôle 👑 Créateur,
+   * {rate} = coins pour 1 000 vues. Sans cette section, des textes génériques sont utilisés.
+   */
+  discord?: { welcome: string; rules: string };
 }

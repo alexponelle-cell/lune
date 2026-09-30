@@ -142,6 +142,8 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Ouvrir le site').setURL(siteUrl),
   );
   const rate = fans.settings().pointsPer1000;
+  const creatorRole = guild.roles.cache.find((r) => r.name === ROLE_CREATOR);
+  const fill = (t: string) => t.replaceAll('{creator}', creatorRole ? `${creatorRole}` : `**${c.creatorName}**`).replaceAll('{rate}', String(rate));
   const steps = c.texts.steps.map((s, i) => `**${String(i + 1).padStart(2, '0')} · ${s.title}**\n${s.text}`).join('\n\n');
   const posts: Array<[string, () => { embeds: EmbedBuilder[]; components?: ActionRowBuilder<ButtonBuilder>[] }]> = [
     [
@@ -151,7 +153,11 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
           new EmbedBuilder()
             .setColor(color(fans))
             .setTitle(`Bienvenue sur le serveur clipping de ${c.creatorName}`)
-            .setDescription(`${c.texts.heroText.replace(/\*\*/g, '')}\n\n${steps}\n\n🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus. Les vues sont comptées une fois par jour.`)
+            .setDescription(
+              c.discord
+                ? fill(c.discord.welcome)
+                : `${c.texts.heroText.replace(/\*\*/g, '')}\n\n${steps}\n\n🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus. Les vues sont comptées une fois par jour.`,
+            )
             .setThumbnail(`${siteUrl.replace(/\/fan$/, '')}/fan/assets/creator.png`),
         ],
         components: [buttons],
@@ -163,9 +169,9 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
         embeds: [
           new EmbedBuilder()
             .setColor(color(fans))
-            .setTitle('Règles')
+            .setTitle('📜・Règlement du serveur')
             .setDescription(
-              [
+              c.discord ? fill(c.discord.rules) : [
                 `1. Tes clips doivent venir des contenus de ${c.creatorName}.`,
                 '2. Un compte TikTok, YouTube ou Instagram ne peut être relié qu’à une seule personne.',
                 '3. Pas de faux comptes ni de vues achetées : les coins gagnés ainsi sont retirés.',
@@ -208,7 +214,12 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     const ch = channels.get(key);
     if (!ch) continue;
     const recent = await ch.messages.fetch({ limit: 20 }).catch(() => null);
-    if (recent?.some((m) => m.author.id === me)) continue; // déjà posté
+    const mine = recent?.filter((m) => m.author.id === me).last(); // le plus ancien message du bot = le message épinglé du salon
+    if (mine) {
+      // Déjà posté : mis à jour avec les textes actuels de la config
+      await mine.edit(build()).catch(() => {});
+      continue;
+    }
     await ch.send(build());
     created.push(`message #${key}`);
   }
