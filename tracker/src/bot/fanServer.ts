@@ -33,6 +33,8 @@ export const setupCommand = new SlashCommandBuilder()
 export const creatorRoleName = (creatorName: string) => `👑 ${creatorName}`;
 const LEGACY_CREATOR_ROLE = '👑 Créateur';
 export const ROLE_STAFF = '🛡️ Staff';
+/** Au-dessus du staff : mêmes accès + modération. */
+export const ROLE_HEAD = '👑 Head of Clipping 👑';
 export const ROLE_CLIPPER = '🎬 Clippeur';
 export const ROLE_TOP = '🏆 Top 3 de la semaine';
 export const ROLE_ALERTS = '🔔 Alerte vidéos';
@@ -150,15 +152,19 @@ const V = PermissionFlagsBits;
 
 function overwrites(guild: Guild, access: Access, staffRoleId: string): OverwriteResolvable[] {
   const bot = { id: guild.members.me!.id, allow: [V.ViewChannel, V.SendMessages, V.EmbedLinks, V.ManageMessages, V.ManageChannels] };
-  const staff = { id: staffRoleId, allow: [V.ViewChannel, V.SendMessages] };
+  const head = guild.roles.cache.find((r) => sameName(r.name, ROLE_HEAD));
+  const staff = [
+    { id: staffRoleId, allow: [V.ViewChannel, V.SendMessages] },
+    ...(head ? [{ id: head.id, allow: [V.ViewChannel, V.SendMessages, V.ManageMessages] }] : []),
+  ];
   const everyone = guild.roles.everyone.id;
-  if (access.who === 'staff') return [{ id: everyone, deny: [V.ViewChannel] }, staff, bot];
-  if (access.who === 'everyone') return [{ id: everyone, allow: [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads, V.AddReactions] }, staff, bot];
+  if (access.who === 'staff') return [{ id: everyone, deny: [V.ViewChannel] }, ...staff, bot];
+  if (access.who === 'everyone') return [{ id: everyone, allow: [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads, V.AddReactions] }, ...staff, bot];
   const role = guild.roles.cache.find((r) => sameName(r.name, access.role));
   return [
     { id: everyone, deny: [V.ViewChannel] },
     ...(role ? [{ id: role.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] }] : []),
-    staff,
+    ...staff,
     bot,
   ];
 }
@@ -182,6 +188,10 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   const legacy = guild.roles.cache.find((r) => sameName(r.name, LEGACY_CREATOR_ROLE));
   if (legacy && !guild.roles.cache.some((r) => sameName(r.name, creatorName))) await legacy.setName(creatorName).catch(() => {});
   await role(creatorName, color(fans), true);
+  if (!guild.roles.cache.some((r) => sameName(r.name, ROLE_HEAD))) {
+    await guild.roles.create({ name: ROLE_HEAD, colors: { primaryColor: 0x3ba7ff }, hoist: true, permissions: [V.ManageMessages, V.ModerateMembers, V.KickMembers, V.ManageNicknames], reason: 'Serveur clippeurs' });
+    created.push(`rôle ${ROLE_HEAD}`);
+  }
   const staff = await role(ROLE_STAFF, 0xf5f5f7, true);
   await role(ROLE_TOP, 0xffd24a, true);
   await ensureTierRoles(guild, fans);
@@ -220,6 +230,14 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     const priv = await guild.channels.create({ name: PRIVATE_CATEGORY, type: ChannelType.GuildCategory, permissionOverwrites: overwrites(guild, { who: 'staff' }, staff.id) });
     created.push(`catégorie ${PRIVATE_CATEGORY}`);
     cats.push(priv.id);
+  }
+  // Salons privés déjà créés : le Head of Clipping y a accès aussi
+  const headRole = guild.roles.cache.find((r) => sameName(r.name, ROLE_HEAD));
+  if (headRole) {
+    for (const ch of guild.channels.cache.values()) {
+      if (ch.type !== ChannelType.GuildText || !(ch as TextChannel).topic?.match(/\[\d+\]/) || ch.permissionOverwrites.cache.has(headRole.id)) continue;
+      await ch.permissionOverwrites.edit(headRole.id, { ViewChannel: true, SendMessages: true, ManageMessages: true }).catch(() => {});
+    }
   }
   // Anciennes catégories devenues vides
   for (const name of LEGACY_CATEGORIES) {
@@ -387,6 +405,7 @@ async function privateChannelFor(guild: Guild, member: GuildMember): Promise<Tex
   const existing = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${member.id}]`)) as TextChannel | undefined;
   if (existing) return existing;
   const staff = guild.roles.cache.find((r) => sameName(r.name, ROLE_STAFF));
+  const head = guild.roles.cache.find((r) => sameName(r.name, ROLE_HEAD));
   // Discord : 50 salons maximum par catégorie → « 🔒 ESPACES PRIVÉS 2 », etc.
   const cats = guild.channels.cache.filter((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY)).sort((a, b) => a.name.localeCompare(b.name));
   let cat = cats.find((c) => guild.channels.cache.filter((x) => 'parentId' in x && x.parentId === c.id).size < 50);
@@ -404,6 +423,7 @@ async function privateChannelFor(guild: Guild, member: GuildMember): Promise<Tex
       { id: guild.roles.everyone.id, deny: [V.ViewChannel] },
       { id: member.id, allow: [V.ViewChannel, V.SendMessages, V.AttachFiles, V.ReadMessageHistory] },
       ...(staff ? [{ id: staff.id, allow: [V.ViewChannel, V.SendMessages] }] : []),
+      ...(head ? [{ id: head.id, allow: [V.ViewChannel, V.SendMessages, V.ManageMessages] }] : []),
       { id: guild.members.me!.id, allow: [V.ViewChannel, V.SendMessages, V.EmbedLinks, V.ManageChannels] },
     ],
   });
