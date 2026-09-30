@@ -174,16 +174,19 @@ describe('parcours complet', () => {
     const sites = [{ name: 'BeOne', url: 'https://a.test' }, { name: 'SQUIDUU', url: 'https://b.test' }];
     const other = new Repo(openDatabase(':memory:'));
     other.upsertClient({ name: 'Client de B', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
+    repo.upsertClient({ name: 'Loann', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
     let remotePassword = 'secret';
     const b = () => createApp({ repo: other, agency: new AgencyService(other), recruitment: recruitmentOf(other, new AgencyService(other)), bot: {}, password: remotePassword });
     const a = createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret', marsSites: sites, selfUrl: 'https://a.test',
       fetchFn: (async (url: string, init: RequestInit) => b().request(url.replace('https://b.test', ''), init)) as typeof fetch });
     const auth = { Authorization: `Basic ${Buffer.from('x:secret').toString('base64')}` };
 
-    expect(await (await a.request('/api/mars/sites', { headers: auth })).json()).toEqual([{ name: 'BeOne', current: true }, { name: 'SQUIDUU', current: false }]);
+    const sitesOf = async (h: Record<string, string>) => ((await (await a.request('/api/mars/sites', { headers: h })).json()) as Array<{ name: string; current: boolean; clients: Array<{ name: string }> }>).map((x) => [x.name, x.current, x.clients.map((cl) => cl.name)]);
+    expect(await sitesOf(auth)).toEqual([['BeOne', true, ['Loann']], ['SQUIDUU', false, ['Client de B']]]);
     const all = await (await a.request('/api/mars/overview', { headers: auth })).json();
-    expect(all.map((r: { name: string }) => r.name)).toEqual(['BeOne', 'SQUIDUU']);
-    expect(all[1]).toMatchObject({ fans: 0, pendingOrders: 0 });
+    expect(all.map((r: { site: string; name: string }) => `${r.site}/${r.name}`)).toEqual(['BeOne/Loann', 'SQUIDUU/Client de B']);
+    expect(all[0]).toMatchObject({ fans: false, clippers: 0 });
+    expect(all[1]).toMatchObject({ fans: false, views7d: 0 });
 
     expect((await a.request('/api/mars/site', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Inconnu' }) })).status).toBe(404);
     const sw = await a.request('/api/mars/site', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'SQUIDUU' }) });
@@ -191,7 +194,7 @@ describe('parcours complet', () => {
     const cookie = { ...auth, cookie: 'mars_site=SQUIDUU' };
     const meta = await (await a.request('/api/meta', { headers: cookie })).json();
     expect(meta.clients.map((c: { name: string }) => c.name)).toContain('Client de B');
-    expect(await (await a.request('/api/mars/sites', { headers: cookie })).json()).toEqual([{ name: 'BeOne', current: false }, { name: 'SQUIDUU', current: true }]);
+    expect((await sitesOf(cookie)).map((x) => x[1])).toEqual([false, true]);
 
     remotePassword = 'autre';
     const bad = await a.request('/api/meta', { headers: cookie });

@@ -214,6 +214,7 @@ async function loadMeta() {
 // ---------------------------------------------------------------------------
 
 function agencySelect() {
+  if (multi()) return '';
   return `<select class="select" data-agency aria-label="Agence">
     <option value="">Toutes les agences</option>
     ${META.clients.map((c) => `<option value="${c.id}" ${String(c.id) === String(store.client) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
@@ -454,7 +455,17 @@ const NAV = [
 
 const multi = () => META?.sites?.length > 1;
 const currentSite = () => META?.sites?.find((x) => x.current)?.name ?? '';
-const navFor = () => (multi() ? [['Mars', [['clients', 'Tous les clients', 'grid']]], ...NAV] : NAV);
+/** Mode Mars multi-clients : on regarde toujours UN client à la fois (sinon la page « Tous les clients »). */
+const currentClient = () => (multi() && store.client ? META.sites.find((x) => x.current)?.clients.find((c) => String(c.id) === String(store.client)) : undefined);
+const navFor = () => {
+  if (!multi()) return NAV;
+  const cl = currentClient();
+  if (!cl) return [['Mars', [['clients', 'Tous les clients', 'grid']]]];
+  return [
+    ['Mars', [['clients', 'Tous les clients', 'grid']]],
+    ...NAV.map(([g, items, live]) => [g, items.filter(([id]) => id !== 'boutique' || cl.fans).map((it) => (it[0] === 'agence' ? ['agence', 'Vue d’ensemble', it[2]] : it)), live]),
+  ];
+};
 const homeRoute = () => (multi() ? 'clients' : 'agence');
 
 const CLIENT_NAV = [['Vision client', [['client', 'Vue client', 'grid']]]];
@@ -474,7 +485,9 @@ function renderSidebar() {
   $('#sidebar').innerHTML = `
     <div class="brand"><img class="brand-logo" src="/mars-logo.png" alt=""><div><div class="brand-name">Mars</div><div class="brand-sub">Clipping OS</div></div><a class="logout" href="/logout" title="Se déconnecter">⎋</a></div>
     ${multi() ? `<div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Client affiché</div>
-      <select class="select" data-site aria-label="Client affiché" style="width:100%">${META.sites.map((x) => `<option value="${esc(x.name)}" ${x.current ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
+      <select class="select" data-site aria-label="Client affiché" style="width:100%"><option value="">🌐 Tous les clients</option>${META.sites
+        .flatMap((x) => x.clients.map((c) => `<option value="${esc(x.name)}|${c.id}" ${x.current && currentClient()?.id === c.id && route !== 'clients' ? 'selected' : ''}>${esc(c.name)}</option>`))
+        .join('')}</select></div>` : ''}
     <div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Vision</div>
       <div class="seg" data-vision><button data-v="full" aria-pressed="${!isClientVision()}">Complète</button><button data-v="client" aria-pressed="${isClientVision()}">Client</button></div></div>
     ${isClientVision()
@@ -544,8 +557,9 @@ async function pageAgence() {
   const actives = d.leaderboard.filter((r) => r.posts > 0).length;
   const strikes = d.leaderboard.reduce((a, r) => a + r.strikes, 0);
   const agencyLabel = store.client ? agencyName(Number(store.client)) : 'Toutes les agences';
+  const cl = currentClient();
   main().innerHTML = `
-    <div class="page-head"><div><h1>Vue Agence</h1><p>${esc(agencyLabel)} · ${META.clients.length} au total</p></div>
+    <div class="page-head"><div>${cl ? `<h1>${esc(cl.name)}</h1><p>Vue d’ensemble du client${cl.fans ? ' · programme fans actif' : ''}</p>` : `<h1>Vue Agence</h1><p>${esc(agencyLabel)} · ${META.clients.length} au total</p>`}</div>
       <div class="actions">${agencySelect()}${periodPicker()}
         <button class="btn" data-refresh>${icon('refresh')} Actualiser</button>
         <a class="btn dark" href="/api/export.csv?${qs()}">${icon('download')} Exporter CSV</a></div></div>
@@ -569,7 +583,7 @@ async function pageAgence() {
           <div><b class="num">${strikes}</b><span>Strikes sur la période</span></div>
         </div></details>
       <div class="two-col">
-        <div class="card"><div class="card-head"><div><h2>Évolution de l'agence</h2><p>${esc(periodLabel())}</p></div>
+        <div class="card"><div class="card-head"><div><h2>${cl ? 'Évolution' : "Évolution de l'agence"}</h2><p>${esc(periodLabel())}</p></div>
           ${segTabs('chart', [['views', 'Vues'], ['posts', 'Posts'], ['both', 'Tout']], 'views')}</div>
           <div class="chart" id="chart"></div></div>
         <div class="card"><div class="card-head"><div><h2>Alertes <span class="tag">${d.alerts.length}</span></h2><p>Selon la période et le filtre en cours</p></div></div>
@@ -633,7 +647,7 @@ async function pageClient() {
   const name = agencyName(Number(store.client));
   main().innerHTML = `
     <div class="page-head"><div><h1>${esc(name)}</h1><p>Résultats du clipping · ${esc(periodLabel())}</p></div>
-      <div class="actions"><select class="select" data-client-pick aria-label="Client">${META.clients.map((c) => `<option value="${c.id}" ${String(c.id) === String(store.client) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>${periodPicker()}</div></div>
+      <div class="actions">${multi() ? '' : `<select class="select" data-client-pick aria-label="Client">${META.clients.map((c) => `<option value="${c.id}" ${String(c.id) === String(store.client) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`}${periodPicker()}</div></div>
     <div class="stack">
       <div class="card client-hero"><div class="k-label">Vues générées</div><div class="hero-num num">${fmtK(k.views.value)}</div>
         <div class="k-foot" style="justify-content:flex-start;gap:10px">${deltaPill(k.views.deltaPercent)}<span>vs période précédente</span></div></div>
@@ -669,7 +683,7 @@ async function pageClient() {
     </div>`;
   const root = main();
   bindFilters(root, pageClient);
-  $('[data-client-pick]', root).addEventListener('change', (e) => {
+  $('[data-client-pick]', root)?.addEventListener('change', (e) => {
     store.client = e.target.value;
     saveStore();
     pageClient();
@@ -1700,10 +1714,10 @@ async function pageBoutique() {
   });
 }
 
-async function switchSite(name, hash = '#/agence') {
-  await api('/api/mars/site', { method: 'POST', body: { name } });
+async function openClient(site, clientId, hash = '#/agence') {
+  if (site !== currentSite()) await api('/api/mars/site', { method: 'POST', body: { name: site } });
   SEARCH_CACHE = null;
-  store.client = '';
+  store.client = String(clientId);
   saveStore();
   await loadMeta();
   if (location.hash === hash) router();
@@ -1716,28 +1730,34 @@ async function pageClients() {
   const n = (x) => Number(x ?? 0).toLocaleString('fr-FR');
   const ok = rows.filter((r) => !r.error);
   const tot = (k) => ok.reduce((a, r) => a + (r[k] ?? 0), 0);
-  main().innerHTML = `<div class="page-head"><div><h1>Tous les clients</h1><p>${rows.length} programme(s) · clique sur un client pour ouvrir son tableau de bord</p></div>
+  const dash = '<span class="faint">—</span>';
+  main().innerHTML = `<div class="page-head"><div><h1>Tous les clients</h1><p>${ok.length} client(s) · clique sur un client pour ouvrir son tableau de bord</p></div>
       <div class="actions"><button class="btn" data-refresh>${icon('refresh')} Actualiser</button></div></div>
     <div class="stack">
       <div class="kpis">
         <div class="card kpi"><div class="k-label">Vues (7 j)</div><div class="k-value num">${fmtK(tot('views7d'))}</div><div class="k-foot"><span>${n(tot('clippers'))} clippers</span></div></div>
         <div class="card kpi"><div class="k-label">Posts (7 j)</div><div class="k-value num">${n(tot('posts7d'))}</div><div class="k-foot"><span>tous clients</span></div></div>
-        <div class="card kpi"><div class="k-label">Fans inscrits</div><div class="k-value num">${n(tot('fans'))}</div><div class="k-foot"><span>${fmtK(tot('views'))} vues depuis inscription</span></div></div>
-        <div class="card kpi"><div class="k-label">Commandes à livrer</div><div class="k-value num">${n(tot('pendingOrders'))}</div><div class="k-foot"><span>${n(tot('deliveredOrders'))} livrées</span></div></div>
+        <div class="card kpi"><div class="k-label">Fans inscrits</div><div class="k-value num">${n(tot('fanCount'))}</div><div class="k-foot"><span>${n(ok.filter((r) => r.fans).length)} programme(s) fans</span></div></div>
+        <div class="card kpi"><div class="k-label">Commandes à livrer</div><div class="k-value num">${n(tot('pendingOrders'))}</div><div class="k-foot"><span>boutiques fans</span></div></div>
       </div>
-      <div class="card"><div class="table-wrap"><table><thead><tr><th>Client</th><th class="r">Vues 7 j</th><th class="r">Posts 7 j</th><th class="r">Clippers</th><th class="r">Fans</th><th class="r">Coins en circulation</th><th class="r">À livrer</th><th>Bot</th><th class="r"></th></tr></thead><tbody>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Client</th><th class="r">Vues 7 j</th><th class="r">Posts 7 j</th><th class="r">Clippers</th><th class="r">Fans</th><th class="r">Coins en circulation</th><th class="r">À livrer</th><th class="r">Alertes</th><th class="r"></th></tr></thead><tbody>
       ${rows.map((r) => r.error
-        ? `<tr><td><b>${esc(r.name)}</b></td><td colspan="7"><span class="pill ko">${esc(r.error)}</span></td><td></td></tr>`
-        : `<tr><td><div class="who"><span class="dot" style="color:${esc(r.accent ?? 'var(--accent)')}"></span><div><b>${esc(r.name)}</b><small class="faint" style="display:block">${esc(r.program ?? '')}</small></div></div></td>
-          <td class="r num">${fmtK(r.views7d)}</td><td class="r num">${n(r.posts7d)}</td><td class="r num">${n(r.clippers)}</td><td class="r num">${n(r.fans)}</td><td class="r num">${n(r.coins)}</td>
-          <td class="r num">${r.pendingOrders ? `<span class="pill wait">${n(r.pendingOrders)}</span>` : '0'}</td>
-          <td>${r.bot === 'ready' ? '<span class="pill ok"><span class="dot"></span>En ligne</span>' : `<span class="pill gray">${esc(r.bot ?? '—')}</span>`}</td>
-          <td class="r" style="white-space:nowrap">${r.siteUrl ? `<a class="btn sm" href="${esc(r.siteUrl)}" target="_blank" rel="noopener">Site</a> ` : ''}<button class="btn sm dark" data-open-site="${esc(r.name)}">Ouvrir</button></td></tr>`).join('')}
+        ? `<tr><td><b>${esc(r.name)}</b></td><td colspan="7"><span class="pill ko">${esc(r.site)} : ${esc(r.error)}</span></td><td></td></tr>`
+        : `<tr><td><div class="who" data-open="${esc(r.site)}|${r.clientId}" style="cursor:pointer"><span class="dot" style="color:${esc(r.accent ?? 'var(--muted)')}"></span><div><b>${esc(r.name)}</b><small class="faint" style="display:block">${esc(r.program ?? 'Agence')}</small></div></div></td>
+          <td class="r num">${fmtK(r.views7d)}</td><td class="r num">${n(r.posts7d)}</td><td class="r num">${n(r.clippers)}</td><td class="r num">${r.fans ? n(r.fanCount) : dash}</td><td class="r num">${r.fans ? n(r.coins) : dash}</td>
+          <td class="r num">${!r.fans ? dash : r.pendingOrders ? `<span class="pill wait">${n(r.pendingOrders)}</span>` : '0'}</td>
+          <td class="r num">${r.alerts ? `<span class="pill ko">${n(r.alerts)}</span>` : '0'}</td>
+          <td class="r" style="white-space:nowrap">${r.siteUrl ? `<a class="btn sm" href="${esc(r.siteUrl)}" target="_blank" rel="noopener">Site</a> ` : ''}<button class="btn sm dark" data-open="${esc(r.site)}|${r.clientId}">Ouvrir</button></td></tr>`).join('')}
       </tbody></table></div></div>
     </div>`;
   const root = main();
   $('[data-refresh]', root).addEventListener('click', pageClients);
-  root.querySelectorAll('[data-open-site]').forEach((b) => b.addEventListener('click', () => switchSite(b.dataset.openSite).catch((err) => toast(err.message, true))));
+  root.querySelectorAll('[data-open]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const [site, id] = b.dataset.open.split('|');
+      openClient(site, id).catch((err) => toast(err.message, true));
+    }),
+  );
 }
 
 const ROUTES = {
@@ -1758,7 +1778,11 @@ const ROUTES = {
 
 async function router() {
   const [route, arg] = location.hash.replace(/^#\/?/, '').split('/');
-  const page = isClientVision() ? ROUTES.client : ROUTES[route] ?? ROUTES[homeRoute()];
+  let page = isClientVision() ? ROUTES.client : ROUTES[route] ?? ROUTES[homeRoute()];
+  if (multi() && !currentClient() && page !== ROUTES.clients) {
+    if (location.hash !== '#/clients') return void (location.hash = '#/clients');
+    page = ROUTES.clients;
+  }
   renderSidebar();
   window.scrollTo(0, 0);
   try {
@@ -1773,8 +1797,10 @@ $('#sidebar').addEventListener('change', async (e) => {
   const sel = e.target.closest('[data-site]');
   if (!sel) return;
   try {
+    if (!sel.value) return void (location.hash = '#/clients');
+    const [site, id] = sel.value.split('|');
     const cur = location.hash.split('/').slice(0, 2).join('/');
-    await switchSite(sel.value, ['#/clients', '#/clipper', '#', ''].includes(cur) ? '#/agence' : cur);
+    await openClient(site, id, ['#/clients', '#/clipper', '#', ''].includes(cur) || isClientVision() ? (isClientVision() ? '#/client' : '#/agence') : cur);
   } catch (err) {
     toast(err.message, true);
   }

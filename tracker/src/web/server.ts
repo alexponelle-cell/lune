@@ -399,30 +399,52 @@ export function createApp(deps: WebDeps): Hono {
       return c.json({ error: `${site.name} injoignable` }, 502);
     }
   });
-  const marsSummary = () => {
+  // Un client = une ligne (un Mars peut porter plusieurs clients, ex. BeOne + Loann)
+  const marsClients = () => {
     const o = fans.overview();
-    const week = agency.overview(agency.range({ preset: '7d' }));
-    return {
-      name: selfName,
-      program: o.settings.programName,
-      accent: fans.creator.colors.accent,
-      siteUrl: fans.publicSiteUrl(),
-      fans: o.fans.length,
-      views: o.fans.reduce((a, f) => a + f.views, 0),
-      coins: o.fans.reduce((a, f) => a + Math.max(0, f.balance), 0),
-      pendingOrders: o.orders.filter((x) => x.status === 'pending').length,
-      deliveredOrders: o.orders.filter((x) => x.status === 'delivered').length,
-      views7d: week.kpis.views.value,
-      posts7d: week.kpis.posts.value,
-      clippers: week.kpis.views.clippers,
-      alerts: week.alerts.length,
-      bot: status.bot.state,
-    };
+    const week = agency.range({ preset: '7d' });
+    return repo.listClients().map((cl) => {
+      const w = agency.overview(week, cl.id);
+      const isFans = cl.id === o.settings.clientId;
+      return {
+        clientId: cl.id,
+        name: cl.name,
+        fans: isFans,
+        program: isFans ? o.settings.programName : null,
+        accent: isFans ? fans.creator.colors.accent : null,
+        siteUrl: isFans ? fans.publicSiteUrl() : null,
+        fanCount: isFans ? o.fans.length : null,
+        coins: isFans ? o.fans.reduce((sum, f) => sum + Math.max(0, f.balance), 0) : null,
+        pendingOrders: isFans ? o.orders.filter((x) => x.status === 'pending').length : null,
+        views7d: w.kpis.views.value,
+        posts7d: w.kpis.posts.value,
+        clippers: w.kpis.views.clippers,
+        alerts: w.alerts.length,
+      };
+    });
   };
-  app.get('/api/mars/summary', (c) => c.json(marsSummary()));
-  app.get('/api/mars/sites', (c) => {
+  const fansClientId = () => fans.settings().clientId;
+  app.get('/api/mars/summary', (c) => c.json(marsClients()));
+  app.get('/api/mars/local-clients', (c) => c.json(repo.listClients().map((cl) => ({ id: cl.id, name: cl.name, fans: cl.id === fansClientId() }))));
+  const remoteJson = async (site: { name: string; url: string }, path: string) => {
+    try {
+      const res = await remoteFetch(site, path);
+      if (!res.ok) return { error: res.status === 401 ? 'mot de passe différent' : `erreur ${res.status}` };
+      return { data: (await res.json()) as unknown[] };
+    } catch {
+      return { error: 'injoignable' };
+    }
+  };
+  app.get('/api/mars/sites', async (c) => {
     const cur = remoteOf(c)?.name ?? selfName;
-    return c.json([selfName, ...remotes.map((x) => x.name)].map((name) => ({ name, current: name === cur })));
+    const self = { name: selfName, current: cur === selfName, clients: repo.listClients().map((cl) => ({ id: cl.id, name: cl.name, fans: cl.id === fansClientId() })) };
+    const others = await Promise.all(
+      remotes.map(async (x) => {
+        const r = await remoteJson(x, '/api/mars/local-clients');
+        return { name: x.name, current: cur === x.name, clients: r.data ?? [], error: r.error };
+      }),
+    );
+    return c.json([self, ...others]);
   });
   app.post('/api/mars/site', async (c) => {
     const { name } = z.object({ name: z.string() }).parse(await c.req.json());
@@ -434,17 +456,12 @@ export function createApp(deps: WebDeps): Hono {
   });
   app.get('/api/mars/overview', async (c) => {
     const others = await Promise.all(
-      remotes.map(async (site) => {
-        try {
-          const res = await remoteFetch(site, '/api/mars/summary');
-          if (!res.ok) return { name: site.name, error: res.status === 401 ? 'mot de passe différent' : `erreur ${res.status}` };
-          return { ...((await res.json()) as object), name: site.name };
-        } catch {
-          return { name: site.name, error: 'injoignable' };
-        }
+      remotes.map(async (x) => {
+        const r = await remoteJson(x, '/api/mars/summary');
+        return r.data ? r.data.map((row) => ({ ...(row as object), site: x.name })) : [{ site: x.name, name: x.name, error: r.error }];
       }),
     );
-    return c.json([marsSummary(), ...others]);
+    return c.json([...marsClients().map((row) => ({ ...row, site: selfName })), ...others.flat()]);
   });
 
   const rangeOf = (c: { req: { query: (k: string) => string | undefined } }) =>
