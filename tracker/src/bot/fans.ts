@@ -232,7 +232,15 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
   let discord = make(true);
   let readsMessages = true;
   let timer: NodeJS.Timeout | undefined;
+  // Commandes enregistrées sur chaque serveur où est le bot (au démarrage et dès qu'on l'invite)
+  const commandBody = () => [...fanCommandDefinitions, inscriptionCommand(opts.fans), setupCommand];
+  const registerIn = (appId: string, guildId: string) =>
+    new REST()
+      .setToken(opts.token)
+      .put(Routes.applicationGuildCommands(appId, guildId), { body: commandBody() })
+      .catch((err) => log.error(`bot fans : commandes sur le serveur ${guildId}`, err));
   function onReady(c: DiscordClient<true>) {
+    for (const g of c.guilds.cache.values()) void registerIn(c.application.id, g.id);
     status.neptune = {
       state: 'ready',
       tag: c.user.tag,
@@ -249,6 +257,10 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     d.on(Events.Error, (err) => log.error('bot fans', err));
     attachFanCommands(d, opts.fans);
     attachInscription(d, opts.fans);
+    d.on(Events.GuildCreate, (g) => {
+      log.info(`bot fans invité sur ${g.name}`);
+      if (d.application) void registerIn(d.application.id, g.id);
+    });
     d.on(Events.InteractionCreate, (i) => void handleSetup(i, opts.fans, opts.siteUrl));
     if (readsMessages) attachAccountsChannel(d, opts.fans);
   };
