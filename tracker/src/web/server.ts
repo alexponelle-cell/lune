@@ -146,7 +146,15 @@ export function createApp(deps: WebDeps): Hono {
     const k = cr.colors;
     const vars = `--bg:${k.bg};--card:${k.card};--line:${k.border};--text:${k.text};--muted:${k.muted};--accent:${k.accent};--accent-ink:${k.accentInk};`;
     const e = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
-    return c.html(ASSETS.fanSober.replaceAll('__TITLE__', e(fans.settings().programName)).replace('/*__VARS__*/', vars).replace('__BG__', k.bg));
+    const font = (cr.font ?? 'Outfit').replace(/[^A-Za-z0-9 ]/g, '');
+    return c.html(
+      ASSETS.fanSober
+        .replaceAll('__TITLE__', e(fans.settings().programName))
+        .replace('/*__VARS__*/', vars)
+        .replace('__BG__', k.bg)
+        .replace('__FONTQ__', font.replace(/ /g, '+'))
+        .replace('__FONT__', font),
+    );
   });
   // Visuels de la boutique (avatars, bannière du créateur)
   app.get('/fan/assets/:name', async (c) => {

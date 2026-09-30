@@ -361,7 +361,8 @@ describe('créateur configurable (SQUIDUU)', () => {
     const app = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, bot: {} });
     const html = await (await app.request('/fan')).text();
     expect(html).toContain('<title>SQUIDUU</title>');
-    expect(html).toContain('--accent:#FFD500');
+    expect(html).toContain('--accent:#FCD005');
+    expect(html).toContain('Montserrat');
     expect(html).not.toMatch(/roblox|gamepass|beone/i);
   });
 

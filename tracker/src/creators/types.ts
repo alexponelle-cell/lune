@@ -16,6 +16,10 @@ export interface CreatorConfig {
   /** Gabarit du site fans : « playful » (BeOne, coloré) ou « sober » (sobre, sombre). */
   theme: 'playful' | 'sober';
   colors: { bg: string; card: string; border: string; text: string; muted: string; accent: string; accentInk: string };
+  /** Police Google Fonts du site (gabarit « sober »). */
+  font?: string;
+  /** Texte du logo (à côté de la photo), ex. « squiduu. ». */
+  logoText?: string;
   /** Coins gagnés pour 1 000 vues (valeur par défaut, modifiable dans le dashboard). */
   pointsPer1000: number;
   /** Compte sur lequel les récompenses sont livrées. */
@@ -46,6 +50,7 @@ export interface CreatorConfig {
   /** Libellés des statuts dans « Mes échanges ». */
   statuses: { pending: string; delivered: string; refunded: string };
   texts: {
+    /** Les passages entre **…** sont mis en couleur d'accent (gabarit « sober »). */
     heroTitle: string;
     heroText: string;
     heroCta: string;
@@ -61,5 +66,10 @@ export interface CreatorConfig {
     deliveredDm: string;
     /** Pied des messages privés du bot. */
     dmFooter: string;
+    /** Questions fréquentes (accueil, gabarit « sober »). */
+    faq?: Array<{ q: string; a: string }>;
+    /** Dernier bloc de l'accueil. */
+    finalTitle?: string;
+    finalText?: string;
   };
 }

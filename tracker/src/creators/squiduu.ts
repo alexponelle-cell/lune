@@ -7,8 +7,10 @@ export const squiduu: CreatorConfig = {
   creatorName: 'SQUIDUU',
   youtube: 'SQUIDUU',
   theme: 'sober',
-  // Accent : jaune du fond de sa photo de profil (à recaler si besoin)
-  colors: { bg: '#0B0B0C', card: '#131315', border: '#242428', text: '#F4F4F5', muted: '#8D8D96', accent: '#FFD500', accentInk: '#0B0B0C' },
+  // Charte du squiduuverse (squiduuverse.com) : noir #0B0A0C, cartes #17161A, jaune #FCD005, Montserrat
+  colors: { bg: '#0B0A0C', card: '#17161A', border: '#2A2930', text: '#F5F5F7', muted: '#9B9AA3', accent: '#FCD005', accentInk: '#0B0A0C' },
+  font: 'Montserrat',
+  logoText: 'squiduu.',
   pointsPer1000: 10,
   rewardAccount: {
     kind: 'email',
@@ -34,7 +36,7 @@ export const squiduu: CreatorConfig = {
   ],
   statuses: { pending: 'En attente', delivered: 'Livrée', refunded: 'Remboursée' },
   texts: {
-    heroTitle: 'Clippe SQUIDUU. Gagne des coins.',
+    heroTitle: 'Clippe SQUIDUU. **Gagne des coins.**',
     heroText: 'Poste des clips de SQUIDUU sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges ensuite dans la boutique.',
     heroCta: 'Commencer à clipper',
     steps: [
@@ -51,5 +53,13 @@ export const squiduu: CreatorConfig = {
     footer: 'SQUIDUU',
     deliveredDm: '✅ Ton échange **{item}** a été livré.',
     dmFooter: 'SQUIDUU · Clippe, gagne des coins',
+    faq: [
+      { q: 'Comment je gagne des coins ?', a: 'Tu postes des clips de SQUIDUU sur TikTok, Instagram ou YouTube. Chaque vue compte : 1 000 vues = 10 coins, tous comptes confondus.' },
+      { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, ouvre un ticket et fais /inscription. Tu renseignes tes comptes et ton e-mail Squiduuverse, c’est tout.' },
+      { q: 'Quand mes vues sont-elles comptées ?', a: 'Une fois par jour. Seules les vues faites après ton inscription rapportent des coins.' },
+      { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum. Un compte qui vient de démarrer peut gagner des coins dès son premier clip.' },
+    ],
+    finalTitle: 'Prêt à **clipper** ?',
+    finalText: 'Connecte-toi avec Discord, relie tes comptes et commence à gagner des coins dès ton prochain clip.',
   },
 };
