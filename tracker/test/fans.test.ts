@@ -39,7 +39,7 @@ describe('programme fans (Neptune)', () => {
     return fan;
   }
 
-  it('livre les achats via l\'API du jeu (200, 409, 429, référence invalide)', async () => {
+  it('livre les achats via l\'API du jeu (200, 429, rejeu, référence invalide)', async () => {
     const fan = fanWithViews();
     await fans.linkRoblox(fan, 'paulrbx');
     const vip = fans.saveItem(null, { name: 'VIP', price: 10, kind: 'gamepass', ref: '111' });
@@ -48,30 +48,45 @@ describe('programme fans (Neptune)', () => {
     const o1 = fans.buy(fan, vip.id);
     const o2 = fans.buy(fan, pet.id);
     const o3 = fans.buy(fan, bad.id);
-    const calls: unknown[] = [];
-    const answers = [200, 429];
+    const calls: Array<{ url: string; auth: string; body: Record<string, unknown> }> = [];
+    const answers: Array<[number, unknown]> = [[200, { ok: true, replayed: false }], [429, { error: 'rate_limited', message: 'Quota', retryAfter: 60 }]];
     const game = new GameClient('https://jeu.test/', 'tok', (async (url: string, init: RequestInit) => {
-      calls.push({ url, auth: (init.headers as Record<string, string>).authorization, body: JSON.parse(String(init.body)) });
-      return new Response('{}', { status: answers.shift() ?? 200 });
+      calls.push({ url, auth: (init.headers as Record<string, string>).authorization!, body: JSON.parse(String(init.body)) });
+      const [status, body] = answers.shift() ?? [200, { ok: true, replayed: true }];
+      return Response.json(body, { status });
     }) as typeof fetch);
     const t = Date.now();
     expect(await deliverPendingOrders(game, fans.fans, t)).toEqual({ livrées: 1, échecs: 1 });
-    expect(calls[0]).toEqual({ url: 'https://jeu.test/grant', auth: 'Bearer tok', body: { userId: 42, productId: 111, orderId: String(o1.id) } });
+    expect(calls[0]).toEqual({ url: 'https://jeu.test/grant', auth: 'Bearer tok', body: { userId: 42, productId: 111, orderId: `order-${o1.id}-${o1.createdAt}`, type: 'gamepass' } });
+    expect(calls[1]!.body.type).toBe('devproduct');
     expect(fans.fans.order(o1.id)!.status).toBe('delivered');
     expect(fans.fans.order(o2.id)!.deliveryError).toMatch(/Limite/);
     expect(fans.fans.order(o3.id)!.deliveryError).toBeNull(); // on s'arrête au rate limit
-    // o2 n'est pas renvoyé avant l'heure du nouvel essai, puis 409 (déjà possédé) = livré
     expect(await deliverPendingOrders(game, fans.fans, t + 1000)).toEqual({ livrées: 0, échecs: 1 });
     expect(fans.fans.order(o3.id)!.deliveryError).toMatch(/numérique/);
-    answers.push(409);
+    // Nouvel essai après retryAfter : même orderId, réponse « replayed » = livré
     expect(await deliverPendingOrders(game, fans.fans, t + 61_000)).toEqual({ livrées: 1, échecs: 0 });
+    expect(calls.at(-1)!.body.orderId).toBe(calls[1]!.body.orderId);
     expect(fans.fans.order(o2.id)!.status).toBe('delivered');
+  });
+
+  it('gamepass déjà possédé : pas de nouvel essai, remboursement conseillé', async () => {
+    const fan = fanWithViews();
+    await fans.linkRoblox(fan, 'paulrbx');
+    const vip = fans.saveItem(null, { name: 'VIP', price: 10, kind: 'gamepass', ref: '111' });
+    const o = fans.buy(fan, vip.id);
+    let n = 0;
+    const game = new GameClient('https://jeu.test', 'tok', (async () => { n++; return Response.json({ error: 'already_owned', message: 'Déjà donné' }, { status: 409 }); }) as unknown as typeof fetch);
+    await deliverPendingOrders(game, fans.fans);
+    expect(fans.fans.order(o.id)!.deliveryError).toMatch(/possède déjà/);
+    await deliverPendingOrders(game, fans.fans, Date.now() + 86_400_000);
+    expect(n).toBe(1);
   });
 
   it('lit le catalogue du jeu', async () => {
     const game = new GameClient('https://jeu.test', 'tok', (async () =>
-      Response.json([{ id: 5, type: 'devproduct', name: 'Boost', description: 'x2', imageUrl: 'https://img', priceRobux: 49 }, { name: 'sans id' }])) as unknown as typeof fetch);
-    expect(await game.products()).toEqual([{ id: 5, type: 'devproduct', name: 'Boost', description: 'x2', imageUrl: 'https://img', priceRobux: 49 }]);
+      Response.json({ products: [{ id: 5, type: 'devproduct', name: 'Boost', description: 'x2', imageUrl: 'https://img', priceRobux: 49, remaining: null }, { name: 'sans id' }] })) as unknown as typeof fetch);
+    expect(await game.products()).toEqual([{ id: 5, type: 'devproduct', name: 'Boost', description: 'x2', imageUrl: 'https://img', priceRobux: 49, remaining: null }]);
   });
 
   it('lien de connexion à usage unique puis session', () => {

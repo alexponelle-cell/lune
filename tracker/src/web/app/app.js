@@ -1608,7 +1608,7 @@ async function pageBoutique() {
         ? `<p class="faint" style="margin:0;font-size:13px">Choisis un produit, puis fixe son prix en coins.</p><div class="stack" style="gap:8px;max-height:55vh;overflow-y:auto">${list
             .map(
               (p) => `<div class="todo" style="flex-wrap:nowrap">${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="" style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex:none" referrerpolicy="no-referrer">` : ''}
-            <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><small class="faint" style="display:block">${p.type === 'gamepass' ? 'Gamepass' : 'Dev product'} · ID ${p.id}${p.priceRobux != null ? ` · ${n(p.priceRobux)} Robux` : ''}</small></div>
+            <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><small class="faint" style="display:block">${p.type === 'gamepass' ? 'Gamepass' : 'Dev product'} · ID ${p.id}${p.priceRobux != null ? ` · ${n(p.priceRobux)} Robux` : ''}${p.remaining != null ? ` · ${n(p.remaining)} don(s) restant(s)` : ''}</small></div>
             ${p.inShop ? '<span class="pill ok">Déjà en boutique</span>' : `<button type="button" class="btn sm dark" data-import="${p.id}">Ajouter</button>`}</div>`,
             )
             .join('')}</div>`
