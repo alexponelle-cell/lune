@@ -123,6 +123,12 @@ describe('programme fans (Neptune)', () => {
     expect(fans.fans.markDelivered([order.id], 999)).toBe(0);
     expect(fans.fans.refund(order.id)).toBe(true);
     expect(fans.balance(fan.id).balance).toBe(50);
+
+    // Coins ajoutés à la main par le staff
+    fans.fans.addBonus(fan.id, 1000);
+    expect(fans.balance(fan.id)).toMatchObject({ earned: 1050, balance: 1050 });
+    fans.fans.addBonus(fan.id, -1000);
+    expect(fans.balance(fan.id).balance).toBe(50);
     expect(fans.fans.item(item.id)?.stock).toBe(1);
 
     const again = fans.buy(fan, item.id);

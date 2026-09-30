@@ -137,6 +137,15 @@ export class FanRepo {
     this.db.prepare('UPDATE clippers SET reward_email = ? WHERE id = ?').run(email, clipperId);
   }
 
+  /** Coins ajoutés (ou retirés) à la main par le staff. */
+  bonus(clipperId: number): number {
+    return ((this.db.prepare('SELECT bonus_coins FROM clippers WHERE id = ?').get(clipperId) as Row | undefined)?.bonus_coins as number) ?? 0;
+  }
+
+  addBonus(clipperId: number, amount: number): void {
+    this.db.prepare('UPDATE clippers SET bonus_coins = bonus_coins + ? WHERE id = ?').run(amount, clipperId);
+  }
+
   clipperByEmail(email: string): number | null {
     const r = this.db.prepare('SELECT id FROM clippers WHERE reward_email = ?').get(email) as Row | undefined;
     return r?.id ?? null;

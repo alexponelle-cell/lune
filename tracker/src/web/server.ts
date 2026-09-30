@@ -772,6 +772,11 @@ export function createApp(deps: WebDeps): Hono {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
     }
   });
+  app.post('/api/fans/:id/bonus', async (c) => {
+    const { amount } = z.object({ amount: z.number().int().min(-1_000_000).max(1_000_000) }).parse(await c.req.json());
+    fans.fans.addBonus(Number(c.req.param('id')), amount);
+    return c.json({ ok: true });
+  });
   app.post('/api/shop/orders/:id/refund', (c) => c.json({ ok: fans.fans.refund(Number(c.req.param('id'))) }));
   app.post('/api/shop/orders/:id/delivered', (c) => c.json({ ok: fans.fans.markDelivered([Number(c.req.param('id'))], null) > 0 }));
 

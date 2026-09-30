@@ -1555,7 +1555,7 @@ async function pageBoutique() {
       <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues depuis leur inscription</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Comptes</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th><th class="r"></th></tr></thead><tbody>
         ${d.fans.map((f) => `<tr><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td class="faint">${f.accounts.map((a) => `${{ tiktok: 'TT', instagram: 'IG', youtube: 'YT' }[a.platform]} @${esc(a.handle)}`).join(' · ') || '<span class="pill wait">à relier</span>'}</td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td>
-          <td class="r"><button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
+          <td class="r"><button class="btn sm" data-bonus="${f.id}" title="Ajouter ou retirer des coins">± coins</button> <button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
         </tbody></table></div></div>
     </div>`;
   const root = main();
@@ -1597,6 +1597,19 @@ async function pageBoutique() {
     imageUrl: fd.get('imageUrl') || null,
     active: fd.get('active') === 'on',
   });
+  root.querySelectorAll('[data-bonus]').forEach((b) => b.addEventListener('click', async () => {
+    const v = prompt('Coins à ajouter (négatif pour retirer) :', '10000');
+    if (v === null) return;
+    const amount = Math.trunc(Number(v));
+    if (!amount) return toast('Montant invalide', true);
+    try {
+      await api(`/api/fans/${b.dataset.bonus}/bonus`, { method: 'POST', body: { amount } });
+      toast(`${amount > 0 ? '+' : ''}${n(amount)} coins ✅`);
+      pageBoutique();
+    } catch (err) {
+      toast(err.message, true);
+    }
+  }));
   $('[data-import-game]', root)?.addEventListener('click', async () => {
     let list;
     try {

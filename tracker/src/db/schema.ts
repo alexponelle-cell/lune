@@ -353,4 +353,7 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
 
   // v10 : e-mail de livraison des récompenses (créateurs dont la récompense n'est pas en jeu)
   `ALTER TABLE clippers ADD COLUMN reward_email TEXT;`,
+
+  // v11 : coins ajoutés à la main par le staff (tests, gestes commerciaux)
+  `ALTER TABLE clippers ADD COLUMN bonus_coins INTEGER NOT NULL DEFAULT 0;`,
 ];

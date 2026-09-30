@@ -188,7 +188,7 @@ export class FanService {
 
   balance(clipperId: number, now = Date.now()): FanBalance {
     const views = this.viewsByClipper(now).get(clipperId) ?? 0;
-    const earned = this.points(views);
+    const earned = this.points(views) + this.fans.bonus(clipperId);
     const spent = this.fans.spent(clipperId);
     return { views, earned, spent, balance: earned - spent };
   }
@@ -386,7 +386,7 @@ export class FanService {
 
     for (const fan of fans) {
       const v = views.get(fan.id) ?? 0;
-      const earned = this.points(v);
+      const earned = this.points(v) + this.fans.bonus(fan.id);
       const balance = earned - this.fans.spent(fan.id);
       const level = levelOf(v, this.creator.levels);
       const st = this.fans.notifyState(fan.id);
@@ -530,7 +530,7 @@ export class FanService {
     const fans = clippers
       .map((c) => {
         const v = views.get(c.id) ?? 0;
-        const earned = this.points(v);
+        const earned = this.points(v) + this.fans.bonus(c.id);
         const sp = spent.get(c.id) ?? 0;
         const accounts = this.repo.listAccountsForClipper(c.id).map((a) => ({ platform: a.platform, handle: a.handle }));
         return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.rewardAccount(c.id).value, accounts, views: v, earned, spent: sp, balance: earned - sp };
