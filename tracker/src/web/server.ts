@@ -27,7 +27,7 @@ const ASSETS = {
   login: asset('login.html'),
 };
 const NEPTUNE_LOGO = new Uint8Array(readFileSync(new URL('./app/neptune-logo.png', import.meta.url)));
-const MARS_LOGO = asset('mars-logo.svg');
+const MARS_LOGO = new Uint8Array(readFileSync(new URL('./app/mars-logo.png', import.meta.url)));
 const fanFile = (name: string, type: string) => ({ data: new Uint8Array(readFileSync(new URL(`./app/fan/${name}`, import.meta.url))), type });
 const FAN_FILES: Record<string, { data: Uint8Array<ArrayBuffer>; type: string }> = {
   'beone.png': fanFile('beone.png', 'image/png'),
@@ -264,7 +264,7 @@ export function createApp(deps: WebDeps): Hono {
   });
 
   // --- Accès staff : page de connexion + cookie de session (30 jours) ------------------
-  app.get('/mars-logo.svg', (c) => c.body(MARS_LOGO, 200, { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400' }));
+  app.get('/mars-logo.png', (c) => c.body(MARS_LOGO, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }));
   app.get('/neptune-logo.png', (c) => c.body(NEPTUNE_LOGO, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }));
   if (deps.password) {
     const password = deps.password;

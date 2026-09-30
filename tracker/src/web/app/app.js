@@ -466,7 +466,7 @@ function renderSidebar() {
           ? '<span class="pill wait"><span class="dot"></span>Connexion…</span>'
           : '<span class="pill gray"><span class="dot"></span>Désactivé</span>';
   $('#sidebar').innerHTML = `
-    <div class="brand"><img class="brand-logo" src="/mars-logo.svg" alt=""><div><div class="brand-name">Mars</div><div class="brand-sub">Clipping OS</div></div><a class="logout" href="/logout" title="Se déconnecter">⎋</a></div>
+    <div class="brand"><img class="brand-logo" src="/mars-logo.png" alt=""><div><div class="brand-name">Mars</div><div class="brand-sub">Clipping OS</div></div><a class="logout" href="/logout" title="Se déconnecter">⎋</a></div>
     <div class="box" style="padding:8px"><div class="label" style="margin:0 0 6px 4px">Vision</div>
       <div class="seg" data-vision><button data-v="full" aria-pressed="${!isClientVision()}">Complète</button><button data-v="client" aria-pressed="${isClientVision()}">Client</button></div></div>
     ${isClientVision()
