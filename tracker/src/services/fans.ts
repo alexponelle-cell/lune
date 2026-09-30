@@ -145,6 +145,11 @@ export class FanService {
     return this.repo.getClipperByDiscordId(discordId) ?? this.repo.upsertClipper(discordId, username, now, this.settings().clientId);
   }
 
+  /** Adresse publique de l'espace fan. */
+  publicSiteUrl(): string {
+    return `${this.publicUrl.replace(/\/$/, '')}/fan`;
+  }
+
   loginUrl(clipperId: number, now = Date.now()): string {
     const token = this.fans.createToken(clipperId, 'login', LOGIN_TTL, now);
     return `${this.publicUrl.replace(/\/$/, '')}/fan/login?t=${token}`;

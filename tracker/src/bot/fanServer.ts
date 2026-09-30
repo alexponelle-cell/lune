@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  type CategoryChannel,
   ChannelType,
   EmbedBuilder,
   type Guild,
@@ -43,61 +44,98 @@ export const ALERTS_BUTTON = 'fans:alerts';
 /** Nom du rôle d'un niveau (ex. « 🔥 Pro »). */
 export const levelRoleName = (l: { emoji: string; name: string }) => `${l.emoji} ${l.name}`;
 
-type Access = 'public' | 'readonly' | 'staff';
+/**
+ * Accès d'un salon. Parcours : @everyone → 📖 Lecteur (a lu la bienvenue) → ✅ Règles acceptées → 🎬 Clippeur (inscrit).
+ * Les rôles s'additionnent : un clippeur garde l'accès aux étapes précédentes.
+ */
+type Access =
+  | { who: 'everyone'; write: boolean }
+  | { who: 'role'; role: string; write: boolean }
+  | { who: 'staff' };
 interface ChannelPlan {
   name: string;
   access: Access;
   topic?: string;
 }
-/** Plan du serveur : catégorie → salons. */
+export const ROLE_READER = '📖 Lecteur';
+export const ROLE_RULES = '✅ Règles acceptées';
+export const STEP_READ_BUTTON = 'fans:step:read';
+export const STEP_RULES_BUTTON = 'fans:step:rules';
+export const PRIVATE_CATEGORY = '🔒 ESPACES PRIVÉS';
+/** Anciennes catégories (premières versions de /setup), supprimées si elles sont vides. */
+const LEGACY_CATEGORIES = ['🎬 CLIPPER'];
+
+const readonly = (role?: string): Access => (role ? { who: 'role', role, write: false } : { who: 'everyone', write: false });
+const writable = (role: string): Access => ({ who: 'role', role, write: true });
+
+/** Plan du serveur : catégorie → salons (l'accès de la catégorie vaut pour ses salons). */
 export const SERVER_PLAN: Array<{ category: string; access: Access; channels: ChannelPlan[] }> = [
   {
     category: '📌 BIENVENUE',
-    access: 'readonly',
+    access: readonly(),
+    channels: [{ name: '👋│bienvenue', access: readonly(), topic: 'Lis le message puis clique sur « Continuer »' }],
+  },
+  {
+    category: '📖 AVANT DE COMMENCER',
+    access: readonly(ROLE_READER),
     channels: [
-      { name: '👋│bienvenue', access: 'readonly', topic: 'Comment ça marche' },
-      { name: '📜│règles', access: 'readonly' },
-      { name: '📣│annonces', access: 'readonly' },
+      { name: '📜│règles', access: readonly(ROLE_READER), topic: 'Lis et accepte les règles pour continuer' },
+      { name: '🧭│déroulement', access: readonly(ROLE_READER), topic: 'Comment on gagne des coins, étape par étape' },
     ],
   },
   {
-    category: '🎬 CLIPPER',
-    access: 'public',
+    category: '🎓 FORMATION',
+    access: readonly(ROLE_RULES),
     channels: [
-      { name: '📝│inscription', access: 'readonly', topic: 'Clique sur « S’inscrire » pour relier tes comptes' },
-      { name: '💬│général', access: 'public' },
-      { name: '🎥│mes-clips', access: 'public', topic: 'Partage tes meilleurs clips' },
-      { name: '❓│aide', access: 'public', topic: 'Une question ? Le staff te répond ici' },
+      { name: '🎓│tutos', access: readonly(ROLE_RULES), topic: 'Apprends à faire des clips qui marchent' },
+      { name: '📝│inscription', access: readonly(ROLE_RULES), topic: 'Clique sur « S’inscrire » pour relier tes comptes' },
+    ],
+  },
+  {
+    category: '💬 COMMUNAUTÉ',
+    access: writable(ROLE_CLIPPER),
+    channels: [
+      { name: '📣│annonces', access: readonly(ROLE_CLIPPER) },
+      { name: '💬│général', access: writable(ROLE_CLIPPER) },
+      { name: '🎥│mes-clips', access: writable(ROLE_CLIPPER), topic: 'Partage tes meilleurs clips' },
+      { name: '❓│aide', access: writable(ROLE_CLIPPER), topic: 'Une question ? Le staff te répond ici' },
     ],
   },
   {
     category: '📈 ACTIVITÉ',
-    access: 'readonly',
+    access: readonly(ROLE_CLIPPER),
     channels: [
-      { name: VIDEOS_CHANNEL, access: 'readonly', topic: 'Chaque nouvelle vidéo, dès sa sortie : clippe-la en premier' },
-      { name: RANKING_CHANNEL, access: 'readonly', topic: 'Le top 10 de la semaine, chaque lundi' },
-      { name: LEVELUP_CHANNEL, access: 'readonly', topic: 'Les passages de niveau' },
+      { name: VIDEOS_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Chaque nouvelle vidéo, dès sa sortie : clippe-la en premier' },
+      { name: RANKING_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Le top 10 de la semaine, chaque lundi' },
+      { name: LEVELUP_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Les passages de niveau' },
     ],
   },
   {
     category: '🛡️ STAFF',
-    access: 'staff',
+    access: { who: 'staff' },
     channels: [
-      { name: LOG_CHANNEL, access: 'staff', topic: 'Chaque inscription est notée ici' },
-      { name: '💬│staff', access: 'staff' },
+      { name: LOG_CHANNEL, access: { who: 'staff' }, topic: 'Chaque inscription est notée ici' },
+      { name: '💬│staff', access: { who: 'staff' } },
     ],
   },
 ];
 
 const color = (fans: FanService) => parseInt(fans.creator.colors.accent.slice(1), 16);
+const V = PermissionFlagsBits;
 
 function overwrites(guild: Guild, access: Access, staffRoleId: string): OverwriteResolvable[] {
-  const me = guild.members.me!.id;
-  const bot = { id: me, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ManageMessages] };
-  const staff = { id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] };
-  if (access === 'staff') return [{ id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, staff, bot];
-  if (access === 'readonly') return [{ id: guild.roles.everyone.id, allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.CreatePublicThreads] }, staff, bot];
-  return [{ id: guild.roles.everyone.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }, bot];
+  const bot = { id: guild.members.me!.id, allow: [V.ViewChannel, V.SendMessages, V.EmbedLinks, V.ManageMessages, V.ManageChannels] };
+  const staff = { id: staffRoleId, allow: [V.ViewChannel, V.SendMessages] };
+  const everyone = guild.roles.everyone.id;
+  if (access.who === 'staff') return [{ id: everyone, deny: [V.ViewChannel] }, staff, bot];
+  if (access.who === 'everyone') return [{ id: everyone, allow: [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads, V.AddReactions] }, staff, bot];
+  const role = guild.roles.cache.find((r) => r.name === access.role);
+  return [
+    { id: everyone, deny: [V.ViewChannel] },
+    ...(role ? [{ id: role.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] }] : []),
+    staff,
+    bot,
+  ];
 }
 
 export const bare = (name: string) => name.replace(/^[^\p{L}\p{N}]+/u, '').replace(/[^\p{L}\p{N}-]/gu, '').toLowerCase();
@@ -121,17 +159,19 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   const LEVEL_COLORS = [0x9b9aa3, 0x22c55e, 0xf97316, color(fans)];
   for (let i = c.levels.length - 1; i >= 0; i--) await role(levelRoleName(c.levels[i]!), LEVEL_COLORS[i] ?? color(fans), i > 0);
   await role(ROLE_CLIPPER, color(fans), false);
+  await role(ROLE_RULES, 0x9b9aa3, false);
+  await role(ROLE_READER, 0x6b6a73, false);
   await role(ROLE_ALERTS, 0x5ab0e0, false);
 
   await guild.channels.fetch();
   const channels = new Map<string, TextChannel>();
   const cats: string[] = [];
   for (const group of SERVER_PLAN) {
-    let cat = guild.channels.cache.find((ch) => ch.type === ChannelType.GuildCategory && ch.name === group.category);
+    let cat = guild.channels.cache.find((ch): ch is CategoryChannel => ch.type === ChannelType.GuildCategory && ch.name === group.category);
     if (!cat) {
       cat = await guild.channels.create({ name: group.category, type: ChannelType.GuildCategory, permissionOverwrites: overwrites(guild, group.access, staff.id) });
       created.push(`catégorie ${group.category}`);
-    }
+    } else await cat.permissionOverwrites.set(overwrites(guild, group.access, staff.id)).catch(() => {});
     for (const plan of group.channels) {
       // Retrouvé même si l'emoji du nom a changé (ex. « bienvenue »)
       let ch = guild.channels.cache.find((x) => x.type === ChannelType.GuildText && (x.name === plan.name || bare(x.name) === bare(plan.name))) as TextChannel | undefined;
@@ -139,11 +179,23 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
         ch = await guild.channels.create({ name: plan.name, type: ChannelType.GuildText, parent: cat.id, topic: plan.topic, permissionOverwrites: overwrites(guild, plan.access, staff.id) });
         created.push(`#${plan.name}`);
       }
-      // Salon existant ailleurs (ex. #général par défaut) : rangé dans sa catégorie
+      // Salon existant ailleurs (ex. #général par défaut) : rangé dans sa catégorie, accès mis à jour
       if (ch.parentId !== cat.id) await ch.setParent(cat.id, { lockPermissions: false }).catch(() => {});
+      await ch.permissionOverwrites.set(overwrites(guild, plan.access, staff.id)).catch(() => {});
       channels.set(bare(plan.name), ch);
     }
     cats.push(cat.id);
+  }
+  // Catégorie des salons privés (un par clippeur inscrit)
+  if (!guild.channels.cache.some((ch) => ch.type === ChannelType.GuildCategory && ch.name.startsWith(PRIVATE_CATEGORY))) {
+    const priv = await guild.channels.create({ name: PRIVATE_CATEGORY, type: ChannelType.GuildCategory, permissionOverwrites: overwrites(guild, { who: 'staff' }, staff.id) });
+    created.push(`catégorie ${PRIVATE_CATEGORY}`);
+    cats.push(priv.id);
+  }
+  // Anciennes catégories devenues vides
+  for (const name of LEGACY_CATEGORIES) {
+    const old = guild.channels.cache.find((ch) => ch.type === ChannelType.GuildCategory && ch.name === name);
+    if (old && !guild.channels.cache.some((ch) => 'parentId' in ch && ch.parentId === old.id)) await old.delete('Remplacée par le nouveau parcours').catch(() => {});
   }
   // Catégories dans l'ordre du plan, sous les éventuelles catégories par défaut de Discord
   await guild.channels
@@ -154,6 +206,8 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     new ButtonBuilder().setCustomId('fans:signup').setStyle(ButtonStyle.Primary).setLabel('S’inscrire').setEmoji('📝'),
     new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Ouvrir le site').setURL(siteUrl),
   );
+  const row = (id: string, label: string, emoji: string) =>
+    new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(id).setStyle(ButtonStyle.Success).setLabel(label).setEmoji(emoji));
   const rate = fans.settings().pointsPer1000;
   const creatorRole = guild.roles.cache.find((r) => r.name === creatorName);
   const fill = (t: string) => t.replaceAll('{creator}', creatorRole ? `${creatorRole}` : `**${c.creatorName}**`).replaceAll('{rate}', String(rate));
@@ -173,7 +227,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             )
             .setThumbnail(`${siteUrl.replace(/\/fan$/, '')}/fan/assets/creator.png`),
         ],
-        components: [buttons],
+        components: [row(STEP_READ_BUTTON, 'Continuer', '➡️')],
       }),
     ],
     [
@@ -192,6 +246,42 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
                 '5. Le staff peut retirer un compte ou des coins en cas d’abus.',
               ].join('\n'),
             ),
+        ],
+        components: [row(STEP_RULES_BUTTON, 'J’accepte les règles', '✅')],
+      }),
+    ],
+    [
+      'déroulement',
+      () => ({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(color(fans))
+            .setTitle('🧭・Comment ça se déroule')
+            .setDescription(
+              [
+                steps,
+                '',
+                `🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus (YouTube + TikTok + Instagram). Les vues sont comptées une fois par jour, à partir de ton inscription.`,
+                c.reward ? `🎁 **${c.reward.name}** : ${c.reward.price.toLocaleString('fr-FR')} coins.` : '🎁 Les récompenses sont dans la boutique du site.',
+                '',
+                '**Ton parcours ici**',
+                '1️⃣ Accepte les règles (bouton dans 📜│règles)',
+                '2️⃣ Regarde les tutos dans 🎓│tutos',
+                '3️⃣ Inscris-toi dans 📝│inscription',
+                '4️⃣ Tu débloques ton salon privé, les annonces et toute la communauté 🎉',
+              ].join('\n'),
+            ),
+        ],
+      }),
+    ],
+    [
+      'tutos',
+      () => ({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(color(fans))
+            .setTitle('🎓・Tutos')
+            .setDescription(`Ici, le staff poste les tutos pour apprendre à faire des clips de ${c.creatorName} qui font des vues : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\nQuand tu es prêt, passe à 📝│inscription.`),
         ],
       }),
     ],
@@ -239,6 +329,57 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   return created;
 }
 
+/** Boutons du parcours : « Continuer » (→ 📖 Lecteur) et « J'accepte les règles » (→ ✅ Règles acceptées). */
+export async function handleStepButtons(interaction: Interaction) {
+  if (!interaction.isButton() || !interaction.inCachedGuild()) return;
+  const step = interaction.customId === STEP_READ_BUTTON ? 'read' : interaction.customId === STEP_RULES_BUTTON ? 'rules' : null;
+  if (!step) return;
+  try {
+    const names = step === 'read' ? [ROLE_READER] : [ROLE_READER, ROLE_RULES];
+    const roles = names.map((n) => interaction.guild.roles.cache.find((r) => r.name === n)).filter((r) => !!r);
+    if (roles.length !== names.length) return void (await interaction.reply({ content: 'Rôle introuvable : un admin doit refaire /setup.', flags: MessageFlags.Ephemeral }));
+    await interaction.member.roles.add(roles.map((r) => r!.id), 'Parcours d’accueil');
+    const ch = (name: string) => interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(name));
+    await interaction.reply({
+      content:
+        step === 'read'
+          ? `✅ C’est débloqué ! Lis ${ch('📜│règles') ?? '#règles'} et ${ch('🧭│déroulement') ?? '#déroulement'}, puis accepte les règles.`
+          : `🎉 Règles acceptées ! Regarde ${ch('🎓│tutos') ?? '#tutos'} puis inscris-toi dans ${ch('📝│inscription') ?? '#inscription'}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (err) {
+    log.warn(`parcours d’accueil : ${err instanceof Error ? err.message : String(err)}`);
+    await interaction.reply({ content: 'Impossible de te donner l’accès : le rôle du bot doit être tout en haut (Paramètres → Rôles).', flags: MessageFlags.Ephemeral }).catch(() => {});
+  }
+}
+
+/** Salon privé d'un clippeur (créé à l'inscription) : lui + le staff. Renvoie le salon existant s'il y en a déjà un. */
+async function privateChannelFor(guild: Guild, member: GuildMember): Promise<TextChannel | null> {
+  const existing = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${member.id}]`)) as TextChannel | undefined;
+  if (existing) return existing;
+  const staff = guild.roles.cache.find((r) => r.name === ROLE_STAFF);
+  // Discord : 50 salons maximum par catégorie → « 🔒 ESPACES PRIVÉS 2 », etc.
+  const cats = guild.channels.cache.filter((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY)).sort((a, b) => a.name.localeCompare(b.name));
+  let cat = cats.find((c) => guild.channels.cache.filter((x) => 'parentId' in x && x.parentId === c.id).size < 50);
+  if (!cat) {
+    if (!staff) return null;
+    cat = await guild.channels.create({ name: `${PRIVATE_CATEGORY} ${cats.size + 1}`, type: ChannelType.GuildCategory, permissionOverwrites: overwrites(guild, { who: 'staff' }, staff.id) });
+  }
+  const slug = member.displayName.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'clippeur';
+  return guild.channels.create({
+    name: `🔒│${slug}`,
+    type: ChannelType.GuildText,
+    parent: cat.id,
+    topic: `Espace privé de ${member.displayName} [${member.id}]`,
+    permissionOverwrites: [
+      { id: guild.roles.everyone.id, deny: [V.ViewChannel] },
+      { id: member.id, allow: [V.ViewChannel, V.SendMessages, V.AttachFiles, V.ReadMessageHistory] },
+      ...(staff ? [{ id: staff.id, allow: [V.ViewChannel, V.SendMessages] }] : []),
+      { id: guild.members.me!.id, allow: [V.ViewChannel, V.SendMessages, V.EmbedLinks, V.ManageChannels] },
+    ],
+  });
+}
+
 /** Bouton « 🔔 Alerte vidéos » : ajoute ou retire le rôle. */
 export async function handleAlertsButton(interaction: Interaction) {
   if (!interaction.isButton() || interaction.customId !== ALERTS_BUTTON || !interaction.inCachedGuild()) return;
@@ -283,11 +424,35 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
   }
 }
 
-/** Après une inscription réussie : rôle Clippeur + trace dans le salon staff (si le serveur a été monté par /setup). */
-export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[]) {
+/** Après une inscription réussie : rôles, salon privé et trace dans le salon staff (si le serveur a été monté par /setup). */
+export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string) {
   try {
-    const role = guild.roles.cache.find((r) => r.name === ROLE_CLIPPER);
-    if (role && !member.roles.cache.has(role.id)) await member.roles.add(role, 'Inscription clippeur');
+    const roles = [ROLE_CLIPPER, ROLE_READER, ROLE_RULES].map((n) => guild.roles.cache.find((r) => r.name === n)).filter((r) => r && !member.roles.cache.has(r.id));
+    if (roles.length) await member.roles.add(roles.map((r) => r!.id), 'Inscription clippeur');
+    if (guild.roles.cache.some((r) => r.name === ROLE_CLIPPER) && guild.channels.cache.some((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY))) {
+      const priv = await privateChannelFor(guild, member);
+      const fresh = priv && !(await priv.messages.fetch({ limit: 1 }).catch(() => null))?.size;
+      if (priv && fresh) {
+        await priv.send({
+          content: `${member}`,
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('🔒 Ton espace privé')
+              .setDescription(
+                [
+                  'Bienvenue dans ton salon perso : seuls toi et le staff le voient.',
+                  '',
+                  `✅ Comptes suivis : ${accounts.join(', ')}`,
+                  '📈 Tes vues sont comptées une fois par jour, à partir de maintenant.',
+                  siteUrl ? `🪙 Suis tes coins et échange-les sur le site : ${siteUrl}` : '🪙 Tape `/coins` pour voir tes coins.',
+                  '',
+                  'Une question sur tes clips ou ton montage ? Écris ici, le staff te répond.',
+                ].join('\n'),
+              ),
+          ],
+        });
+      }
+    }
     const logCh = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.name === LOG_CHANNEL) as TextChannel | undefined;
     await logCh?.send({ content: `📝 ${member} s’est inscrit : ${accounts.join(', ')}`, allowedMentions: { parse: [] } });
   } catch (err) {

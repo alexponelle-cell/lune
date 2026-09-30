@@ -395,7 +395,10 @@ describe('serveur fans monté par /setup', () => {
     expect(new Set(names).size).toBe(names.length);
     for (const key of ['bienvenue', 'règles', 'inscription']) expect(names.some((n) => n.includes(key))).toBe(true);
     expect(names).toContain(LOG_CHANNEL);
-    expect(SERVER_PLAN.find((g) => g.channels.some((c) => c.name === LOG_CHANNEL))!.access).toBe('staff');
+    expect(SERVER_PLAN.find((g) => g.channels.some((c) => c.name === LOG_CHANNEL))!.access).toEqual({ who: 'staff' });
+    // Parcours : seul #bienvenue est visible à l'arrivée
+    const visible = SERVER_PLAN.flatMap((g) => g.channels).filter((c) => c.access.who === 'everyone').map((c) => c.name);
+    expect(visible).toEqual(['👋│bienvenue']);
     expect(setupCommand.default_member_permissions).toBe('8');
   });
 });

@@ -45,7 +45,7 @@ export const squiduu: CreatorConfig = {
       'Pas de panique, c’est normal quand on débute 😊 Pose tes questions dans ❓│aide : on t’explique tout, étape par étape.',
       '',
       '🚀 **Prêt à commencer l’aventure ?**',
-      'Clique sur **📝 S’inscrire** juste en dessous 👇',
+      'Clique sur **➡️ Continuer** juste en dessous pour découvrir les règles et le déroulement 👇',
     ].join('\n'),
     rules: [
       '🎮 Bienvenue sur le serveur officiel de clipping de {creator} !',

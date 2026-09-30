@@ -16,7 +16,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton } from './fanServer.js';
+import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons } from './fanServer.js';
 import { announceNewVideos, syncLevelRoles, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
@@ -123,7 +123,7 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         }
         if (!lines.length) lines.push('Rien à changer 👍');
         if (res.linked.length && interaction.inCachedGuild()) {
-          await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`));
+          await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl());
         }
         if (res.linked.length) lines.push('\nTes prochaines vues te rapportent des coins 🪙 (mise à jour 1 fois par jour) · `/site` pour la boutique');
         await interaction.editReply(lines.join('\n'));
@@ -277,6 +277,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     });
     d.on(Events.InteractionCreate, (i) => void handleSetup(i, opts.fans, opts.siteUrl));
     d.on(Events.InteractionCreate, (i) => void handleAlertsButton(i));
+    d.on(Events.InteractionCreate, (i) => void handleStepButtons(i));
     if (readsMessages) attachAccountsChannel(d, opts.fans);
   };
 
