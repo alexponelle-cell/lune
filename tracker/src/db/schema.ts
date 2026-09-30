@@ -350,4 +350,7 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   ALTER TABLE shop_orders ADD COLUMN next_try_at INTEGER;
   ALTER TABLE shop_orders ADD COLUMN delivery_error TEXT;
   `,
+
+  // v10 : e-mail de livraison des récompenses (créateurs dont la récompense n'est pas en jeu)
+  `ALTER TABLE clippers ADD COLUMN reward_email TEXT;`,
 ];

@@ -129,6 +129,19 @@ export class FanRepo {
   }
 
   /** Fan déjà relié à ce compte Roblox (un compte Roblox = un seul fan). */
+  email(clipperId: number): string | null {
+    return ((this.db.prepare('SELECT reward_email FROM clippers WHERE id = ?').get(clipperId) as Row | undefined)?.reward_email as string | null) ?? null;
+  }
+
+  setEmail(clipperId: number, email: string | null): void {
+    this.db.prepare('UPDATE clippers SET reward_email = ? WHERE id = ?').run(email, clipperId);
+  }
+
+  clipperByEmail(email: string): number | null {
+    const r = this.db.prepare('SELECT id FROM clippers WHERE reward_email = ?').get(email) as Row | undefined;
+    return r?.id ?? null;
+  }
+
   clipperByRoblox(userId: number): number | null {
     const r = this.db.prepare('SELECT id FROM clippers WHERE roblox_user_id = ?').get(userId) as Row | undefined;
     return r ? r.id : null;

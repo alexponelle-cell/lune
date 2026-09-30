@@ -2,6 +2,8 @@ import type { FanRepo, ItemInput, ShopOrder } from '../db/fans.js';
 import type { Clipper, Repo } from '../db/repo.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
+import { beone } from '../creators/beone.js';
+import type { CreatorConfig } from '../creators/types.js';
 
 /** Programme fans (bot Neptune) : les fans clippent, gagnent des points avec leurs vues et les échangent en boutique. */
 export interface FanSettings {
@@ -59,14 +61,9 @@ export function parseFeatured(text: string): Array<{ kind: FeaturedKind; title: 
 
 const LOGIN_TTL = 10 * 60_000;
 
-/** Niveaux des fans (mêmes seuils que le site). */
-export const FAN_LEVELS = [
-  { name: 'Débutant', emoji: '🌱', min: 0 },
-  { name: 'Clippeur', emoji: '⚡', min: 10_000 },
-  { name: 'Pro', emoji: '🔥', min: 100_000 },
-  { name: '1%', emoji: '👑', min: 1_000_000 },
-];
-export const levelOf = (views: number) => FAN_LEVELS.reduce((acc, l, i) => (views >= l.min ? i : acc), 0);
+/** Niveau atteint (index dans les niveaux du créateur). */
+export const levelOf = (views: number, levels: CreatorConfig['levels'] = beone.levels) => levels.reduce((acc, l, i) => (views >= l.min ? i : acc), 0);
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 const DAY_MS = 86_400_000;
 const nf = (n: number) => n.toLocaleString('fr-FR').replace(/\u202f|\u00a0/g, ' ');
 const SESSION_TTL = 30 * 86_400_000;
@@ -86,10 +83,45 @@ export class FanService {
     private readonly publicUrl: string,
     /** Résolution pseudo Roblox → ID (API Roblox), remplaçable en test. */
     private readonly resolveRoblox: (username: string) => Promise<{ id: number; name: string } | null> = robloxLookup,
+    /** Créateur du programme (marque, textes, récompense, taux). */
+    readonly creator: CreatorConfig = beone,
   ) {}
 
   settings(): FanSettings {
-    return { ...DEFAULT_FANS, ...this.repo.getSetting<Partial<FanSettings>>('fans', {}) };
+    const c = this.creator;
+    const defaults = { ...DEFAULT_FANS, programName: c.programName, pointsPer1000: c.pointsPer1000, creatorYoutube: c.youtube, creatorRoblox: c.robloxUsername ?? '' };
+    return { ...defaults, ...this.repo.getSetting<Partial<FanSettings>>('fans', {}) };
+  }
+
+  /**
+   * Au démarrage : agence des fans créée au nom du créateur si aucune n'est choisie,
+   * et récompense du créateur ajoutée à la boutique si elle n'y est pas.
+   */
+  bootstrap(now = Date.now()): void {
+    const c = this.creator;
+    if (c.id !== 'beone' && !this.settings().clientId) {
+      const existing = this.repo.listClients().find((x) => x.name.toLowerCase() === c.creatorName.toLowerCase());
+      const client = existing ?? this.repo.upsertClient({ name: c.creatorName, rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
+      this.saveSettings({ clientId: client.id });
+    }
+    if (c.reward && !this.fans.items().some((i) => i.ref === c.reward!.ref)) {
+      this.fans.createItem({ name: c.reward.name, description: c.reward.description, price: c.reward.price, kind: 'item', ref: c.reward.ref, stock: null, imageUrl: null, active: true }, now);
+    }
+  }
+
+  /** Compte de livraison du fan (pseudo Roblox ou e-mail selon le créateur). */
+  rewardAccount(clipperId: number): { kind: 'roblox' | 'email'; value: string | null } {
+    if (this.creator.rewardAccount.kind === 'email') return { kind: 'email', value: this.fans.email(clipperId) };
+    return { kind: 'roblox', value: this.fans.roblox(clipperId).username };
+  }
+
+  linkEmail(clipper: Clipper, email: string): string {
+    const e = email.trim().toLowerCase();
+    if (!EMAIL.test(e)) throw new Error('Adresse e-mail invalide');
+    const owner = this.fans.clipperByEmail(e);
+    if (owner !== null && owner !== clipper.id) throw new Error('Cet e-mail est déjà relié à un autre fan');
+    this.fans.setEmail(clipper.id, e);
+    return e;
   }
 
   saveSettings(patch: Partial<FanSettings>): FanSettings {
@@ -184,6 +216,7 @@ export class FanService {
       pointsPer1000: s.pointsPer1000,
       username: clipper.username,
       roblox: this.fans.roblox(clipper.id),
+      rewardAccount: this.rewardAccount(clipper.id),
       accounts: this.repo.listAccountsForClipper(clipper.id).map((a) => ({ id: a.id, platform: a.platform, handle: a.handle, url: a.url })),
       ...this.balance(clipper.id, now),
       items: this.fans.items({ activeOnly: true }),
@@ -259,7 +292,9 @@ export class FanService {
   }
 
   buy(clipper: Clipper, itemId: number, now = Date.now()): ShopOrder {
-    if (!this.fans.roblox(clipper.id).userId) throw new Error("Relie d'abord ton compte Roblox pour recevoir l'objet en jeu");
+    if (this.creator.rewardAccount.kind === 'email') {
+      if (!this.fans.email(clipper.id)) throw new Error(`Renseigne d'abord ton ${this.creator.rewardAccount.label.charAt(0).toLowerCase()}${this.creator.rewardAccount.label.slice(1)}`);
+    } else if (!this.fans.roblox(clipper.id).userId) throw new Error("Relie d'abord ton compte Roblox pour recevoir l'objet en jeu");
     return this.fans.placeOrder(clipper.id, itemId, this.balance(clipper.id, now).earned, now);
   }
 
@@ -285,7 +320,7 @@ export class FanService {
       if (!fan || fan.discordId.startsWith('manual:') || this.fans.wasNotified(fan.id, `order:${o.id}`)) continue;
       this.fans.markNotified(fan.id, `order:${o.id}`, now);
       if (!this.fans.notifyEnabled(fan.id)) continue;
-      this.fans.queueNotification(fan.id, fan.discordId, 'delivered', `✅ Ton **${o.itemName}** est arrivé dans le jeu !`, now);
+      this.fans.queueNotification(fan.id, fan.discordId, 'delivered', this.creator.texts.deliveredDm.replace('{item}', o.itemName), now);
       queued++;
     }
 
@@ -293,7 +328,7 @@ export class FanService {
       const v = views.get(fan.id) ?? 0;
       const earned = this.points(v);
       const balance = earned - this.fans.spent(fan.id);
-      const level = levelOf(v);
+      const level = levelOf(v, this.creator.levels);
       const st = this.fans.notifyState(fan.id);
       if (!st) {
         // Premier passage : on part de l'état actuel, sans message (pas de « +176 000 coins » d'un coup)
@@ -306,7 +341,7 @@ export class FanService {
 
       let msg: { kind: string; text: string; key?: string } | null = null;
       if (level > st.level) {
-        const l = FAN_LEVELS[level]!;
+        const l = this.creator.levels[level]!;
         msg = { kind: 'level', text: `⚡ **Niveau supérieur !** Tu passes **${l.emoji} ${l.name}**.` };
       }
       const affordable = items.find((i) => balance >= i.price && (i.stock === null || i.stock > 0) && !this.fans.wasNotified(fan.id, `afford:${i.id}`));
@@ -405,6 +440,7 @@ export class FanService {
       .map((v) => ({ platform: v.platform, url: v.url, title: v.title, thumbnail: v.thumbnailUrl, views: v.views }));
     const allClips = this.repo.videosPublished(0, now, ids).length;
     return {
+      creator: this.creator,
       programName: s.programName,
       tagline: s.tagline,
       heroMediaUrl: s.heroMediaUrl,
@@ -437,16 +473,16 @@ export class FanService {
         const earned = this.points(v);
         const sp = spent.get(c.id) ?? 0;
         const accounts = this.repo.listAccountsForClipper(c.id).map((a) => ({ platform: a.platform, handle: a.handle }));
-        return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.fans.roblox(c.id).username, accounts, views: v, earned, spent: sp, balance: earned - sp };
+        return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.rewardAccount(c.id).value, accounts, views: v, earned, spent: sp, balance: earned - sp };
       })
       .sort((a, b) => b.views - a.views);
     const names = new Map(clippers.map((c) => [c.id, c.username]));
     const orders = this.fans.orders({ limit: 200 }).map((o) => ({
       ...o,
       username: names.get(o.clipperId) ?? this.repo.getClipper(o.clipperId)?.username ?? '?',
-      roblox: this.fans.roblox(o.clipperId).username,
+      roblox: this.rewardAccount(o.clipperId).value,
     }));
-    return { settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
+    return { accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
   }
 
   saveItem(id: number | null, input: ItemInput) {

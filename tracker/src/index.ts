@@ -12,6 +12,7 @@ import { FanRepo } from './db/fans.js';
 import { RecruitmentRepo } from './db/recruitment.js';
 import { startFansBot } from './bot/fans.js';
 import { FanService } from './services/fans.js';
+import { creatorConfig } from './creators/index.js';
 import { AgencyService } from './services/agency.js';
 import { deliverPendingOrders, GameClient } from './services/game.js';
 import { RecruitmentService } from './services/recruitment.js';
@@ -36,7 +37,10 @@ const agency = new AgencyService(repo, {
   dropMinPreviousViews: config.DROP_MIN_PREVIOUS_VIEWS,
 });
 const recruitment = new RecruitmentService(repo, new RecruitmentRepo(db), agency);
-const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl);
+const creator = creatorConfig(config.CREATOR);
+const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl, undefined, creator);
+fans.bootstrap();
+log.info(`programme fans : ${creator.programName} (${creator.id})`);
 const botHolder: { current?: Bot['bridge'] } = {};
 // API du jeu Roblox (serveur du dev du jeu) : catalogue + livraison des achats
 const game = config.GAME_API_URL && config.GAME_API_TOKEN ? new GameClient(config.GAME_API_URL, config.GAME_API_TOKEN) : undefined;

@@ -1523,7 +1523,7 @@ async function pageBoutique() {
         <div class="grid-form">
           <label class="field"><span>Invitation Discord</span><input class="input" name="discordInviteUrl" value="${esc(s.discordInviteUrl)}" placeholder="https://discord.gg/…"><small>Bouton « Rejoindre la communauté »</small></label>
           <label class="field"><span>Chaîne YouTube du créateur</span><input class="input" name="creatorYoutube" value="${esc(s.creatorYoutube ?? '')}" placeholder="BeOnePourcent"><small>${d.avatars.urls.youtube ? '✅ Photo HD récupérée' : `⚠️ ${esc(d.avatars.errors.youtube ?? 'non récupérée')}`}</small></label>
-          <label class="field"><span>Pseudo Roblox du créateur</span><input class="input" name="creatorRoblox" value="${esc(s.creatorRoblox ?? '')}" placeholder="BeOnePourcentt"><small>${d.avatars.urls.roblox ? '✅ Avatar récupéré' : `⚠️ ${esc(d.avatars.errors.roblox ?? 'non récupéré')}`}</small></label>
+          ${d.creator?.theme === 'sober' ? '' : `<label class="field"><span>Pseudo Roblox du créateur</span><input class="input" name="creatorRoblox" value="${esc(s.creatorRoblox ?? '')}" placeholder="BeOnePourcentt"><small>${d.avatars.urls.roblox ? '✅ Avatar récupéré' : `⚠️ ${esc(d.avatars.errors.roblox ?? 'non récupéré')}`}</small></label>`}
           <label class="field"><span>Image / vidéo de fond (lien)</span><input class="input" name="heroMediaUrl" value="${esc(s.heroMediaUrl)}" placeholder="https://… .jpg / .png / .mp4"><small>Remplace le fond jaune de l'accueil (optionnel)</small></label>
         </div>
         <div><button class="btn green">Sauvegarder</button> <a class="btn" href="/fan" target="_blank" rel="noopener">Voir le site</a></div></form>
@@ -1531,27 +1531,27 @@ async function pageBoutique() {
       ${(() => {
         const toLink = d.fans.filter((f) => !f.accounts.length).sort((a, b) => b.joinedAt - a.joinedAt);
         return `<div class="card"><div class="card-head"><div><h2>Fans à relier ${toLink.length ? `<span class="pill wait" style="margin-left:6px">${toLink.length}</span>` : ''}</h2><p>Nouveaux fans connectés sans compte suivi : ajoute leurs TikTok / Insta / YouTube pour que leurs vues rapportent des coins</p></div></div>
-          ${toLink.length ? `<div class="table-wrap"><table><thead><tr><th>Fan</th><th>Arrivé le</th><th>Roblox</th><th class="r"></th></tr></thead><tbody>
+          ${toLink.length ? `<div class="table-wrap"><table><thead><tr><th>Fan</th><th>Arrivé le</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th class="r"></th></tr></thead><tbody>
           ${toLink.map((f) => `<tr><td><div class="who">${f.avatar ? `<img src="${esc(f.avatar)}" alt="" style="width:30px;height:30px;border-radius:9px">` : avatar(f.username)}<b>${esc(f.username)}</b></div></td><td class="num faint">${dm(f.joinedAt)}</td><td>${esc(f.roblox ?? '—')}</td>
             <td class="r"><button class="btn sm dark" data-link-fan="${f.id}">Relier ses comptes</button></td></tr>`).join('')}</tbody></table></div>`
           : '<div class="empty">Tous les fans ont au moins un compte relié 🎉</div>'}</div>`;
       })()}
 
-      <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence jeu = l'ID du produit côté jeu (rempli automatiquement à l'import)</p></div><div class="actions"><button class="btn" data-import-game>${icon('download')} Importer depuis le jeu</button><button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div></div>
+      <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence jeu = l'ID du produit côté jeu (rempli automatiquement à l'import)</p></div><div class="actions">${d.gameApi ? `<button class="btn" data-import-game>${icon('download')} Importer depuis le jeu</button>` : ''}<button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div></div>
         <div class="table-wrap"><table><thead><tr><th>Objet</th><th>Type</th><th>Référence jeu</th><th class="r">Prix</th><th class="r">Stock</th><th>État</th><th class="r"></th></tr></thead><tbody>
         ${d.items.map((i) => `<tr><td><b>${esc(i.name)}</b>${i.description ? `<small class="faint" style="display:block">${esc(i.description)}</small>` : ''}</td><td>${i.kind === 'gamepass' ? 'Gamepass' : 'Objet'}</td>
           <td class="num">${esc(i.ref)}</td><td class="r num">${n(i.price)} coins</td><td class="r num">${i.stock ?? '∞'}</td><td>${i.active ? '<span class="pill ok">En vente</span>' : '<span class="pill gray">Masqué</span>'}</td>
           <td class="r"><button class="icon-btn" data-edit-item="${i.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-item="${i.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucun objet. Ajoute le premier gamepass ou objet.</td></tr>'}
         </tbody></table></div></div>
 
-      <div class="card"><div class="card-head"><div><h2>Commandes</h2><p>« À livrer » : envoyé automatiquement au jeu (le joueur le reçoit en jeu ou à sa prochaine connexion)</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Fan</th><th>Roblox</th><th>Objet</th><th class="r">Prix</th><th>État</th><th class="r"></th></tr></thead><tbody>
+      <div class="card"><div class="card-head"><div><h2>Commandes</h2><p>${d.accountLabel === 'E-mail' ? '« À livrer » : active la récompense sur le compte lié à l’e-mail, puis clique « Marquer livré » (le fan est prévenu sur Discord)' : '« À livrer » : envoyé automatiquement au jeu (le joueur le reçoit en jeu ou à sa prochaine connexion)'}</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Fan</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th>Objet</th><th class="r">Prix</th><th>État</th><th class="r"></th></tr></thead><tbody>
         ${d.orders.map((o) => `<tr><td class="num faint">${dm(o.createdAt)}</td><td>${esc(o.username)}</td><td>${esc(o.roblox ?? '—')}</td><td>${esc(o.itemName)}</td><td class="r num">${n(o.price)}</td><td>${ORDER_PILL[o.status]}${o.status === 'pending' && o.deliveryError ? `<small style="display:block;color:var(--orange);white-space:normal;max-width:260px">⚠️ ${esc(o.deliveryError)}</small>` : ''}</td>
           <td class="r">${o.status === 'pending' ? `<button class="btn sm" data-delivered="${o.id}">Marquer livré</button> <button class="btn sm danger" data-refund="${o.id}">Rembourser</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucune commande.</td></tr>'}
         </tbody></table></div></div>
 
       <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues depuis leur inscription</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Comptes</th><th>Roblox</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th><th class="r"></th></tr></thead><tbody>
+        <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Comptes</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th><th class="r"></th></tr></thead><tbody>
         ${d.fans.map((f) => `<tr><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td class="faint">${f.accounts.map((a) => `${{ tiktok: 'TT', instagram: 'IG', youtube: 'YT' }[a.platform]} @${esc(a.handle)}`).join(' · ') || '<span class="pill wait">à relier</span>'}</td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td>
           <td class="r"><button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
         </tbody></table></div></div>
@@ -1569,7 +1569,7 @@ async function pageBoutique() {
           discordInviteUrl: fd.get('discordInviteUrl'),
           heroMediaUrl: fd.get('heroMediaUrl'),
           creatorYoutube: fd.get('creatorYoutube'),
-          creatorRoblox: fd.get('creatorRoblox'),
+          creatorRoblox: fd.get('creatorRoblox') ?? undefined,
         } });
       toast('Réglages sauvegardés ✅');
       pageBoutique();
@@ -1595,7 +1595,7 @@ async function pageBoutique() {
     imageUrl: fd.get('imageUrl') || null,
     active: fd.get('active') === 'on',
   });
-  $('[data-import-game]', root).addEventListener('click', async () => {
+  $('[data-import-game]', root)?.addEventListener('click', async () => {
     let list;
     try {
       list = (await api('/api/shop/game-products')).products;

@@ -11,6 +11,7 @@ import { createApp } from '../src/web/server.js';
 import { collectAll } from '../src/jobs/collect.js';
 import { isAccountsChannel, isTicketChannel } from '../src/bot/fans.js';
 import { deliverPendingOrders, GameClient } from '../src/services/game.js';
+import { creatorConfig } from '../src/creators/index.js';
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -317,3 +318,56 @@ describe('programme fans (Neptune)', () => {
     expect(isTicketChannel({ name: 'général', parent: { name: 'général clipper' } })).toBe(false);
   });
 });
+
+describe('créateur configurable (SQUIDUU)', () => {
+  it('crée l\'agence et la récompense, e-mail obligatoire, textes de la config', async () => {
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('squiduu'));
+    fans.bootstrap();
+    fans.bootstrap(); // idempotent
+    const s = fans.settings();
+    expect(repo.getClient(s.clientId!)?.name).toBe('SQUIDUU');
+    expect(s.programName).toBe('SQUIDUU');
+    const items = fans.fans.items();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ name: '1 mois de Squiduuverse', price: 10_000, stock: null });
+
+    const now = Date.now();
+    const fan = fans.ensureFan('d9', 'Léa', now - 3 * HOUR);
+    fans.setAccounts(fan, { tiktok: '@lea.clips' });
+    const account = repo.listAccountsForClipper(fan.id)[0]!;
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 0, publishedAt: now - 2 * HOUR }], now - 2 * HOUR);
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 2_500_000, publishedAt: now - 2 * HOUR }], now - HOUR);
+    expect(fans.balance(fan.id).balance).toBe(25_000);
+
+    expect(() => fans.buy(fan, items[0]!.id)).toThrow(/e-mail/);
+    expect(() => fans.linkEmail(fan, 'pas-un-mail')).toThrow(/invalide/);
+    expect(fans.linkEmail(fan, ' Lea@Mail.com ')).toBe('lea@mail.com');
+    const other = fans.ensureFan('d10', 'Tom', now);
+    expect(() => fans.linkEmail(other, 'lea@mail.com')).toThrow(/déjà/);
+
+    // Achetable plusieurs fois (stock illimité)
+    const o1 = fans.buy(fan, items[0]!.id);
+    fans.buy(fan, items[0]!.id);
+    expect(() => fans.buy(fan, items[0]!.id)).toThrow();
+    expect(fans.me(fan).rewardAccount).toEqual({ kind: 'email', value: 'lea@mail.com' });
+    expect(fans.publicPage().creator.id).toBe('squiduu');
+
+    fans.fans.markDelivered([o1.id], null);
+    fans.generateNotifications();
+    expect(fans.fans.pendingNotifications().map((n) => n.text)).toContain('✅ Ton échange **1 mois de Squiduuverse** a été livré.');
+
+    const app = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, bot: {} });
+    const html = await (await app.request('/fan')).text();
+    expect(html).toContain('<title>SQUIDUU</title>');
+    expect(html).toContain('--accent:#FFD500');
+    expect(html).not.toMatch(/roblox|gamepass|beone/i);
+  });
+
+  it('refuse un créateur inconnu', () => {
+    expect(() => creatorConfig('inconnu')).toThrow(/inconnu/);
+    expect(creatorConfig(undefined).id).toBe('beone');
+  });
+});
+

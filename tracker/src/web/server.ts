@@ -24,6 +24,7 @@ const ASSETS = {
   css: asset('app.css'),
   js: asset('app.js'),
   fan: asset('fan.html'),
+  fanSober: asset('fan-sober.html'),
   login: asset('login.html'),
 };
 const NEPTUNE_LOGO = new Uint8Array(readFileSync(new URL('./app/neptune-logo.png', import.meta.url)));
@@ -34,6 +35,15 @@ const FAN_FILES: Record<string, { data: Uint8Array<ArrayBuffer>; type: string }>
   'beone-roblox.png': fanFile('beone-roblox.png', 'image/png'),
   'banner.jpg': fanFile('banner.jpg', 'image/jpeg'),
 };
+
+/** Photo du créateur livrée avec le code (repli si YouTube ne répond pas). */
+function localCreatorPhoto(id: string): Uint8Array<ArrayBuffer> | null {
+  try {
+    return new Uint8Array(readFileSync(new URL(`./app/fan/${id}.png`, import.meta.url)));
+  } catch {
+    return null;
+  }
+}
 
 export interface WebDeps {
   repo: Repo;
@@ -129,11 +139,30 @@ export function createApp(deps: WebDeps): Hono {
     return fan;
   };
 
-  app.get('/fan', (c) => c.html(ASSETS.fan));
+  app.get('/fan', (c) => {
+    const cr = fans.creator;
+    if (cr.theme !== 'sober') return c.html(ASSETS.fan);
+    // Couleurs et titre injectés côté serveur : pas de flash avant le chargement des données
+    const k = cr.colors;
+    const vars = `--bg:${k.bg};--card:${k.card};--line:${k.border};--text:${k.text};--muted:${k.muted};--accent:${k.accent};--accent-ink:${k.accentInk};`;
+    const e = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
+    return c.html(ASSETS.fanSober.replaceAll('__TITLE__', e(fans.settings().programName)).replace('/*__VARS__*/', vars).replace('__BG__', k.bg));
+  });
   // Visuels de la boutique (avatars, bannière du créateur)
   app.get('/fan/assets/:name', async (c) => {
     const name = c.req.param('name');
     // Photos HD du créateur si disponibles (YouTube / Roblox), sinon les visuels intégrés
+    if (name === 'creator.png') {
+      const hd = await fans.creatorAvatars(deps.youtubeApiKey);
+      if (hd.youtube) {
+        c.header('cache-control', 'public, max-age=3600');
+        return c.redirect(hd.youtube, 302);
+      }
+      // Repli : photo fournie dans src/web/app/fan/<créateur>.png
+      const local = localCreatorPhoto(fans.creator.id);
+      if (local) return c.body(local, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=600' });
+      return c.notFound();
+    }
     if (name === 'beone.png' || name === 'beone-roblox.png' || name === 'banner.jpg') {
       const hd = await fans.creatorAvatars(deps.youtubeApiKey);
       const url = name === 'beone.png' ? hd.youtube : name === 'banner.jpg' ? hd.banner : hd.roblox;
@@ -205,6 +234,13 @@ export function createApp(deps: WebDeps): Hono {
     const fan = requireFan(c);
     const { username } = z.object({ username: z.string().trim().min(3).max(20) }).parse(await c.req.json());
     return c.json(await fans.linkRoblox(fan, username));
+  });
+  /** Compte de livraison des récompenses (e-mail ou pseudo Roblox selon le créateur). */
+  app.put('/api/fan/account', async (c) => {
+    const fan = requireFan(c);
+    const { value } = z.object({ value: z.string().trim().min(3).max(254) }).parse(await c.req.json());
+    if (fans.creator.rewardAccount.kind === 'email') return c.json({ value: fans.linkEmail(fan, value) });
+    return c.json({ value: (await fans.linkRoblox(fan, value)).username });
   });
   app.post('/api/fan/orders', async (c) => {
     const fan = requireFan(c);

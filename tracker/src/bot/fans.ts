@@ -26,7 +26,11 @@ export const fanCommandDefinitions = [
 ];
 export const FAN_COMMANDS = new Set(fanCommandDefinitions.map((c) => c.name));
 /** /inscription n'existe que sur le bot des fans (le bot de l'agence a déjà son /inscription). */
-const inscriptionCommand = new SlashCommandBuilder().setName('inscription').setDescription('Relie tes comptes TikTok, YouTube, Instagram (et ton pseudo Roblox)').toJSON();
+const inscriptionCommand = (fans: FanService) =>
+  new SlashCommandBuilder()
+    .setName('inscription')
+    .setDescription(`Relie tes comptes TikTok, YouTube, Instagram (et ton ${fans.creator.rewardAccount.kind === 'email' ? 'e-mail' : 'pseudo Roblox'})`)
+    .toJSON();
 const INSCRIPTION_MODAL = 'fans:inscription';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
@@ -47,7 +51,7 @@ export function isTicketChannel(channel: { name?: string | null; parent?: { name
   return /ticket/i.test(channel.name) || /ticket/i.test(channel.parent?.name ?? '');
 }
 
-/** /inscription : formulaire avec un champ par réseau + pseudo Roblox. */
+/** /inscription : formulaire avec un champ par réseau + compte de livraison (pseudo Roblox ou e-mail). */
 export function attachInscription(discord: DiscordClient, fans: FanService): void {
   discord.on(Events.InteractionCreate, async (interaction) => {
     try {
@@ -67,15 +71,16 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
           const a = accounts.find((x) => x.platform === p);
           return a ? `@${a.handle}` : '';
         };
-        const modal = new ModalBuilder().setCustomId(INSCRIPTION_MODAL).setTitle('Inscription BeOne Rewards');
+        const modal = new ModalBuilder().setCustomId(INSCRIPTION_MODAL).setTitle(`Inscription ${fans.settings().programName}`.slice(0, 45));
         for (const f of PLATFORM_FIELDS) {
           const input = new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setPlaceholder(f.placeholder).setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(200);
           const v = current(f.id);
           if (v) input.setValue(v);
           modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
         }
-        const rbx = new TextInputBuilder().setCustomId('roblox').setLabel('Pseudo Roblox (pour recevoir tes récompenses)').setPlaceholder('TonPseudoRoblox').setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(20);
-        const r = fans.fans.roblox(fan.id).username;
+        const ra = fans.creator.rewardAccount;
+        const rbx = new TextInputBuilder().setCustomId('roblox').setLabel(ra.label.slice(0, 45)).setPlaceholder(ra.placeholder).setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(ra.kind === 'email' ? 254 : 20);
+        const r = fans.rewardAccount(fan.id).value;
         if (r) rbx.setValue(r);
         modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(rbx));
         await interaction.showModal(modal);
@@ -93,7 +98,15 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         if (res.conflicts.length) lines.push(`⛔ Déjà relié à quelqu'un d'autre : ${res.conflicts.map((a) => `@${a.handle}`).join(', ')}. Si c'est ton compte, préviens le staff.`);
         if (res.invalid.length) lines.push(`🤔 Pas compris : ${res.invalid.map((p) => PF[p]).join(', ')}. Mets ton @pseudo ou le lien de ton profil.`);
         const roblox = get('roblox').trim();
-        if (roblox && roblox.toLowerCase() !== (fans.fans.roblox(fan.id).username ?? '').toLowerCase()) {
+        if (fans.creator.rewardAccount.kind === 'email') {
+          if (roblox && roblox.toLowerCase() !== (fans.fans.email(fan.id) ?? '')) {
+            try {
+              lines.push(`📧 E-mail enregistré : **${fans.linkEmail(fan, roblox)}**`);
+            } catch (err) {
+              lines.push(`📧 E-mail : ${err instanceof Error ? err.message : String(err)}`);
+            }
+          }
+        } else if (roblox && roblox.toLowerCase() !== (fans.fans.roblox(fan.id).username ?? '').toLowerCase()) {
           try {
             const r = await fans.linkRoblox(fan, roblox);
             lines.push(`🎮 Roblox relié : **${r.username}**`);
@@ -131,7 +144,7 @@ export function attachFanCommands(discord: DiscordClient, fans: FanService): voi
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setColor(0xffd83d)
+              .setColor(parseInt(fans.creator.colors.accent.slice(1), 16))
               .setTitle(`🪙 ${name}`)
               .addFields(
                 { name: '🪙 Coins', value: `**${fmt(b.balance)}**`, inline: true },
@@ -199,7 +212,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       ? opts.guildIds.map((g) => Routes.applicationGuildCommands(opts.clientId!, g))
       : [Routes.applicationCommands(opts.clientId)];
     for (const route of routes) {
-      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
+      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand(opts.fans)] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
     }
   }
   // Lire le salon #mes-comptes demande « Message Content Intent » (portail Discord, onglet Bot).
@@ -243,7 +256,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
         try {
           const user = await discord.users.fetch(n.discordId);
           await user.send({
-            embeds: [new EmbedBuilder().setColor(0xffd83d).setDescription(n.text).setFooter({ text: 'BeOne Rewards · 🪙 Fais des vues, gagne des coins' })],
+            embeds: [new EmbedBuilder().setColor(parseInt(opts.fans.creator.colors.accent.slice(1), 16)).setDescription(n.text).setFooter({ text: opts.fans.creator.texts.dmFooter })],
             components: [shopButton()],
           });
           opts.fans.fans.ackNotification(n.id, null);

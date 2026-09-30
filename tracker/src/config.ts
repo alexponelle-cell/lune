@@ -9,6 +9,8 @@ const optionalString = z
   .transform((v) => (v && v.trim() !== '' ? v.trim() : undefined));
 
 const schema = z.object({
+  /** Créateur du programme fans (fichier src/creators/<id>.ts) : beone (défaut), squiduu… */
+  CREATOR: optionalString,
   DISCORD_TOKEN: optionalString,
   DISCORD_CLIENT_ID: optionalString,
   DISCORD_GUILD_ID: optionalString,

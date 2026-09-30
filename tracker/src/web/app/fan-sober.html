@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="__BG__">
+<title>__TITLE__</title>
+<link rel="icon" href="/fan/assets/creator.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Gabarit « sober » : toutes les couleurs viennent de la config du créateur (injectées par le serveur). */
+  :root { /*__VARS__*/ --r: 16px; --r-sm: 12px; --r-lg: 20px; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.55 'Outfit', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; display: block; }
+  button, input { font: inherit; color: inherit; }
+  h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+
+  /* ---------- En-tête ---------- */
+  .top { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .top-in { max-width: 1120px; margin: 0 auto; display: flex; align-items: center; gap: 24px; padding: 12px 20px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: .02em; white-space: nowrap; }
+  .logo .pp { width: 30px; height: 30px; }
+  .menu { display: flex; gap: 4px; margin-right: auto; }
+  .menu a { padding: 8px 12px; border-radius: 10px; color: var(--muted); font-weight: 500; font-size: 15px; transition: color .15s, background .15s; }
+  .menu a:hover { color: var(--text); }
+  .menu a.on { color: var(--text); background: var(--card); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); font-weight: 500; font-size: 15px; white-space: nowrap; }
+  .pill small { color: var(--muted); font-size: 13px; }
+  .coin { width: 1em; height: 1em; flex: none; color: var(--muted); }
+
+  /* ---------- Boutons ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: var(--r-sm); padding: 12px 18px; font-weight: 500; font-size: 15px; cursor: pointer; transition: border-color .15s, opacity .15s; white-space: nowrap; }
+  .btn:hover { border-color: color-mix(in srgb, var(--text) 30%, var(--line)); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  .btn.primary:hover { opacity: .9; }
+  .btn.big { padding: 15px 24px; font-size: 16px; }
+  .btn.full { width: 100%; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .link { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; font-size: 14px; }
+  .link:hover { color: var(--text); }
+
+  /* ---------- Mise en page ---------- */
+  main { max-width: 1120px; margin: 0 auto; padding: 8px 20px 64px; }
+  section { margin: 56px 0; }
+  .page { animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; } }
+  .head { margin-bottom: 20px; }
+  .head h2 { font-size: clamp(26px, 3.4vw, 34px); }
+  .head p { color: var(--muted); margin: 6px 0 0; max-width: 620px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); }
+  .muted { color: var(--muted); }
+  .pp { border-radius: 50%; object-fit: cover; background: var(--card); border: 1px solid var(--line); overflow: hidden; display: grid; place-items: center; font-weight: 700; flex: none; }
+
+  /* ---------- Accueil ---------- */
+  .hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: center; margin-top: 48px; }
+  .hero h1 { font-size: clamp(36px, 4.6vw, 56px); font-weight: 700; }
+  .hero p { color: var(--muted); font-size: 18px; margin: 18px 0 30px; max-width: 520px; }
+  .portrait { aspect-ratio: 1; border-radius: var(--r-lg); overflow: hidden; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; font-size: 96px; font-weight: 700; color: var(--muted); }
+  .portrait img { width: 100%; height: 100%; object-fit: cover; }
+  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; gap: 28px; margin-top: 24px; } .portrait { max-width: 420px; width: 100%; } }
+  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .steps .card { padding: 22px; }
+  .steps .n { color: var(--muted); font-weight: 500; font-size: 14px; letter-spacing: .08em; }
+  .steps b { display: block; font-weight: 700; font-size: 18px; margin: 14px 0 4px; }
+  .steps small { color: var(--muted); font-size: 14px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
+
+  /* ---------- Récompenses ---------- */
+  .rewards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .reward { padding: 22px; display: grid; gap: 14px; align-content: start; }
+  .reward .pic { aspect-ratio: 16 / 9; border-radius: var(--r-sm); overflow: hidden; border: 1px solid var(--line); }
+  .reward .pic img { width: 100%; height: 100%; object-fit: cover; }
+  .reward h3 { font-size: 21px; }
+  .reward p { color: var(--muted); margin: -6px 0 0; font-size: 15px; }
+  .price { display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 700; }
+  .price .coin { width: 20px; height: 20px; }
+  .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); width: 0; transition: width .8s ease; }
+  .bar-txt { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-top: -6px; }
+
+  /* ---------- Classement ---------- */
+  .ranks { display: grid; gap: 8px; }
+  .rank { display: grid; grid-template-columns: 36px 40px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 16px; }
+  .rank .n { color: var(--muted); font-weight: 500; text-align: center; }
+  .rank .who b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank .who small { color: var(--muted); font-size: 13px; }
+  .rank .v { text-align: right; font-weight: 500; white-space: nowrap; }
+  .rank.me { border-color: var(--text); }
+  .rank .pp { width: 40px; height: 40px; font-size: 16px; }
+
+  /* ---------- Clipper ---------- */
+  .panel { padding: 22px; }
+  .panel h3 { font-size: 19px; margin-bottom: 6px; }
+  .panel p { color: var(--muted); margin: 0 0 14px; }
+  .panel p:last-child { margin-bottom: 0; }
+  .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag { border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-size: 14px; }
+  code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: .92em; }
+  .clips { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .clip { overflow: hidden; }
+  .clip .th { aspect-ratio: 9 / 12; background: var(--bg); position: relative; }
+  .clip .th img { width: 100%; height: 100%; object-fit: cover; }
+  .clip .pf { position: absolute; left: 10px; top: 10px; background: color-mix(in srgb, var(--bg) 80%, transparent); border-radius: 99px; padding: 3px 10px; font-size: 12px; }
+  .clip .meta { padding: 12px 14px; display: grid; gap: 2px; }
+  .clip .meta b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clip .meta small { color: var(--muted); font-size: 13px; }
+
+  /* ---------- Profil ---------- */
+  .profile { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .profile { grid-template-columns: 1fr; } }
+  .id { padding: 26px; text-align: center; display: grid; justify-items: center; gap: 6px; }
+  .id .pp { width: 88px; height: 88px; font-size: 32px; margin-bottom: 8px; }
+  .id h3 { font-size: 22px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .id .lvl { color: var(--muted); }
+  .id .bar { width: 100%; margin-top: 14px; }
+  .id .bar-txt { width: 100%; margin-top: 2px; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .stat { padding: 18px; min-width: 0; }
+  .stat small { color: var(--muted); font-size: 14px; }
+  .stat .v { font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; margin-top: 4px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .badge { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 14px 10px; text-align: center; font-size: 13px; }
+  .badge .e { font-size: 24px; line-height: 1.3; }
+  .badge.off { opacity: .35; }
+  .badge.off .e { filter: grayscale(1); }
+  .row { display: flex; gap: 8px; }
+  .row input { flex: 1; min-width: 0; }
+  input[type=email], input[type=text] { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; outline: none; font-size: 15px; }
+  input:focus { border-color: color-mix(in srgb, var(--text) 45%, var(--line)); }
+  .list-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .list-row:first-of-type { border-top: 0; }
+  .st { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; white-space: nowrap; }
+  .st.delivered { color: var(--text); }
+  .switch { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch span { width: 44px; height: 26px; border-radius: 99px; background: var(--line); position: relative; transition: background .2s; flex: none; }
+  .switch span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s; }
+  .switch input:checked + span { background: var(--text); }
+  .switch input:checked + span::after { transform: translateX(18px); background: var(--bg); }
+  .switch input:focus-visible + span { outline: 2px solid var(--text); outline-offset: 2px; }
+
+  /* ---------- Divers ---------- */
+  .empty { padding: 32px 22px; text-align: center; color: var(--muted); }
+  .login { padding: 32px 22px; display: grid; justify-items: center; gap: 12px; text-align: center; }
+  .login h3 { font-size: 22px; }
+  .login p { color: var(--muted); margin: 0 0 6px; max-width: 420px; }
+  footer { max-width: 1120px; margin: 0 auto; padding: 24px 20px 40px; color: var(--muted); font-size: 14px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
+  .modal-bg { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; animation: fade .15s; }
+  .modal { width: min(440px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 26px; display: grid; gap: 14px; }
+  .modal h3 { font-size: 21px; }
+  .modal p { color: var(--muted); margin: 0; }
+  .modal form { display: grid; gap: 10px; }
+  .modal .actions { display: grid; gap: 8px; margin-top: 4px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; background: var(--card); border: 1px solid var(--line); color: var(--text); padding: 12px 18px; border-radius: var(--r-sm); max-width: calc(100% - 32px); text-align: center; animation: fade .2s; }
+  .toast.err { border-color: #7a2e2e; }
+  .tabbar { display: none; }
+  @media (max-width: 860px) {
+    .menu { display: none; }
+    .top-in { justify-content: space-between; }
+    .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; background: var(--card); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+    .tabbar a { display: grid; justify-items: center; gap: 3px; padding: 6px 2px; color: var(--muted); font-size: 11px; font-weight: 500; }
+    .tabbar a svg { width: 22px; height: 22px; }
+    .tabbar a.on { color: var(--text); }
+    body { padding-bottom: 74px; }
+    .toast { bottom: 90px; }
+  }
+  @media (max-width: 480px) { main { padding: 8px 16px 56px; } .top-in { padding: 10px 16px; } .rewards { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="logo" href="#/" id="logo"></a>
+  <nav class="menu" id="menu"></nav>
+  <div id="me-slot"></div>
+</div></header>
+<main id="app"></main>
+<footer id="footer"></footer>
+<nav class="tabbar" id="tabbar"></nav>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const fmt = (n) => Number(n).toLocaleString('fr-FR');
+const compact = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '').replace('.', ',') + ' M' : n >= 1e4 ? Math.round(n / 1e3) + ' k' : fmt(n);
+const PLATFORM = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+let PUB = null, ME = null, C = null; // C = config du créateur
+const levelOf = (views) => C.levels.reduce((acc, l, i) => (views >= l.min ? i : acc), 0);
+
+// ---------- Visuels ----------
+const COIN = '<svg class="coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></svg>';
+const ICONS = {
+  '': '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  recompenses: '<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1s6 1 6 1zm0 0c2-4 6-4 6-1s-6 1-6 1z"/>',
+  clipper: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
+  classement: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  profil: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+};
+const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
+/** Photo du créateur (repli : initiale) */
+const creatorPic = (cls, style = '') => `<span class="${cls}" style="${style}"><img src="/fan/assets/creator.png" alt="${esc(C.creatorName)}" onerror="this.replaceWith(document.createTextNode('${esc(C.creatorName.charAt(0))}'))"></span>`;
+function avatar(name, url) {
+  if (url) return `<span class="pp"><img src="${esc(url)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></span>`;
+  return `<span class="pp">${esc(String(name).trim().charAt(0).toUpperCase() || '?')}</span>`;
+}
+
+// ---------- Données ----------
+async function api(path, opts = {}) {
+  const res = await fetch(path, { method: opts.method ?? 'GET', headers: opts.body ? { 'content-type': 'application/json' } : {}, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error ?? `Erreur ${res.status}`), { status: res.status });
+  return data;
+}
+async function loadMe() { try { ME = await api('/api/fan/me'); } catch { ME = null; } }
+
+function toast(msg, kind = '') {
+  document.querySelectorAll('.toast').forEach((t) => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind; t.textContent = msg; document.body.append(t);
+  setTimeout(() => t.remove(), 3600);
+}
+function modal(html, onMount) {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
+  document.body.append(bg);
+  const close = () => bg.remove();
+  bg.addEventListener('click', (e) => { if (e.target === bg || e.target.closest('[data-close]')) close(); });
+  onMount?.(bg, close);
+  $('input', bg)?.focus();
+  return close;
+}
+const bar = (pct) => `<div class="bar"><i data-w="${Math.max(2, Math.min(100, pct))}"></i></div>`;
+const loginBtn = (label = 'Se connecter avec Discord') => `<a class="btn big" href="/fan/auth/discord">${label}</a>`;
+const loginCard = (title, text) => `<div class="card login"><h3>${esc(title)}</h3><p>${esc(text)}</p>${loginBtn()}</div>`;
+
+// ---------- Cadre ----------
+const ROUTES = [['', 'Accueil'], ['recompenses', 'Récompenses'], ['clipper', 'Clipper'], ['classement', 'Classement'], ['profil', 'Profil']];
+function renderChrome(route) {
+  $('#logo').innerHTML = `${creatorPic('pp')}<span>${esc(C.creatorName)}</span>`;
+  $('#menu').innerHTML = ROUTES.slice(1).map(([r, l]) => `<a href="#/${r}" class="${r === route ? 'on' : ''}">${l}</a>`).join('');
+  $('#tabbar').innerHTML = ROUTES.map(([r, l]) => `<a href="#/${r}" class="${r === route ? 'on' : ''}">${icon(r)}${l}</a>`).join('');
+  $('#me-slot').innerHTML = ME
+    ? `<a class="pill" href="#/profil" title="Ton solde">${COIN}<span>${fmt(ME.balance)}</span><small>coins</small></a>`
+    : `<a class="btn" href="/fan/auth/discord">Connexion</a>`;
+}
+
+// ---------- Récompenses ----------
+function rewardCard(i) {
+  const soldOut = i.stock !== null && i.stock <= 0;
+  const r = C.reward && C.reward.ref === i.ref ? C.reward : null;
+  let action;
+  if (!ME) action = `<a class="btn full" href="/fan/auth/discord">Se connecter pour échanger</a>`;
+  else if (soldOut) action = `<button class="btn full" disabled>Épuisé</button>`;
+  else if (ME.balance >= i.price) action = `${bar(100)}<button class="btn primary full" data-buy="${i.id}">Échanger</button>`;
+  else action = `${bar((ME.balance / i.price) * 100)}<div class="bar-txt"><span>${fmt(ME.balance)} / ${fmt(i.price)} coins</span><span>encore ${fmt(i.price - ME.balance)}</span></div><button class="btn full" disabled>Échanger</button>`;
+  return `<div class="card reward">
+    ${i.imageUrl ? `<div class="pic"><img src="${esc(i.imageUrl)}" alt="" loading="lazy"></div>` : ''}
+    <h3>${esc(i.name)}</h3>${i.description ? `<p>${esc(i.description)}</p>` : ''}
+    ${r?.url ? `<a class="link" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.linkLabel)} ↗</a>` : ''}
+    <div class="price">${COIN}${fmt(i.price)} coins</div>${action}</div>`;
+}
+const emptyShop = () => `<div class="card empty" style="grid-column:1/-1">Aucune récompense pour l'instant.</div>`;
+
+function accountModal(after) {
+  const ra = C.rewardAccount;
+  modal(`<h3>${esc(ra.title)}</h3><p>${esc(ra.deliveryHint)}</p>
+    <form><input type="${ra.kind === 'email' ? 'email' : 'text'}" name="v" placeholder="${esc(ra.placeholder)}" aria-label="${esc(ra.label)}" required autocomplete="${ra.kind === 'email' ? 'email' : 'off'}">
+    <button class="btn primary full">Enregistrer</button></form>`, (bg, close) => {
+    $('form', bg).onsubmit = async (e) => {
+      e.preventDefault();
+      try { await saveAccount(new FormData(e.target).get('v')); close(); await loadMe(); after?.(); route(); }
+      catch (err) { toast(err.message, 'err'); }
+    };
+  });
+}
+async function saveAccount(v) {
+  const r = await api('/api/fan/account', { method: 'PUT', body: { value: v } });
+  toast(`Enregistré : ${r.value}`);
+}
+function bindBuy(root) {
+  root.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => {
+    const item = ME.items.find((i) => i.id === Number(b.dataset.buy));
+    if (!ME.rewardAccount?.value) return accountModal(() => b.click());
+    modal(`<h3>${esc(item.name)}</h3><p>Échanger <b style="color:var(--text)">${fmt(item.price)} coins</b> contre cette récompense ?</p>
+      <p>${esc(C.rewardAccount.deliveryHint)} <b style="color:var(--text)">${esc(ME.rewardAccount.value)}</b></p>
+      <div class="actions"><button class="btn primary big" data-ok>Confirmer l'échange</button><button class="btn" data-close>Annuler</button></div>`, (bg, close) => {
+      $('[data-ok]', bg).onclick = async (e) => {
+        e.target.disabled = true;
+        try {
+          await api('/api/fan/orders', { method: 'POST', body: { itemId: item.id } });
+          close(); toast('Échange enregistré. Suis son statut dans ton profil.');
+          await refresh();
+        } catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
+      };
+    });
+  }));
+}
+
+// ---------- Pages ----------
+function pageHome() {
+  const lb = PUB.leaderboard.slice(0, 5);
+  return `
+  <section class="hero">
+    <div><h1>${esc(C.texts.heroTitle)}</h1><p>${esc(C.texts.heroText)}</p><a class="btn primary big" href="#/clipper">${esc(C.texts.heroCta)}</a></div>
+    ${creatorPic('portrait')}
+  </section>
+  <section><div class="steps">${C.texts.steps.map((s, k) => `<div class="card"><div class="n">${String(k + 1).padStart(2, '0')}</div><b>${esc(s.title)}</b><small>${esc(s.text)}</small></div>`).join('')}</div></section>
+  <section><div class="head"><h2>Top clippeurs de la semaine</h2></div>${lb.length ? rankList(lb) : '<div class="card empty">Pas encore de vues cette semaine. Le classement se remplit dès les premiers clips.</div>'}</section>`;
+}
+
+function pageShop() {
+  const items = ME ? ME.items : PUB.items;
+  return `<section>
+    <div class="head"><h2>${esc(C.texts.shopTitle)}</h2><p>${esc(C.texts.shopText)} ${fmt(PUB.pointsPer1000)} coins pour 1 000 vues.</p></div>
+    ${ME ? `<div class="card panel" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="muted">Ton solde</span><span class="price">${COIN}${fmt(ME.balance)} coins</span></div>` : ''}
+    <div class="rewards">${items.map(rewardCard).join('') || emptyShop()}</div>
+    ${ME ? '' : `<div style="margin-top:12px">${loginCard('Connecte-toi pour échanger', 'Connecte-toi avec Discord pour voir ton solde et échanger tes coins.')}</div>`}
+  </section>`;
+}
+
+function pageClip() {
+  const head = `<div class="head"><h2>${esc(C.texts.clipTitle)}</h2><p>${esc(C.texts.clipText)}</p></div>`;
+  const how = `<div class="card panel" style="margin-bottom:12px"><h3>Relier tes comptes</h3>
+    <p>Sur le Discord, ouvre un ticket et fais <code>/inscription</code>. Renseigne tes comptes TikTok, YouTube et Instagram, et ton ${esc(C.rewardAccount.label.charAt(0).toLowerCase() + C.rewardAccount.label.slice(1))}. Seules les vues faites après l'inscription comptent.</p>
+    ${PUB.discordInviteUrl ? `<a class="btn" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord</a>` : ''}</div>`;
+  if (!ME) return `<section>${head}${how}${loginCard('Suis tes clips', 'Connecte-toi avec Discord pour voir tes clips, tes vues et tes coins.')}</section>`;
+  return `<section>${head}
+    ${ME.accounts.length ? `<div class="card panel" style="margin-bottom:12px"><h3>Comptes suivis</h3><p>Tes vues sont mises à jour une fois par jour.</p><div class="tags">${ME.accounts.map((a) => `<span class="tag">${PLATFORM[a.platform]} · @${esc(a.handle)}</span>`).join('')}</div></div>` : how}
+    <div class="head" style="margin-top:32px"><h2>Mes clips</h2><p>${fmt(ME.clipCount)} clip(s) détecté(s).</p></div>
+    <div class="clips">${ME.clips.map((c) => `<a class="card clip" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
+      <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : ''}<span class="pf">${PLATFORM[c.platform]}</span></div>
+      <div class="meta"><b>${esc(c.title || 'Clip')}</b><small>${compact(c.views)} vues · +${fmt(c.coins)} coins</small></div></a>`).join('')
+      || '<div class="card empty" style="grid-column:1/-1">Aucun clip détecté pour l\'instant. Ils apparaissent ici après la prochaine mise à jour des vues.</div>'}</div>
+  </section>`;
+}
+
+function rankList(rows) {
+  return `<div class="ranks">${rows.map((r) => `<div class="card rank ${ME && r.name === ME.username ? 'me' : ''}"><span class="n">${r.rank}</span>${avatar(r.name, r.avatar)}
+    <span class="who"><b>${esc(r.name)}</b><small>+${fmt(r.coins)} coins</small></span><span class="v">${compact(r.views)} vues</span></div>`).join('')}</div>`;
+}
+function pageRanking() {
+  const lb = PUB.leaderboard;
+  return `<section><div class="head"><h2>Classement</h2><p>${esc(C.texts.rankingText)}${ME?.weekRank ? ` Tu es ${ME.weekRank}e.` : ''}</p></div>
+    ${lb.length ? rankList(lb) : '<div class="card empty">Pas encore de vues cette semaine. Poste ton premier clip pour apparaître ici.</div>'}</section>`;
+}
+
+function pageProfile() {
+  if (!ME) return `<section>${loginCard('Ton profil', 'Connecte-toi avec Discord pour voir tes coins, ton niveau et tes échanges.')}</section>`;
+  const li = levelOf(ME.views), lvl = C.levels[li], next = C.levels[li + 1];
+  const pct = next ? ((ME.views - lvl.min) / (next.min - lvl.min)) * 100 : 100;
+  const platforms = new Set(ME.accounts.map((a) => a.platform)).size;
+  const traded = ME.orders.filter((o) => o.status !== 'refunded').length;
+  const ra = C.rewardAccount;
+  const badges = [
+    ['🎬', 'Premier clip', ME.clipCount >= 1], ['💯', '10 clips', ME.clipCount >= 10], ['📱', 'Multi-plateforme', platforms >= 2],
+    ['👀', '10k vues', ME.views >= 1e4], ['🚀', '100k vues', ME.views >= 1e5], ['💎', '1M vues', ME.views >= 1e6],
+    ['🔗', ra.badge, !!ME.rewardAccount?.value], ['🛒', 'Premier échange', traded >= 1], ['🏆', 'Top 3 semaine', !!ME.weekRank && ME.weekRank <= 3],
+  ];
+  return `<section><div class="profile">
+    <div class="card id">${avatar(ME.username, ME.avatar)}<h3>${esc(ME.username)}</h3><div class="lvl">${lvl.emoji} ${esc(lvl.name)}</div>
+      ${bar(pct)}<div class="bar-txt">${next ? `<span>Prochain : ${esc(next.name)}</span><span>encore ${compact(next.min - ME.views)} vues</span>` : '<span>Niveau maximum atteint</span>'}</div></div>
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="stats">
+        <div class="card stat"><small>Coins</small><div class="v">${fmt(ME.balance)}</div></div>
+        <div class="card stat"><small>Vues</small><div class="v">${compact(ME.views)}</div></div>
+        <div class="card stat"><small>Clips</small><div class="v">${fmt(ME.clipCount)}</div></div>
+        <div class="card stat"><small>Semaine</small><div class="v">${ME.weekRank ? ME.weekRank + 'e' : '—'}</div></div>
+      </div>
+      <div class="card panel"><h3>Badges</h3><p>${badges.filter((b) => b[2]).length} / ${badges.length} débloqués</p>
+        <div class="badges">${badges.map(([e, n, on]) => `<div class="badge ${on ? '' : 'off'}"><div class="e">${e}</div>${esc(n)}</div>`).join('')}</div></div>
+      <div class="card panel"><h3>${esc(ra.title)}</h3><p>${ME.rewardAccount?.value ? `Relié : <b style="color:var(--text)">${esc(ME.rewardAccount.value)}</b>. ${esc(ra.deliveryHint)}` : esc(ra.deliveryHint)}</p>
+        <form class="row" id="account"><input type="${ra.kind === 'email' ? 'email' : 'text'}" name="v" placeholder="${esc(ra.placeholder)}" aria-label="${esc(ra.label)}" value="${esc(ME.rewardAccount?.value ?? '')}" required><button class="btn">${ME.rewardAccount?.value ? 'Modifier' : 'Enregistrer'}</button></form></div>
+      <div class="card panel"><h3>Notifications Discord</h3><p>Un message privé quand tu gagnes des coins, passes un niveau ou peux échanger une récompense. Un par jour au maximum.</p>
+        <label class="switch"><input type="checkbox" id="notify" ${ME.notify ? 'checked' : ''}><span></span><b style="font-weight:500">${ME.notify ? 'Activées' : 'Désactivées'}</b></label></div>
+      <div class="card panel"><h3>Mes échanges</h3>${ME.orders.length ? ME.orders.map((o) => `<div class="list-row"><span>${esc(o.itemName)} <span class="muted">· ${fmt(o.price)} coins</span></span><span class="st ${o.status}">${esc(C.statuses[o.status] ?? o.status)}</span></div>`).join('') : '<p>Aucun échange pour l\'instant.</p>'}</div>
+      <div><button class="btn" id="logout">Se déconnecter</button></div>
+    </div></div></section>`;
+}
+
+// ---------- Routeur ----------
+async function refresh() { await loadMe(); route(); }
+function route() {
+  const r = location.hash.replace(/^#\/?/, '').split('/')[0];
+  const known = ROUTES.some(([k]) => k === r) ? r : '';
+  renderChrome(known);
+  const app = $('#app');
+  app.innerHTML = `<div class="page">${{ '': pageHome, recompenses: pageShop, clipper: pageClip, classement: pageRanking, profil: pageProfile }[known]()}</div>`;
+  requestAnimationFrame(() => app.querySelectorAll('[data-w]').forEach((el) => (el.style.width = el.dataset.w + '%')));
+  bindBuy(app);
+  const af = $('#account');
+  if (af) af.onsubmit = async (e) => { e.preventDefault(); try { await saveAccount(new FormData(e.target).get('v')); await refresh(); } catch (err) { toast(err.message, 'err'); } };
+  $('#notify')?.addEventListener('change', async (e) => {
+    try { await api('/api/fan/notify', { method: 'PUT', body: { on: e.target.checked } }); ME.notify = e.target.checked; e.target.nextElementSibling.nextElementSibling.textContent = e.target.checked ? 'Activées' : 'Désactivées'; }
+    catch (err) { toast(err.message, 'err'); e.target.checked = !e.target.checked; }
+  });
+  $('#logout')?.addEventListener('click', async () => { await api('/fan/logout', { method: 'POST' }).catch(() => {}); ME = null; location.hash = '#/'; route(); });
+}
+
+/** Retour du fan : coins gagnés depuis la dernière visite, passage de niveau. */
+function welcomeBack() {
+  if (!ME) return;
+  const key = 'fan_' + C.id;
+  const lastCoins = Number(store.get(key + '_earned') ?? NaN), lastLevel = Number(store.get(key + '_level') ?? NaN);
+  const li = levelOf(ME.views);
+  if (Number.isFinite(lastLevel) && li > lastLevel) toast(`Nouveau niveau : ${C.levels[li].name}`);
+  else if (Number.isFinite(lastCoins) && ME.earned > lastCoins) toast(`+${fmt(ME.earned - lastCoins)} coins depuis ta dernière visite`);
+  store.set(key + '_earned', String(ME.earned)); store.set(key + '_level', String(li));
+}
+
+async function init() {
+  [PUB] = await Promise.all([api('/api/fan/public'), loadMe()]);
+  C = PUB.creator;
+  $('#footer').innerHTML = `<span>© ${new Date().getFullYear()} ${esc(C.texts.footer)}</span><span>Vues mises à jour une fois par jour · ${fmt(PUB.pointsPer1000)} coins pour 1 000 vues</span>`;
+  addEventListener('hashchange', () => { route(); scrollTo({ top: 0 }); });
+  route();
+  const error = new URLSearchParams(location.search).get('error');
+  if (error) { toast(error, 'err'); history.replaceState(null, '', location.pathname + location.hash); }
+  welcomeBack();
+}
+init().catch((err) => { $('#app').innerHTML = `<div class="card empty" style="margin-top:40px">${esc(err.message)}</div>`; });
+</script>
+</body>
+</html>
