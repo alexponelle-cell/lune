@@ -223,6 +223,8 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
         ch = await guild.channels.create({ name: plan.name, type: ChannelType.GuildText, parent: cat.id, topic: plan.topic, permissionOverwrites: overwrites(guild, plan.access, staff.id) });
         created.push(`#${plan.name}`);
       }
+      // Salon retrouvé sous un autre nom (ex. #général créé par Discord) : renommé comme le plan
+      if (ch.name !== plan.name) await ch.setName(plan.name).catch(() => {});
       // Salon existant ailleurs (ex. #général par défaut) : rangé dans sa catégorie, accès mis à jour
       if (ch.parentId !== cat.id) await ch.setParent(cat.id, { lockPermissions: false }).catch(() => {});
       await ch.permissionOverwrites.set(overwrites(guild, plan.access, staff.id)).catch(() => {});
