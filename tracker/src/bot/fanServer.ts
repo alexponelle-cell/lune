@@ -120,6 +120,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
 
   await guild.channels.fetch();
   const channels = new Map<string, TextChannel>();
+  const cats: string[] = [];
   for (const group of SERVER_PLAN) {
     let cat = guild.channels.cache.find((ch) => ch.type === ChannelType.GuildCategory && ch.name === group.category);
     if (!cat) {
@@ -133,9 +134,16 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
         ch = await guild.channels.create({ name: plan.name, type: ChannelType.GuildText, parent: cat.id, topic: plan.topic, permissionOverwrites: overwrites(guild, plan.access, staff.id) });
         created.push(`#${plan.name}`);
       }
+      // Salon existant ailleurs (ex. #général par défaut) : rangé dans sa catégorie
+      if (ch.parentId !== cat.id) await ch.setParent(cat.id, { lockPermissions: false }).catch(() => {});
       channels.set(bare(plan.name), ch);
     }
+    cats.push(cat.id);
   }
+  // Catégories dans l'ordre du plan, sous les éventuelles catégories par défaut de Discord
+  await guild.channels
+    .setPositions(cats.map((id, i) => ({ channel: id, position: 100 + i })))
+    .catch((err) => log.warn(`/setup : ordre des catégories (${err instanceof Error ? err.message : String(err)})`));
 
   const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('fans:signup').setStyle(ButtonStyle.Primary).setLabel('S’inscrire').setEmoji('📝'),
