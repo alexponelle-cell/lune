@@ -49,7 +49,10 @@ export async function syncTierRoles(client: Client<true>, fans: FanService): Pro
         if (extra.length) await member.roles.remove(extra.map((r) => r.id));
         if (f.tier >= 0 && !member.roles.cache.has(roles[f.tier]!.id)) await member.roles.add(roles[f.tier]!.id);
         changes++;
-        if (f.tier > current && levelUp) {
+        // Annoncé une seule fois par fan et par palier, même si le rôle a été retiré puis rendu
+        const key = f.tier >= 0 ? `tier:${guild.id}:${tiers[f.tier]!.itemId}` : '';
+        if (f.tier > current && levelUp && key && !fans.fans.wasNotified(f.clipperId, key)) {
+          fans.fans.markNotified(f.clipperId, key);
           const t = tiers[f.tier]!;
           await levelUp.send({
             content: `${member}`,

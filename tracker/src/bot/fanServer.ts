@@ -57,16 +57,23 @@ export const tierRoleName = (itemName: string) => `${TIER_PREFIX}${itemName}`.sl
 export async function ensureTierRoles(guild: Guild, fans: FanService): Promise<Role[]> {
   const tiers = fans.shopTiers();
   const wanted = tiers.map((t) => tierRoleName(t.name));
+  // Comparaison souple (emoji, espaces, majuscules) : un rôle légèrement différent n'est jamais supprimé puis recréé
+  const same = (a: string, b: string) => bare(a) === bare(b);
   for (const r of guild.roles.cache.values()) {
     const oldLevel = fans.creator.levels.some((l) => sameName(r.name, levelRoleName(l)));
-    const oldTier = r.name.startsWith(TIER_PREFIX) && !wanted.some((w) => sameName(w, r.name));
+    const oldTier = r.name.startsWith(TIER_PREFIX) && !wanted.some((w) => same(w, r.name));
     if ((oldLevel || oldTier) && r.editable) await r.delete('Paliers = objets de la boutique').catch(() => {});
   }
   const roles: Role[] = [];
   // Du plus cher au moins cher : Discord place chaque nouveau rôle en bas, le plus gros palier reste au-dessus
   for (let i = wanted.length - 1; i >= 0; i--) {
     const name = wanted[i]!;
-    roles[i] = guild.roles.cache.find((r) => sameName(r.name, name)) ?? (await guild.roles.create({ name, colors: { primaryColor: color(fans) }, hoist: true, reason: 'Palier de la boutique' }));
+    const found = guild.roles.cache.find((r) => same(r.name, name));
+    if (found) roles[i] = found;
+    else {
+      log.info(`rôle de palier créé sur ${guild.name} : ${name}`);
+      roles[i] = await guild.roles.create({ name, colors: { primaryColor: color(fans) }, hoist: true, reason: 'Palier de la boutique' });
+    }
   }
   return roles;
 }
