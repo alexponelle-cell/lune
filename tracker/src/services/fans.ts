@@ -261,17 +261,21 @@ export class FanService {
   }
 
   /** Dernières vidéos de la chaîne YouTube du créateur (API YouTube, playlist « uploads »). */
+  /** Dernières vidéos longues de la chaîne du créateur (les Shorts ne sont pas annoncés). */
   async latestVideos(apiKey: string, limit = 5): Promise<Array<{ id: string; title: string; url: string; thumbnail: string | null; publishedAt: string }>> {
     const handle = this.settings().creatorYoutube;
     if (!handle) return [];
     let uploads = this.botState<{ handle: string; playlist: string } | null>('yt-uploads', null);
-    if (!uploads || uploads.handle !== handle) {
+    // Playlist « UULF… » = vidéos longues uniquement (sans les Shorts) ; les anciennes valeurs « UU… » sont remplacées
+    if (!uploads || uploads.handle !== handle || !uploads.playlist.startsWith('UULF')) {
       const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${encodeURIComponent('@' + handle)}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
       const r = (await res.json()) as { items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }> };
       const playlist = r.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
       if (!playlist) throw new Error(`chaîne @${handle} introuvable`);
-      uploads = { handle, playlist };
+      uploads = { handle, playlist: `UULF${playlist.slice(2)}` };
       this.setBotState('yt-uploads', uploads);
+      // Nouvelle liste : on repart de zéro (1er passage = mémorise l'existant sans rien poster)
+      this.setBotState('yt-seen', null);
     }
     const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${limit}&playlistId=${uploads.playlist}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`YouTube HTTP ${res.status}`);
