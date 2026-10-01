@@ -41,9 +41,23 @@ export class GameClient {
     return { authorization: `Bearer ${this.token}`, 'x-api-key': this.token, 'content-type': 'application/json' };
   }
 
+  /** Message lisible d'une erreur de l'API ({ error, message }). */
+  private async explain(res: Response): Promise<string> {
+    const b = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+    if (res.status === 401) return 'Serveur du jeu : token refusé (401). Mets le bon token dans GAME_API_TOKEN (Railway).';
+    return `Serveur du jeu : HTTP ${res.status}${b?.error ? ` · ${b.error}` : ''}${b?.message ? ` · ${b.message}` : ''}`;
+  }
+
+  /** GET /rate-limit : vérifie le token et donne le quota restant. */
+  async rateLimit(): Promise<{ limit: number; windowSeconds: number; used: number; remaining: number; resetAt: string | null }> {
+    const res = await this.fetchFn(this.url('/rate-limit'), { headers: this.headers(), signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(await this.explain(res));
+    return (await res.json()) as { limit: number; windowSeconds: number; used: number; remaining: number; resetAt: string | null };
+  }
+
   async products(): Promise<GameProduct[]> {
     const res = await this.fetchFn(this.url('/products'), { headers: this.headers(), signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) throw new Error(`Serveur du jeu : HTTP ${res.status}`);
+    if (!res.ok) throw new Error(await this.explain(res));
     const body = (await res.json()) as unknown;
     const list = Array.isArray(body) ? body : ((body as { products?: unknown[] })?.products ?? []);
     return list
