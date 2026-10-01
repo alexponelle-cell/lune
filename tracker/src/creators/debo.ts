@@ -1,29 +1,36 @@
 import type { CreatorConfig } from './types.js';
 
 /**
- * DEBO PLAYS (youtube.com/@DEBO-PLAYS) : gabarit « sober ».
- * PROVISOIRE : couleurs, textes et récompense à valider avec lui (captures de sa chaîne à venir).
+ * DEBO PLAYS (youtube.com/@DEBO-PLAYS) : gabarit « pop » (public jeune : multicolore, énergique, fluide).
+ * Récompense : des Robux, envoyés par le staff sur le compte Roblox du clippeur.
  */
 export const debo: CreatorConfig = {
   id: 'debo',
   programName: 'DEBO PLAYS',
   creatorName: 'DEBO',
   youtube: 'DEBO-PLAYS',
-  theme: 'sober',
-  colors: { bg: '#0A0B10', card: '#15161D', border: '#272935', text: '#F5F6FA', muted: '#9A9CAB', accent: '#4F8CFF', accentInk: '#FFFFFF' },
-  font: 'Montserrat',
+  theme: 'pop',
+  colors: { bg: '#0D0A24', card: '#1A1540', border: '#2E2762', text: '#FFFFFF', muted: '#B9B2E6', accent: '#FF3EA5', accentInk: '#FFFFFF', accent2: '#FFD60A', accent3: '#29E7FF' },
+  font: 'Nunito',
   logoText: 'debo.',
   pointsPer1000: 10,
   rewardAccount: {
-    kind: 'email',
-    title: 'Compte de livraison',
-    label: 'E-mail pour recevoir tes récompenses',
-    placeholder: 'ton@email.com',
-    badge: 'Compte relié',
-    deliveryHint: 'Ta récompense est envoyée sur cet e-mail.',
+    kind: 'roblox',
+    title: 'Compte Roblox',
+    label: 'Pseudo Roblox (pour recevoir tes Robux)',
+    placeholder: 'TonPseudoRoblox',
+    badge: 'Roblox relié',
+    deliveryHint: 'Tes Robux sont envoyés sur ce compte Roblox par le staff.',
   },
-  // Récompense à définir avec DEBO : ajoutée ensuite depuis le dashboard (Boutique fans)
-  reward: null,
+  // Premier palier ; les autres (500, 1 000 Robux…) s'ajoutent depuis Mars (Boutique fans)
+  reward: {
+    name: '100 Robux',
+    description: '100 Robux envoyés sur ton compte Roblox. Échange autant de fois que tu veux.',
+    price: 1000,
+    ref: 'robux-100',
+    url: 'https://www.roblox.com/',
+    linkLabel: 'Roblox',
+  },
   levels: [
     { name: 'Débutant', emoji: '🌱', min: 0 },
     { name: 'Confirmé', emoji: '⚡', min: 10_000 },
@@ -34,14 +41,14 @@ export const debo: CreatorConfig = {
     welcome: [
       '👋 **Salut et bienvenue sur DEBO Clipping !**',
       '',
-      'Ici, tu peux gagner **des récompenses gratuitement** grâce à tes clips de {creator} 🎮',
+      'Ici, tu peux gagner **des Robux gratuitement** grâce à tes clips de {creator} 🎮',
       '',
       '🎁 **Comment gagner des récompenses ?**',
       'C’est très simple : tu fais des clips des vidéos de {creator} 👀',
       '',
       '📱 Crée tes propres comptes **YouTube, TikTok et Instagram**, puis poste tes clips dessus.',
       '✨ Les vues de YouTube + TikTok + Instagram sont **toutes comptées ensemble** !',
-      '🪙 **1 000 vues = {rate} coins**, à échanger dans la boutique du site.',
+      '🪙 **1 000 vues = {rate} coins**, à échanger contre des **Robux** sur le site.',
       '',
       '😕 **Tu ne sais pas faire de montage ?**',
       'Pas de panique, c’est normal quand on débute 😊 Pose tes questions dans ❓│aide : on t’explique tout, étape par étape.',
@@ -82,29 +89,30 @@ export const debo: CreatorConfig = {
       '⚠️ Le non-respect des règles peut entraîner un avertissement, un mute ou un bannissement.',
     ].join('\n'),
   },
-  statuses: { pending: 'En attente', delivered: 'Livrée', refunded: 'Remboursée' },
+  statuses: { pending: 'Robux en route 🚚', delivered: 'Robux reçus ✅', refunded: 'Remboursé' },
   texts: {
-    heroTitle: 'Clippe DEBO. **Gagne des coins.**',
-    heroText: 'Poste des clips de DEBO sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges ensuite dans la boutique.',
+    heroTitle: 'Clippe DEBO. **Gagne des Robux.**',
+    heroText: 'Poste des clips de DEBO sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges contre des Robux.',
     heroCta: 'Commencer à clipper',
     steps: [
       { title: 'Crée ton clip', text: 'Un passage de DEBO qui mérite d’être vu.' },
       { title: 'Poste-le', text: 'Sur TikTok, Instagram ou YouTube.' },
       { title: 'Gagne des coins', text: '10 coins pour 1 000 vues, tous comptes confondus.' },
-      { title: 'Échange-les', text: 'Dans la boutique, quand tu as assez de coins.' },
+      { title: 'Prends tes Robux', text: 'Échange tes coins dans la boutique, on t’envoie les Robux.' },
     ],
     shopTitle: 'Récompenses',
-    shopText: 'Échange tes coins dans la boutique.',
+    shopText: 'Échange tes coins contre des Robux, envoyés sur ton compte Roblox.',
     clipTitle: 'Clipper',
     clipText: 'Poste des clips de DEBO sur TikTok, Instagram ou YouTube. Tes vues sont comptées une fois par jour.',
     rankingText: 'Les clippeurs qui ont fait le plus de vues ces 7 derniers jours.',
     footer: 'DEBO PLAYS',
-    deliveredDm: '✅ Ta récompense **{item}** a été livrée.',
-    dmFooter: 'DEBO PLAYS · Clippe, gagne des coins',
+    deliveredDm: '✅ Tes **{item}** ont été envoyés sur ton compte Roblox !',
+    dmFooter: 'DEBO PLAYS · Clippe, gagne des Robux',
     faq: [
       { q: 'Comment je gagne des coins ?', a: 'Tu postes des clips de DEBO sur TikTok, Instagram ou YouTube. Chaque vue compte : 1 000 vues = 10 coins, tous comptes confondus.' },
       { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, clique sur « S’inscrire » dans le salon inscription et renseigne tes comptes.' },
       { q: 'Quand mes vues sont-elles comptées ?', a: 'Une fois par jour. Seules les vues faites après ton inscription rapportent des coins.' },
+      { q: 'Comment je reçois mes Robux ?', a: 'Relie ton pseudo Roblox dans ton profil, échange tes coins dans la boutique : le staff t’envoie les Robux sur ce compte et tu reçois un message Discord dès que c’est fait.' },
       { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum. Un compte qui vient de démarrer peut gagner des coins dès son premier clip.' },
     ],
     finalTitle: 'Prêt à **clipper** ?',

@@ -239,6 +239,33 @@
   @media (max-width: 600px) { .ctas { display: grid; } .ctas .btn { width: 100%; } }
   @media (max-width: 480px) { main { padding: 8px 16px 56px; } .top-in { padding: 12px 16px; } .rewards { grid-template-columns: 1fr; } .logo { font-size: 19px; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .js .rv:not(.in) { opacity: 1; transform: none; filter: none; } }
+
+  /* ---------- Thème « pop » : multicolore, énergique, tout en douceur (dégradés accent → accent2 → accent3) ---------- */
+  body.pop { --grad: linear-gradient(100deg, var(--accent), var(--accent2) 50%, var(--accent3)); --r: 22px; --r-sm: 16px; --r-lg: 30px; }
+  body.pop::before { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none; opacity: .55; filter: blur(70px);
+    background: radial-gradient(28vmax 28vmax at 18% 22%, color-mix(in srgb, var(--accent) 60%, transparent), transparent 70%),
+                radial-gradient(26vmax 26vmax at 82% 18%, color-mix(in srgb, var(--accent3) 55%, transparent), transparent 70%),
+                radial-gradient(30vmax 30vmax at 60% 85%, color-mix(in srgb, var(--accent2) 45%, transparent), transparent 70%);
+    animation: popdrift 18s ease-in-out infinite alternate; }
+  @keyframes popdrift { 0% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(3vmax, -2vmax) rotate(8deg); } 100% { transform: translate(-2vmax, 2vmax) rotate(-6deg); } }
+  @keyframes popshine { to { background-position: 200% center; } }
+  body.pop .y { background: var(--grad); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: popshine 5s linear infinite; }
+  body.pop .btn { border-radius: 99px; transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, border-color .2s, background .2s; }
+  body.pop .btn:hover { transform: translateY(-3px) scale(1.03); }
+  body.pop .btn:active { transform: translateY(1px) scale(.98); }
+  body.pop .btn.primary { background: var(--grad); background-size: 200% auto; border: 0; color: #140B33; font-weight: 800; box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 45%, transparent); animation: popshine 6s linear infinite; }
+  body.pop .card { border-color: color-mix(in srgb, var(--accent3) 18%, var(--line)); transition: transform .3s cubic-bezier(.34,1.56,.64,1), border-color .3s, box-shadow .3s; }
+  body.pop .card:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 16px 40px color-mix(in srgb, var(--accent) 18%, transparent); }
+  body.pop .pill { border-color: color-mix(in srgb, var(--accent2) 40%, var(--line)); }
+  body.pop .coin { color: var(--accent2); }
+  body.pop .menu a.on::after { background: var(--grad); height: 3px; }
+  body.pop .logo .pp { border: 0; padding: 2px; background: var(--grad); }
+  body.pop .stage .photo { padding: 5px; background: conic-gradient(from 0deg, var(--accent), var(--accent2), var(--accent3), var(--accent)); box-shadow: 0 30px 90px color-mix(in srgb, var(--accent) 40%, transparent); }
+  body.pop .stage .photo img { border-radius: calc(var(--r-lg) - 5px); transform: none; }
+  body.pop .chip.g { background: var(--accent2); color: #1A1200; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent2) 45%, transparent); }
+  body.pop .chip.o { border-color: var(--accent3); color: var(--accent3); background: color-mix(in srgb, var(--bg) 85%, transparent); }
+  body.pop ::selection { background: var(--accent3); color: #000; }
+  @media (prefers-reduced-motion: reduce) { body.pop::before, body.pop .y, body.pop .btn.primary { animation: none; } }
 </style>
 </head>
 <body>

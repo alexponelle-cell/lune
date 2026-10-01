@@ -1545,7 +1545,7 @@ async function pageBoutique() {
         <div class="grid-form">
           <label class="field"><span>Invitation Discord</span><input class="input" name="discordInviteUrl" value="${esc(s.discordInviteUrl)}" placeholder="https://discord.gg/…"><small>Bouton « Rejoindre la communauté »</small></label>
           <label class="field"><span>Chaîne YouTube du créateur</span><input class="input" name="creatorYoutube" value="${esc(s.creatorYoutube ?? '')}" placeholder="BeOnePourcent"><small>${d.avatars.urls.youtube ? '✅ Photo HD récupérée' : `⚠️ ${esc(d.avatars.errors.youtube ?? 'non récupérée')}`}</small></label>
-          ${d.creator?.theme === 'sober' ? '' : `<label class="field"><span>Pseudo Roblox du créateur</span><input class="input" name="creatorRoblox" value="${esc(s.creatorRoblox ?? '')}" placeholder="BeOnePourcentt"><small>${d.avatars.urls.roblox ? '✅ Avatar récupéré' : `⚠️ ${esc(d.avatars.errors.roblox ?? 'non récupéré')}`}</small></label>`}
+          ${d.creator?.theme !== 'playful' ? '' : `<label class="field"><span>Pseudo Roblox du créateur</span><input class="input" name="creatorRoblox" value="${esc(s.creatorRoblox ?? '')}" placeholder="BeOnePourcentt"><small>${d.avatars.urls.roblox ? '✅ Avatar récupéré' : `⚠️ ${esc(d.avatars.errors.roblox ?? 'non récupéré')}`}</small></label>`}
           <label class="field"><span>Image / vidéo de fond (lien)</span><input class="input" name="heroMediaUrl" value="${esc(s.heroMediaUrl)}" placeholder="https://… .jpg / .png / .mp4"><small>Remplace le fond jaune de l'accueil (optionnel)</small></label>
         </div>
         <div><button class="btn green">Sauvegarder</button> <a class="btn" href="/fan" target="_blank" rel="noopener">Voir le site</a></div></form>

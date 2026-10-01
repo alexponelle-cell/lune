@@ -147,10 +147,10 @@ export function createApp(deps: WebDeps): Hono {
 
   app.get('/fan', (c) => {
     const cr = fans.creator;
-    if (cr.theme !== 'sober') return c.html(ASSETS.fan);
+    if (cr.theme === 'playful') return c.html(ASSETS.fan);
     // Couleurs et titre injectés côté serveur : pas de flash avant le chargement des données
     const k = cr.colors;
-    const vars = `--bg:${k.bg};--card:${k.card};--line:${k.border};--text:${k.text};--muted:${k.muted};--accent:${k.accent};--accent-ink:${k.accentInk};`;
+    const vars = `--bg:${k.bg};--card:${k.card};--line:${k.border};--text:${k.text};--muted:${k.muted};--accent:${k.accent};--accent-ink:${k.accentInk};--accent2:${k.accent2 ?? k.accent};--accent3:${k.accent3 ?? k.accent};`;
     const e = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
     const font = (cr.font ?? 'Outfit').replace(/[^A-Za-z0-9 ]/g, '');
     return c.html(
@@ -159,7 +159,8 @@ export function createApp(deps: WebDeps): Hono {
         .replace('/*__VARS__*/', vars)
         .replace('__BG__', k.bg)
         .replace('__FONTQ__', font.replace(/ /g, '+'))
-        .replace('__FONT__', font),
+        .replace('__FONT__', font)
+        .replace('<body>', cr.theme === 'pop' ? '<body class="pop">' : '<body>'),
     );
   });
   // Visuels de la boutique (avatars, bannière du créateur)

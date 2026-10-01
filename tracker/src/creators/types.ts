@@ -14,8 +14,10 @@ export interface CreatorConfig {
   /** Pseudo Roblox du créateur (thème « playful » uniquement). */
   robloxUsername?: string;
   /** Gabarit du site fans : « playful » (BeOne, coloré) ou « sober » (sobre, sombre). */
-  theme: 'playful' | 'sober';
-  colors: { bg: string; card: string; border: string; text: string; muted: string; accent: string; accentInk: string };
+  /** playful = BeOne (clair, jaune) · sober = sombre et épuré · pop = sombre, multicolore et animé. */
+  theme: 'playful' | 'sober' | 'pop';
+  /** accent2 / accent3 : couleurs des dégradés du thème « pop ». */
+  colors: { bg: string; card: string; border: string; text: string; muted: string; accent: string; accentInk: string; accent2?: string; accent3?: string };
   /** Police Google Fonts du site (gabarit « sober »). */
   font?: string;
   /** Texte du logo (à côté de la photo), ex. « squiduu. ». */
