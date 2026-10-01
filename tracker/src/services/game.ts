@@ -21,11 +21,16 @@ const MIN = 60_000;
  *   POST {base}/grant    → { userId, productId, orderId, type } ; 200 ok (même si replayed) · sinon { error, message }
  */
 export class GameClient {
+  private readonly token: string;
+
   constructor(
     private readonly baseUrl: string,
-    private readonly token: string,
+    token: string,
     private readonly fetchFn: FetchFn = fetch,
-  ) {}
+  ) {
+    // Valeur collée dans Railway : espaces, guillemets ou « Bearer » en trop ne doivent pas casser l'accès
+    this.token = token.trim().replace(/^["']|["']$/g, '').replace(/^Bearer\s+/i, '').trim();
+  }
 
   private url(path: string) {
     return `${this.baseUrl.replace(/\/+$/, '')}${path}`;
