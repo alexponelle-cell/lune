@@ -382,6 +382,11 @@ export class FanService {
     if (this.creator.rewardAccount.kind === 'email') {
       if (!this.fans.email(clipper.id)) throw new Error(`Renseigne d'abord ton ${this.creator.rewardAccount.label.charAt(0).toLowerCase()}${this.creator.rewardAccount.label.slice(1)}`);
     } else if (!this.fans.roblox(clipper.id).userId) throw new Error("Relie d'abord ton compte Roblox pour recevoir l'objet en jeu");
+    // Un gamepass est permanent : impossible de l'acheter une 2e fois (le jeu le refuserait)
+    const item = this.fans.item(itemId);
+    if (item?.kind === 'gamepass' && this.fans.orders({ clipperId: clipper.id }).some((o) => o.ref === item.ref && o.status !== 'refunded')) {
+      throw new Error('Tu as déjà ce gamepass');
+    }
     return this.fans.placeOrder(clipper.id, itemId, this.balance(clipper.id, now).earned, now);
   }
 

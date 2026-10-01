@@ -130,10 +130,13 @@ export async function deliverPendingOrders(game: GameClient, fans: FanRepo, now 
           fans.deliveryFailed(o.id, 'Don en cours côté jeu, vérification dans 1 min', now + MIN);
           break;
         case 'already_owned':
-          fans.deliveryFailed(o.id, 'Le joueur possède déjà ce gamepass : rembourse la commande', NEVER);
+          // Rien n'a été donné : les coins sont rendus automatiquement
+          fans.refund(o.id);
+          fans.deliveryFailed(o.id, 'Le joueur possédait déjà ce gamepass : remboursé automatiquement', NEVER);
           break;
         case 'product_limit_reached':
-          fans.deliveryFailed(o.id, 'Plafond du produit atteint côté jeu : rembourse et retire l’objet de la boutique', NEVER);
+          fans.refund(o.id);
+          fans.deliveryFailed(o.id, 'Plafond du produit atteint côté jeu : remboursé automatiquement, retire l’objet de la boutique', NEVER);
           break;
         case 'order_conflict':
           fans.deliveryFailed(o.id, `Conflit de commande (${why}) : préviens le développeur`, NEVER);

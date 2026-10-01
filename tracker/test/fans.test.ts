@@ -70,15 +70,19 @@ describe('programme fans (Neptune)', () => {
     expect(fans.fans.order(o2.id)!.status).toBe('delivered');
   });
 
-  it('gamepass déjà possédé : pas de nouvel essai, remboursement conseillé', async () => {
+  it('gamepass déjà possédé : pas de 2e achat, remboursement automatique si le jeu refuse', async () => {
     const fan = fanWithViews();
     await fans.linkRoblox(fan, 'paulrbx');
     const vip = fans.saveItem(null, { name: 'VIP', price: 10, kind: 'gamepass', ref: '111' });
     const o = fans.buy(fan, vip.id);
     let n = 0;
     const game = new GameClient('https://jeu.test', 'tok', (async () => { n++; return Response.json({ error: 'already_owned', message: 'Déjà donné' }, { status: 409 }); }) as unknown as typeof fetch);
+    expect(() => fans.buy(fan, vip.id)).toThrow(/déjà ce gamepass/);
     await deliverPendingOrders(game, fans.fans);
-    expect(fans.fans.order(o.id)!.deliveryError).toMatch(/possède déjà/);
+    await deliverPendingOrders(game, fans.fans);
+    expect(fans.fans.order(o.id)).toMatchObject({ status: 'refunded' });
+    expect(fans.fans.order(o.id)!.deliveryError).toMatch(/remboursé automatiquement/);
+    expect(fans.balance(fan.id).spent).toBe(0);
     await deliverPendingOrders(game, fans.fans, Date.now() + 86_400_000);
     expect(n).toBe(1);
   });
@@ -113,7 +117,7 @@ describe('programme fans (Neptune)', () => {
 
     const order = fans.buy(fan, item.id);
     expect(fans.balance(fan.id).balance).toBe(20);
-    expect(() => fans.buy(fan, item.id)).toThrow(/stock/);
+    expect(() => fans.buy(fan, item.id)).toThrow(/déjà ce gamepass/);
 
     // Un autre fan ne peut pas prendre le même compte Roblox
     const other = fans.ensureFan('d2', 'Léa');
