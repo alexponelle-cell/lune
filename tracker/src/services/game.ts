@@ -37,7 +37,8 @@ export class GameClient {
   }
 
   private headers() {
-    return { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' };
+    // Bearer (format de la doc) + x-api-key : accepté quel que soit l'en-tête lu par le serveur du jeu
+    return { authorization: `Bearer ${this.token}`, 'x-api-key': this.token, 'content-type': 'application/json' };
   }
 
   async products(): Promise<GameProduct[]> {
