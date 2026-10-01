@@ -121,6 +121,11 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
             lines.push(`🎮 Roblox : ${err instanceof Error ? err.message : String(err)}`);
           }
         }
+        // Compte de livraison toujours rappelé (même inchangé), pour que le clippeur voie ce qui est enregistré
+        if (!lines.some((l) => l.startsWith('📧') || l.startsWith('🎮'))) {
+          const current = fans.rewardAccount(fan.id).value;
+          if (current) lines.push(`${fans.creator.rewardAccount.kind === 'email' ? '📧 E-mail' : '🎮 Roblox'} : **${current}**`);
+        }
         if (!lines.length) lines.push('Rien à changer 👍');
         if (res.linked.length && interaction.inCachedGuild()) {
           await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl());
