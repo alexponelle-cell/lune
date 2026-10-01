@@ -241,7 +241,7 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .js .rv:not(.in) { opacity: 1; transform: none; filter: none; } }
 
   /* ---------- Thème « pop » : multicolore, énergique, tout en douceur (dégradés accent → accent2 → accent3) ---------- */
-  body.pop { --grad: linear-gradient(100deg, var(--accent), var(--accent2) 50%, var(--accent3)); --r: 22px; --r-sm: 16px; --r-lg: 30px; }
+  body.pop { --grad: linear-gradient(100deg, var(--accent), var(--accent2) 50%, var(--accent3)); --grad-loop: linear-gradient(100deg, var(--accent), var(--accent2), var(--accent3), var(--accent2), var(--accent)); --r: 22px; --r-sm: 16px; --r-lg: 30px; }
   body.pop::before { content: ''; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none; opacity: .55; filter: blur(70px);
     background: radial-gradient(28vmax 28vmax at 18% 22%, color-mix(in srgb, var(--accent) 60%, transparent), transparent 70%),
                 radial-gradient(26vmax 26vmax at 82% 18%, color-mix(in srgb, var(--accent3) 55%, transparent), transparent 70%),
@@ -249,11 +249,11 @@
     animation: popdrift 18s ease-in-out infinite alternate; }
   @keyframes popdrift { 0% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(3vmax, -2vmax) rotate(8deg); } 100% { transform: translate(-2vmax, 2vmax) rotate(-6deg); } }
   @keyframes popshine { to { background-position: 200% center; } }
-  body.pop .y { background: var(--grad); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: popshine 5s linear infinite; }
+  body.pop .y { background: var(--grad-loop); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: popshine 5s linear infinite; }
   body.pop .btn { border-radius: 99px; transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, border-color .2s, background .2s; }
   body.pop .btn:hover { transform: translateY(-3px) scale(1.03); }
   body.pop .btn:active { transform: translateY(1px) scale(.98); }
-  body.pop .btn.primary { background: var(--grad); background-size: 200% auto; border: 0; color: #140B33; font-weight: 800; box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 45%, transparent); animation: popshine 6s linear infinite; }
+  body.pop .btn.primary { background: var(--grad-loop); background-size: 200% auto; border: 0; color: #140B33; font-weight: 800; box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 45%, transparent); animation: popshine 6s linear infinite; }
   body.pop .card { border-color: color-mix(in srgb, var(--accent3) 18%, var(--line)); transition: transform .3s cubic-bezier(.34,1.56,.64,1), border-color .3s, box-shadow .3s; }
   body.pop .card:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 16px 40px color-mix(in srgb, var(--accent) 18%, transparent); }
   body.pop .pill { border-color: color-mix(in srgb, var(--accent2) 40%, var(--line)); }
