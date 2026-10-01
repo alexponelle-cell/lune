@@ -380,6 +380,19 @@ export class FanRepo {
     ).map((r) => ({ ...toOrder(r), robloxUserId: r.roblox_user_id, attempts: r.attempts }));
   }
 
+  /** Commandes à livrer par e-mail (API du service offert, ex. Squiduuverse). */
+  pendingForEmail(now = Date.now(), limit = 50): Array<ShopOrder & { email: string; attempts: number }> {
+    return (
+      this.db
+        .prepare(
+          `SELECT o.*, c.reward_email FROM shop_orders o JOIN clippers c ON c.id = o.clipper_id
+           WHERE o.status = 'pending' AND c.reward_email IS NOT NULL AND (o.next_try_at IS NULL OR o.next_try_at <= ?)
+           ORDER BY o.id LIMIT ?`,
+        )
+        .all(now, limit) as Row[]
+    ).map((r) => ({ ...toOrder(r), email: r.reward_email, attempts: r.attempts }));
+  }
+
   deliveryFailed(orderId: number, error: string, nextTryAt: number): void {
     this.db.prepare('UPDATE shop_orders SET attempts = attempts + 1, delivery_error = ?, next_try_at = ? WHERE id = ?').run(error, nextTryAt, orderId);
   }

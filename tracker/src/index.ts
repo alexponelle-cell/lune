@@ -15,6 +15,7 @@ import { FanService } from './services/fans.js';
 import { creatorConfig } from './creators/index.js';
 import { AgencyService } from './services/agency.js';
 import { deliverPendingOrders, GameClient } from './services/game.js';
+import { deliverEmailOrders, EmailGrantClient } from './services/emailGrant.js';
 import { RecruitmentService } from './services/recruitment.js';
 import { Analytics } from './services/analytics.js';
 import { status } from './status.js';
@@ -131,6 +132,9 @@ if (config.FANS_BOT_TOKEN) {
 
 // Messages privés des fans (coins, niveau, objet abordable, top 3, livraison)
 const stopGameDelivery = game ? every('livraison jeu', 1, () => deliverPendingOrders(game, fans.fans)) : () => {};
+// Livraison automatique par e-mail (Squiduuverse) si l'API est configurée
+const emailApi = config.SQUIDUU_API_URL && config.SQUIDUU_API_TOKEN ? new EmailGrantClient(config.SQUIDUU_API_URL, config.SQUIDUU_API_TOKEN) : undefined;
+const stopEmailDelivery = emailApi ? every('livraison e-mail', 1, () => deliverEmailOrders(emailApi, fans.fans)) : () => {};
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
 // Comptes des fans : 1 collecte par jour (coût Apify), les clippers de l'agence au rythme normal
@@ -161,6 +165,7 @@ async function shutdown() {
   stopCollect();
   stopFanNotify();
   stopGameDelivery();
+  stopEmailDelivery();
   stopRelance();
   stopWeb();
   await bot?.stop();

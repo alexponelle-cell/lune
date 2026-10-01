@@ -36,6 +36,9 @@ const schema = z.object({
   /** API du jeu (serveur du dev) : adresse + token, pour importer le catalogue et livrer les achats. */
   GAME_API_URL: optionalString,
   GAME_API_TOKEN: optionalString,
+  /** API de livraison par e-mail (ex. Squiduuverse : +1 mois au compte de cet e-mail). */
+  SQUIDUU_API_URL: optionalString,
+  SQUIDUU_API_TOKEN: optionalString,
 
   DATABASE_PATH: z.string().default('./data/tracker.db'),
 

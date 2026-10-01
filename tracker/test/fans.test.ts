@@ -12,6 +12,7 @@ import { collectAll } from '../src/jobs/collect.js';
 import { isAccountsChannel, isTicketChannel } from '../src/bot/fans.js';
 import { deliverPendingOrders, GameClient } from '../src/services/game.js';
 import { creatorConfig } from '../src/creators/index.js';
+import { deliverEmailOrders, EmailGrantClient, monthsOf } from '../src/services/emailGrant.js';
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -382,6 +383,24 @@ describe('créateur configurable (SQUIDUU)', () => {
     fans.fans.markDelivered([o1.id], null);
     fans.generateNotifications();
     expect(fans.fans.pendingNotifications().map((n) => n.text)).toContain('✅ Ton échange **1 mois de Squiduuverse** a été livré.');
+
+    // Livraison automatique par l'API Squiduuverse (+1 mois au compte de cet e-mail)
+    const calls: Array<{ auth: string; body: Record<string, unknown> }> = [];
+    const answers: Array<[number, unknown]> = [[404, { error: 'user_not_found' }], [200, { ok: true }]];
+    const api = new EmailGrantClient('https://squiduuverse.test/', ' Bearer cle ', (async (_url: string, init: RequestInit) => {
+      calls.push({ auth: (init.headers as Record<string, string>).authorization!, body: JSON.parse(String(init.body)) });
+      const [status, body] = answers.shift()!;
+      return Response.json(body, { status });
+    }) as typeof fetch);
+    const pending = fans.fans.orders({ status: 'pending' })[0]!;
+    expect(await deliverEmailOrders(api, fans.fans, now)).toEqual({ livrées: 0, échecs: 1 });
+    expect(calls[0]).toEqual({ auth: 'Bearer cle', body: { email: 'lea@mail.com', months: 1, orderId: `order-${pending.id}-${pending.createdAt}` } });
+    expect(fans.fans.order(pending.id)!.deliveryError).toMatch(/Aucun compte/);
+    expect(await deliverEmailOrders(api, fans.fans, now + 1000)).toEqual({ livrées: 0, échecs: 0 }); // attend 6 h
+    expect(await deliverEmailOrders(api, fans.fans, now + 7 * HOUR)).toEqual({ livrées: 1, échecs: 0 });
+    expect(calls[1]!.body.orderId).toBe(calls[0]!.body.orderId);
+    expect(fans.fans.order(pending.id)!.status).toBe('delivered');
+    expect(monthsOf('squiduuverse-3m')).toBe(3);
 
     const app = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, bot: {} });
     const html = await (await app.request('/fan')).text();
