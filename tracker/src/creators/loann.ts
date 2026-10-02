@@ -27,10 +27,10 @@ export const loann: CreatorConfig = {
   },
   reward: {
     name: '1 mois de Merguez Superstar',
-    description: 'La formation + commu Discord de Loann pour percer sur YouTube : guide « YouTube Secrets », coachings chaque semaine, YouTubers invités. Les mois s’additionnent.',
+    description: 'La commu pour vivre de YouTube : +3 100 YouTubers accompagnés depuis 2023. Formation, coachings chaque semaine, Discord privé avec des YouTubers. Les mois s’additionnent.',
     price: 10000,
     ref: 'ms-1m',
-    url: 'https://www.bonzai.pro/loann_lv/shop/ZpVK_1018/merguez-superstar',
+    url: 'https://ms-creators.com/',
     linkLabel: 'Découvrir Merguez Superstar',
   },
   levels: [
