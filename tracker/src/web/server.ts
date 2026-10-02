@@ -160,7 +160,7 @@ export function createApp(deps: WebDeps): Hono {
         .replace('__BG__', k.bg)
         .replace('__FONTQ__', font.replace(/ /g, '+'))
         .replace('__FONT__', font)
-        .replace('<body>', cr.theme === 'pop' ? '<body class="pop">' : '<body>'),
+        .replace('<body>', cr.theme === 'pop' ? `<body class="pop${cr.style === 'sticker' ? ' sticker' : ''}">` : '<body>'),
     );
   });
   // Visuels de la boutique (avatars, bannière du créateur)
@@ -184,6 +184,18 @@ export function createApp(deps: WebDeps): Hono {
       if (url) {
         c.header('cache-control', 'public, max-age=3600');
         return c.redirect(url, 302);
+      }
+    }
+    // Visuels propres au créateur (bannière, image de la récompense) livrés dans src/web/app/fan/
+    if (name === 'hero-banner' || name === 'reward') {
+      const f = name === 'reward' ? fans.creator.images?.reward : fans.creator.images?.banner;
+      if (!f || !/^[\w.-]+$/.test(f)) return c.notFound();
+      try {
+        const data = new Uint8Array(readFileSync(new URL(`./app/fan/${f}`, import.meta.url)));
+        const type = f.endsWith('.webp') ? 'image/webp' : f.endsWith('.png') ? 'image/png' : 'image/jpeg';
+        return c.body(data, 200, { 'content-type': type, 'cache-control': 'public, max-age=3600' });
+      } catch {
+        return c.notFound();
       }
     }
     const file = FAN_FILES[name];

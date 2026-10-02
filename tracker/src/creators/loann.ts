@@ -1,7 +1,7 @@
 import type { CreatorConfig } from './types.js';
 
 /**
- * Loann (youtube.com/@LoannLV + @netabonnepas-el2vd) : gabarit « pop », ambiance explosions / arc-en-ciel de ses miniatures.
+ * Loann (youtube.com/@LoannLV + @netabonnepas-el2vd) : gabarit « pop » variante « sticker » (memes, couleurs de sa bannière).
  * Récompense : 1 mois de MS pour 1 M de vues, livré sur l'e-mail du clippeur.
  */
 export const loann: CreatorConfig = {
@@ -10,8 +10,11 @@ export const loann: CreatorConfig = {
   creatorName: 'Loann',
   youtube: 'LoannLV,netabonnepas-el2vd',
   theme: 'pop',
-  colors: { bg: '#0F0A1C', card: '#1C1433', border: '#33275A', text: '#FFFFFF', muted: '#BCB3DD', accent: '#FF5A1F', accentInk: '#FFFFFF', accent2: '#FFD400', accent3: '#3DA5FF' },
-  font: 'Rubik',
+  // Palette tirée de sa bannière (coucher de soleil peint) et du logo MS (gemmes rouge-orange, étoile jaune)
+  style: 'sticker',
+  images: { banner: 'loann-banner.webp', reward: 'loann-reward.webp' },
+  colors: { bg: '#150B2B', card: '#22143F', border: '#3A2766', text: '#FFFFFF', muted: '#C9BCEB', accent: '#FF3D5E', accentInk: '#FFFFFF', accent2: '#FFC21A', accent3: '#7B4DFF' },
+  font: 'Baloo 2',
   logoText: 'loann.',
   pointsPer1000: 10,
   rewardAccount: {

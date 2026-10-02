@@ -266,6 +266,36 @@
   body.pop .chip.o { border-color: var(--accent3); color: var(--accent3); background: color-mix(in srgb, var(--bg) 85%, transparent); }
   body.pop ::selection { background: var(--accent3); color: #000; }
   @media (prefers-reduced-motion: reduce) { body.pop::before, body.pop .y, body.pop .btn.primary { animation: none; } }
+
+  /* ---------- Bannière du créateur en haut de l'accueil ---------- */
+  .hero-banner { position: relative; width: 100vw; margin-left: calc(50% - 50vw); height: clamp(120px, 22vw, 260px); overflow: hidden; }
+  .hero-banner img { width: 100%; height: 100%; object-fit: cover; animation: bannerzoom 24s ease-in-out infinite alternate; }
+  .hero-banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, var(--bg)); }
+  @keyframes bannerzoom { from { transform: scale(1.02); } to { transform: scale(1.1) translateX(-1.5%); } }
+
+  /* ---------- Variante « sticker » : contours noirs épais, ombres dures (style meme / autocollant) ---------- */
+  body.sticker { --stk: #07030F; }
+  body.sticker .hero-banner { border-bottom: 4px solid var(--stk); }
+  body.sticker .hero-banner::after { background: linear-gradient(180deg, transparent 60%, color-mix(in srgb, var(--bg) 70%, transparent)); }
+  body.sticker .hero { margin-top: 36px; }
+  body.sticker h1 { text-shadow: 4px 4px 0 var(--stk); }
+  body.sticker h2 { text-shadow: 3px 3px 0 var(--stk); }
+  body.sticker .y { text-shadow: none; filter: drop-shadow(4px 4px 0 var(--stk)); }
+  body.sticker .card { border: 3px solid var(--stk); box-shadow: 6px 6px 0 var(--stk); }
+  body.sticker .card:hover { border-color: var(--stk); transform: translate(-2px, -3px) rotate(-.4deg); box-shadow: 9px 10px 0 var(--stk); }
+  body.sticker .btn { border: 3px solid var(--stk); box-shadow: 4px 4px 0 var(--stk); }
+  body.sticker .btn:hover { transform: translate(-2px, -2px) rotate(-1deg); box-shadow: 7px 7px 0 var(--stk); }
+  body.sticker .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--stk); }
+  body.sticker .btn.primary { border: 3px solid var(--stk); box-shadow: 5px 5px 0 var(--stk); }
+  body.sticker .pill { border: 2.5px solid var(--stk); box-shadow: 3px 3px 0 var(--stk); }
+  body.sticker .chip { border: 3px solid var(--stk) !important; box-shadow: 4px 4px 0 var(--stk) !important; }
+  body.sticker .chip.o { background: var(--accent3); color: #fff; }
+  body.sticker .stage .photo { border: 5px solid var(--stk); box-shadow: 14px 14px 0 var(--stk); }
+  body.sticker .logo .pp { box-shadow: 2px 2px 0 var(--stk); }
+  body.sticker .spark { border: 3px solid var(--stk); box-shadow: 5px 5px 0 var(--stk); }
+  body.sticker .reward .pic { aspect-ratio: 1.6; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent2) 45%, transparent), transparent 70%), linear-gradient(135deg, color-mix(in srgb, var(--accent) 35%, var(--card)), color-mix(in srgb, var(--accent3) 30%, var(--card))); border: 3px solid var(--stk); }
+  body.sticker .reward .pic img { object-fit: contain; padding: 12px; filter: drop-shadow(4px 5px 0 rgba(0,0,0,.45)); transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
+  body.sticker .reward:hover .pic img { transform: scale(1.06) rotate(-3deg); }
 </style>
 </head>
 <body>
@@ -426,7 +456,7 @@ function pageHome() {
   const lb = PUB.leaderboard.slice(0, 5);
   const rate = `+${fmt(PUB.pointsPer1000)} coins`;
   const stepIcons = ['scissors', 'send', 'chart', 'gift'];
-  return `
+  return `${C.images?.banner ? `<div class="hero-banner" aria-hidden="true"><img src="/fan/assets/hero-banner" alt=""></div>` : ''}
   <section class="hero" style="margin-bottom:0">
     <div><h1 class="load">${hl(C.texts.heroTitle)}</h1><p class="load">${esc(C.texts.heroText)}</p>
       <div class="ctas load"><a class="btn big" href="#comment">Découvrir</a><a class="btn primary big" href="#/clipper">${esc(C.texts.heroCta)} ${ARROW}</a></div></div>

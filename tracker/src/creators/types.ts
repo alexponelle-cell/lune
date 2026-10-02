@@ -16,6 +16,10 @@ export interface CreatorConfig {
   /** Gabarit du site fans : « playful » (BeOne, coloré) ou « sober » (sobre, sombre). */
   /** playful = BeOne (clair, jaune) · sober = sombre et épuré · pop = sombre, multicolore et animé. */
   theme: 'playful' | 'sober' | 'pop';
+  /** Variante visuelle du thème pop : « sticker » = contours noirs épais et ombres dures (style meme / autocollant). */
+  style?: 'sticker';
+  /** Visuels livrés avec le code (src/web/app/fan/) : bannière du hero et image de la récompense. */
+  images?: { banner?: string; reward?: string };
   /** accent2 / accent3 : couleurs des dégradés du thème « pop ». */
   colors: { bg: string; card: string; border: string; text: string; muted: string; accent: string; accentInk: string; accent2?: string; accent3?: string };
   /** Police Google Fonts du site (gabarit « sober »). */
