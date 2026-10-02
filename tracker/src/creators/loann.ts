@@ -2,7 +2,7 @@ import type { CreatorConfig } from './types.js';
 
 /**
  * Loann (youtube.com/@LoannLV + @netabonnepas-el2vd) : gabarit « pop » variante « sticker » (memes, couleurs de sa bannière).
- * Récompense : 1 mois de MS pour 1 M de vues, livré sur l'e-mail du clippeur.
+ * Récompense : 1 mois de Merguez Superstar (sa formation YouTube) pour 1 M de vues, livré sur l'e-mail du clippeur.
  */
 export const loann: CreatorConfig = {
   id: 'loann',
@@ -19,19 +19,19 @@ export const loann: CreatorConfig = {
   pointsPer1000: 10,
   rewardAccount: {
     kind: 'email',
-    title: 'Accès MS',
-    label: 'E-mail pour ton accès MS',
+    title: 'Accès Merguez Superstar',
+    label: 'E-mail pour ton accès Merguez Superstar',
     placeholder: 'ton@email.com',
-    badge: 'E-mail MS relié',
-    deliveryHint: 'Ton accès MS est envoyé sur cet e-mail.',
+    badge: 'Accès relié',
+    deliveryHint: 'Ton accès Merguez Superstar est envoyé sur cet e-mail.',
   },
   reward: {
-    name: '1 mois de MS',
-    description: '1 mois d’accès à MS, la commu privée de Loann pour percer sur YouTube : conseils, retours sur tes vidéos, entraide. Les mois s’additionnent.',
+    name: '1 mois de Merguez Superstar',
+    description: 'La formation + commu Discord de Loann pour percer sur YouTube : guide « YouTube Secrets », coachings chaque semaine, YouTubers invités. Les mois s’additionnent.',
     price: 10000,
     ref: 'ms-1m',
-    url: 'https://www.youtube.com/@LoannLV',
-    linkLabel: 'La chaîne de Loann',
+    url: 'https://www.bonzai.pro/loann_lv/shop/ZpVK_1018/merguez-superstar',
+    linkLabel: 'Découvrir Merguez Superstar',
   },
   levels: [
     { name: 'Débutant', emoji: '🌱', min: 0 },
@@ -43,14 +43,14 @@ export const loann: CreatorConfig = {
     welcome: [
       '👋 **Salut et bienvenue sur Loann Clipping !**',
       '',
-      'Ici, tu peux gagner **des mois de MS gratuitement** grâce à tes clips de {creator} 🔥',
+      'Ici, tu peux gagner **des mois de **Merguez Superstar** gratuitement** grâce à tes clips de {creator} 🔥',
       '',
       '🎁 **Comment gagner des récompenses ?**',
       'C’est très simple : tu fais des clips des vidéos de {creator} 👀',
       '',
       '📱 Crée tes propres comptes **YouTube, TikTok et Instagram**, puis poste tes clips dessus.',
       '✨ Les vues de YouTube + TikTok + Instagram sont **toutes comptées ensemble** !',
-      '🪙 **1 000 vues = {rate} coins**, et **10 000 coins = 1 mois de MS**.',
+      '🪙 **1 000 vues = {rate} coins**, et **10 000 coins = 1 mois de Merguez Superstar**.',
       '',
       '😕 **Tu ne sais pas faire de montage ?**',
       'Pas de panique, c’est normal quand on débute 😊 Pose tes questions dans ❓│aide : on t’explique tout, étape par étape.',
@@ -93,28 +93,28 @@ export const loann: CreatorConfig = {
   },
   statuses: { pending: 'En attente', delivered: 'Livré ✅', refunded: 'Remboursé' },
   texts: {
-    heroTitle: 'Clippe Loann. **Gagne des mois de MS.**',
-    heroText: 'Poste des clips de Loann sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges contre des mois de MS.',
+    heroTitle: 'Clippe Loann. **Gagne Merguez Superstar.**',
+    heroText: 'Poste des clips de Loann sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges contre des mois de Merguez Superstar, sa formation YouTube.',
     heroCta: 'Commencer à clipper',
     steps: [
       { title: 'Crée ton clip', text: 'Un passage de Loann qui mérite d’être vu.' },
       { title: 'Poste-le', text: 'Sur TikTok, Instagram ou YouTube.' },
       { title: 'Gagne des coins', text: '10 coins pour 1 000 vues, tous comptes confondus.' },
-      { title: 'Prends ton mois', text: '10 000 coins = 1 mois de MS, ajouté sur ton compte.' },
+      { title: 'Prends ton mois', text: '10 000 coins = 1 mois de Merguez Superstar.' },
     ],
     shopTitle: 'Récompenses',
-    shopText: 'Échange tes coins contre des mois de MS, ajoutés sur ton compte.',
+    shopText: 'Échange tes coins contre des mois de Merguez Superstar, la formation YouTube de Loann.',
     clipTitle: 'Clipper',
     clipText: 'Poste des clips de Loann sur TikTok, Instagram ou YouTube. Tes vues sont comptées une fois par jour.',
     rankingText: 'Les clippeurs qui ont fait le plus de vues ces 7 derniers jours.',
     footer: 'Loann Clipping',
     deliveredDm: '✅ Ton **{item}** a été ajouté sur ton compte !',
-    dmFooter: 'Loann Clipping · Clippe, gagne des mois de MS',
+    dmFooter: 'Loann Clipping · Clippe, gagne Merguez Superstar',
     faq: [
       { q: 'Comment je gagne des coins ?', a: 'Tu postes des clips de Loann sur TikTok, Instagram ou YouTube. Chaque vue compte : 1 000 vues = 10 coins, tous comptes confondus.' },
       { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, clique sur « S’inscrire » dans le salon inscription et renseigne tes comptes.' },
       { q: 'Quand mes vues sont-elles comptées ?', a: 'Une fois par jour. Seules les vues faites après ton inscription rapportent des coins.' },
-      { q: 'Comment je reçois mon mois de MS ?', a: 'Renseigne l’e-mail de ton compte MS dans ton profil, échange 10 000 coins dans la boutique : le mois est ajouté sur ce compte et tu reçois un message Discord dès que c’est fait.' },
+      { q: 'Comment je reçois mon mois de Merguez Superstar ?', a: 'Renseigne l’e-mail de ton compte Merguez Superstar dans ton profil, échange 10 000 coins dans la boutique : ton accès est envoyé sur cet e-mail et tu reçois un message Discord dès que c’est fait.' },
       { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum. Un compte qui vient de démarrer peut gagner des coins dès son premier clip.' },
     ],
     finalTitle: 'Prêt à **clipper** ?',
