@@ -95,6 +95,7 @@ export const loann: CreatorConfig = {
   texts: {
     heroTitle: 'Clippe Loann. **Gagne Merguez Superstar.**',
     heroText: 'Poste des clips de Loann sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges contre des mois de Merguez Superstar, sa formation YouTube.',
+    ticker: ['CLIPPE LOANN', 'FAIS DES VUES', 'GAGNE MERGUEZ SUPERSTAR', '1M DE VUES = 1 MOIS', 'PERCE SUR YOUTUBE'],
     heroCta: 'Commencer à clipper',
     steps: [
       { title: 'Crée ton clip', text: 'Un passage de Loann qui mérite d’être vu.' },

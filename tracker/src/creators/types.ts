@@ -60,6 +60,8 @@ export interface CreatorConfig {
     heroTitle: string;
     heroText: string;
     heroCta: string;
+    /** Style « sticker » : bandeau défilant sous la bannière (mots répétés en boucle). */
+    ticker?: string[];
     /** 4 étapes de l'accueil (01 à 04). */
     steps: Array<{ title: string; text: string }>;
     shopTitle: string;

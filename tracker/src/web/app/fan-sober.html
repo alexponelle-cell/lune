@@ -296,6 +296,25 @@
   body.sticker .reward .pic { aspect-ratio: 1.6; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent2) 45%, transparent), transparent 70%), linear-gradient(135deg, color-mix(in srgb, var(--accent) 35%, var(--card)), color-mix(in srgb, var(--accent3) 30%, var(--card))); border: 3px solid var(--stk); }
   body.sticker .reward .pic img { object-fit: contain; padding: 12px; filter: drop-shadow(4px 5px 0 rgba(0,0,0,.45)); transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
   body.sticker .reward:hover .pic img { transform: scale(1.06) rotate(-3deg); }
+
+  /* ---------- Sticker, niveau 2 : bandeau défilant, mots-stickers, trame BD ---------- */
+  .ticker { width: 100vw; margin-left: calc(50% - 50vw); overflow: hidden; background: var(--accent2); color: #140B33; border-block: 4px solid #07030F; transform: rotate(-1.2deg) scale(1.02); margin-top: -10px; position: relative; z-index: 3; }
+  .ticker > div { display: flex; width: max-content; gap: 22px; padding: 10px 0; animation: tick 28s linear infinite; font-weight: 800; font-size: clamp(16px, 2.2vw, 22px); letter-spacing: .02em; white-space: nowrap; }
+  .ticker i { font-style: normal; }
+  @keyframes tick { to { transform: translateX(-50%); } }
+  body.sticker::after { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .07; background-image: radial-gradient(#fff 1.2px, transparent 1.4px); background-size: 14px 14px; }
+  body.sticker .y { background: var(--accent2); color: #140B33; -webkit-text-fill-color: #140B33; animation: none; filter: none; text-shadow: none; padding: 0 .18em; border: 3px solid #07030F; border-radius: .18em; box-shadow: 5px 5px 0 #07030F; display: inline; box-decoration-break: clone; -webkit-box-decoration-break: clone; line-height: 1.32; }
+  body.sticker h1 .y { background: var(--accent); color: #fff; -webkit-text-fill-color: #fff; text-shadow: 3px 3px 0 #07030F; }
+  body.sticker h1 { line-height: 1.18; }
+  body.sticker .btn.primary { background: var(--accent2); color: #140B33; animation: none; }
+  body.sticker .btn.primary:hover { background: #FFD54A; }
+  body.sticker .tools .card:nth-child(odd) { transform: rotate(-1.2deg); }
+  body.sticker .tools .card:nth-child(even) { transform: rotate(1.2deg); }
+  body.sticker .tools .card:hover { transform: rotate(0) translate(-2px, -4px); }
+  body.sticker .stage-sticker { position: absolute; width: 34%; right: -4%; bottom: 6%; z-index: 3; transform: rotate(12deg); filter: drop-shadow(5px 6px 0 #07030F); animation: stk 3.2s ease-in-out infinite; }
+  @keyframes stk { 0%, 100% { transform: rotate(12deg) translateY(0); } 50% { transform: rotate(6deg) translateY(-10px) scale(1.04); } }
+  body.sticker .chip.c4 { right: 30%; }
+  @media (prefers-reduced-motion: reduce) { .ticker > div, body.sticker .stage-sticker { animation: none; } }
 </style>
 </head>
 <body>
@@ -456,11 +475,12 @@ function pageHome() {
   const lb = PUB.leaderboard.slice(0, 5);
   const rate = `+${fmt(PUB.pointsPer1000)} coins`;
   const stepIcons = ['scissors', 'send', 'chart', 'gift'];
-  return `${C.images?.banner ? `<div class="hero-banner" aria-hidden="true"><img src="/fan/assets/hero-banner" alt=""></div>` : ''}
+  const tick = C.texts.ticker?.length ? C.texts.ticker.map((t) => `<span>${esc(t)}</span><i>⭐</i>`).join('') : '';
+  return `${C.images?.banner ? `<div class="hero-banner" aria-hidden="true"><img src="/fan/assets/hero-banner" alt=""></div>` : ''}${tick ? `<div class="ticker" aria-hidden="true"><div>${tick}${tick}</div></div>` : ''}
   <section class="hero" style="margin-bottom:0">
     <div><h1 class="load">${hl(C.texts.heroTitle)}</h1><p class="load">${esc(C.texts.heroText)}</p>
       <div class="ctas load"><a class="btn big" href="#comment">Découvrir</a><a class="btn primary big" href="#/clipper">${esc(C.texts.heroCta)} ${ARROW}</a></div></div>
-    <div class="stage" aria-hidden="true">${creatorPic('photo')}
+    <div class="stage" aria-hidden="true">${creatorPic('photo')}${C.style === 'sticker' && C.images?.reward ? '<img class="stage-sticker" src="/fan/assets/reward" alt="">' : ''}
       <span class="chip g c1">${rate}</span><span class="chip o c2">TikTok</span><span class="chip o c3">YouTube</span><span class="chip g c4">1 000 vues</span></div>
   </section>
 
