@@ -22,10 +22,10 @@ export const debo: CreatorConfig = {
     badge: 'Roblox relié',
     deliveryHint: 'Tes Robux sont envoyés sur ce compte Roblox par le staff.',
   },
-  // Premier palier ; les autres (500, 1 000 Robux…) s'ajoutent depuis Mars (Boutique fans)
+  // 100 000 vues = 50 Robux (1 M vues = 500 Robux). Les autres paliers (250, 500 Robux) s'ajoutent depuis Mars
   reward: {
-    name: '100 Robux',
-    description: '100 Robux envoyés sur ton compte Roblox. Échange autant de fois que tu veux.',
+    name: '50 Robux',
+    description: '50 Robux envoyés sur ton compte Roblox. Échange autant de fois que tu veux.',
     price: 1000,
     ref: 'robux-100',
     url: 'https://www.roblox.com/',
@@ -48,7 +48,7 @@ export const debo: CreatorConfig = {
       '',
       '📱 Crée tes propres comptes **YouTube, TikTok et Instagram**, puis poste tes clips dessus.',
       '✨ Les vues de YouTube + TikTok + Instagram sont **toutes comptées ensemble** !',
-      '🪙 **1 000 vues = {rate} coins**, à échanger contre des **Robux** sur le site.',
+      '🪙 **1 000 vues = {rate} coins**, et **100 000 vues = 50 Robux** (1 M de vues = 500 Robux).',
       '',
       '😕 **Tu ne sais pas faire de montage ?**',
       'Pas de panique, c’est normal quand on débute 😊 Pose tes questions dans ❓│aide : on t’explique tout, étape par étape.',
