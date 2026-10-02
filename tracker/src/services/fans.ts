@@ -134,7 +134,8 @@ export class FanService {
     if (patch.heroMediaUrl !== undefined && url(patch.heroMediaUrl) !== null) next.heroMediaUrl = url(patch.heroMediaUrl)!;
     if (patch.discordInviteUrl !== undefined && url(patch.discordInviteUrl) !== null) next.discordInviteUrl = url(patch.discordInviteUrl)!;
     if (patch.featured !== undefined) next.featured = patch.featured.slice(0, 5000);
-    if (patch.creatorYoutube !== undefined) next.creatorYoutube = patch.creatorYoutube.trim().replace(/^@/, '').slice(0, 60);
+    if (patch.creatorYoutube !== undefined)
+      next.creatorYoutube = patch.creatorYoutube.split(',').map((h) => h.trim().replace(/^@/, '')).filter(Boolean).join(',').slice(0, 120);
     if (patch.creatorRoblox !== undefined) next.creatorRoblox = patch.creatorRoblox.trim().replace(/^@/, '').slice(0, 20);
     this.repo.setSetting('fans', next);
     return next;
@@ -260,33 +261,49 @@ export class FanService {
     this.repo.setSetting(`bot:${key}`, value);
   }
 
-  /** Dernières vidéos de la chaîne YouTube du créateur (API YouTube, playlist « uploads »). */
-  /** Dernières vidéos longues de la chaîne du créateur (les Shorts ne sont pas annoncés). */
+  /** Chaînes YouTube du créateur (« Chaine1,Chaine2 » : la 1re sert pour la photo). */
+  youtubeHandles(): string[] {
+    return this.settings().creatorYoutube.split(',').map((h) => h.trim().replace(/^@/, '')).filter(Boolean);
+  }
+
+  /** Dernières vidéos longues des chaînes du créateur (les Shorts ne sont pas annoncés). */
   async latestVideos(apiKey: string, limit = 5): Promise<Array<{ id: string; title: string; url: string; thumbnail: string | null; publishedAt: string }>> {
-    const handle = this.settings().creatorYoutube;
-    if (!handle) return [];
-    let uploads = this.botState<{ handle: string; playlist: string } | null>('yt-uploads', null);
-    // Playlist « UULF… » = vidéos longues uniquement (sans les Shorts) ; les anciennes valeurs « UU… » sont remplacées
-    if (!uploads || uploads.handle !== handle || !uploads.playlist.startsWith('UULF')) {
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${encodeURIComponent('@' + handle)}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
-      const r = (await res.json()) as { items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }> };
-      const playlist = r.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
-      if (!playlist) throw new Error(`chaîne @${handle} introuvable`);
-      uploads = { handle, playlist: `UULF${playlist.slice(2)}` };
+    const handles = this.youtubeHandles();
+    if (!handles.length) return [];
+    const key = handles.join(',');
+    let uploads = this.botState<{ handle: string; playlist?: string; playlists?: string[] } | null>('yt-uploads', null);
+    // Playlists « UULF… » = vidéos longues uniquement (sans les Shorts) ; recalculées si les chaînes changent
+    if (!uploads || uploads.handle !== key || !uploads.playlists?.every((p) => p.startsWith('UULF'))) {
+      const playlists: string[] = [];
+      for (const handle of handles) {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${encodeURIComponent('@' + handle)}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
+        const r = (await res.json()) as { items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }> };
+        const playlist = r.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+        if (!playlist) throw new Error(`chaîne @${handle} introuvable`);
+        playlists.push(`UULF${playlist.slice(2)}`);
+      }
+      uploads = { handle: key, playlists };
       this.setBotState('yt-uploads', uploads);
       // Nouvelle liste : on repart de zéro (1er passage = mémorise l'existant sans rien poster)
       this.setBotState('yt-seen', null);
     }
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${limit}&playlistId=${uploads.playlist}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) throw new Error(`YouTube HTTP ${res.status}`);
-    const r = (await res.json()) as { items?: Array<{ snippet: { title: string; publishedAt: string; resourceId: { videoId: string }; thumbnails?: Record<string, { url: string }> } }> };
-    return (r.items ?? []).map((i) => ({
-      id: i.snippet.resourceId.videoId,
-      title: i.snippet.title,
-      url: `https://www.youtube.com/watch?v=${i.snippet.resourceId.videoId}`,
-      thumbnail: i.snippet.thumbnails?.maxres?.url ?? i.snippet.thumbnails?.high?.url ?? null,
-      publishedAt: i.snippet.publishedAt,
-    }));
+    const all = [];
+    for (const playlist of uploads.playlists!) {
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${limit}&playlistId=${playlist}&key=${apiKey}`, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`YouTube HTTP ${res.status}`);
+      const r = (await res.json()) as { items?: Array<{ snippet: { title: string; publishedAt: string; resourceId: { videoId: string }; thumbnails?: Record<string, { url: string }> } }> };
+      all.push(
+        ...(r.items ?? []).map((i) => ({
+          id: i.snippet.resourceId.videoId,
+          title: i.snippet.title,
+          url: `https://www.youtube.com/watch?v=${i.snippet.resourceId.videoId}`,
+          thumbnail: i.snippet.thumbnails?.maxres?.url ?? i.snippet.thumbnails?.high?.url ?? null,
+          publishedAt: i.snippet.publishedAt,
+        })),
+      );
+    }
+    // Plus récentes d'abord, toutes chaînes confondues
+    return all.sort((x, y) => y.publishedAt.localeCompare(x.publishedAt)).slice(0, limit * handles.length);
   }
 
   me(clipper: Clipper, now = Date.now()) {
@@ -485,11 +502,11 @@ export class FanService {
     let banner: string | null = null;
     const youtube = s.creatorYoutube && youtubeApiKey
       ? await safe('youtube', async () => {
-          const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&forHandle=${encodeURIComponent('@' + s.creatorYoutube)}&key=${youtubeApiKey}`;
+          const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&forHandle=${encodeURIComponent('@' + this.youtubeHandles()[0])}&key=${youtubeApiKey}`;
           const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
           const r = (await res.json()) as { items?: Array<{ snippet: { thumbnails: Record<string, { url: string }> }; brandingSettings?: { image?: { bannerExternalUrl?: string } } }>; error?: { message?: string } };
           if (!res.ok) throw new Error(`YouTube HTTP ${res.status} : ${r.error?.message ?? ''}`);
-          if (!r.items?.length) throw new Error(`chaîne @${s.creatorYoutube} introuvable`);
+          if (!r.items?.length) throw new Error(`chaîne @${this.youtubeHandles()[0]} introuvable`);
           // Bannière de la chaîne en HD (bande centrale 2560×423, même cadrage que la bannière intégrée)
           const b = r.items?.[0]?.brandingSettings?.image?.bannerExternalUrl;
           if (b) banner = `${b}=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj`;

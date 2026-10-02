@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { FanRepo } from '../src/db/fans.js';
 import { openDatabase } from '../src/db/index.js';
 import { Repo } from '../src/db/repo.js';
@@ -228,6 +228,13 @@ describe('programme fans (Neptune)', () => {
   });
 
   it('notifications : état initial silencieux, 1 message par jour, priorités, livraison, désactivation', async () => {
+    // Un mardi : les 3 jours du test restent dans la même semaine (le top 3 n'est annoncé qu'une fois par semaine)
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-29T10:00:00Z'));
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    const now = Date.now();
     const fan = fans.ensureFan('d1', 'Paul', now - 3 * HOUR);
     fans.addAccounts(fan, 'https://www.tiktok.com/@paul.clips');
     const account = repo.listAccountsForClipper(fan.id)[0]!;
