@@ -7,8 +7,10 @@ import {
   EmbedBuilder,
   type Guild,
   type GuildMember,
+  GuildSystemChannelFlags,
   type Interaction,
   MessageFlags,
+  MessageType,
   type OverwriteResolvable,
   type Role,
   PermissionFlagsBits,
@@ -250,6 +252,18 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
       await ch.permissionOverwrites.edit(headRole.id, { ViewChannel: true, SendMessages: true, ManageMessages: true }).catch(() => {});
     }
   }
+  // Messages d'arrivée de Discord (« X a bondi dans le serveur ») : envoyés dans le log staff, plus dans #général
+  const logCh = channels.get(bare(LOG_CHANNEL));
+  if (logCh && guild.systemChannelId !== logCh.id) {
+    await guild
+      .edit({ systemChannel: logCh.id, systemChannelFlags: [GuildSystemChannelFlags.SuppressJoinNotificationReplies, GuildSystemChannelFlags.SuppressGuildReminderNotifications] })
+      .catch((err) => log.warn(`/setup : salon des messages système (${err instanceof Error ? err.message : String(err)})`));
+  }
+  // Et les anciens messages d'arrivée déjà postés dans #général sont effacés
+  const general = channels.get(bare('💬│général'));
+  const joins = await general?.messages.fetch({ limit: 100 }).catch(() => null);
+  const oldJoins = joins?.filter((m) => m.type === MessageType.UserJoin);
+  if (general && oldJoins?.size) await general.bulkDelete(oldJoins, true).catch(() => {});
   // Anciennes catégories devenues vides
   for (const name of LEGACY_CATEGORIES) {
     const old = guild.channels.cache.find((ch) => ch.type === ChannelType.GuildCategory && ch.name === name);
