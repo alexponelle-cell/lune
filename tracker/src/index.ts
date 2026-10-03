@@ -56,6 +56,7 @@ const stopWeb = startWeb(
       .map(([name, url]) => ({ name: name!.trim(), url: url!.trim().replace(/\/+$/, '') })),
     selfUrl: dashboardUrl.replace(/\/+$/, ''),
     game,
+    emailApi: !!(config.SQUIDUU_API_URL && config.SQUIDUU_API_TOKEN),
     youtubeApiKey: config.YOUTUBE_API_KEY,
     discordOAuth:
       config.OAUTH_CLIENT_SECRET && (config.OAUTH_CLIENT_ID ?? config.DISCORD_CLIENT_ID)
