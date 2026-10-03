@@ -15,10 +15,10 @@ export const squiduu: CreatorConfig = {
   rewardAccount: {
     kind: 'email',
     title: 'Compte Squiduuverse',
-    label: 'E-mail utilisé sur le Squiduuverse',
-    placeholder: 'ton@email.com',
+    label: 'Ton e-mail Google (accès Squiduuverse)',
+    placeholder: 'ton.adresse@gmail.com',
     badge: 'Compte Squiduuverse relié',
-    deliveryHint: 'Le mois est ajouté au compte Squiduuverse lié à cet e-mail.',
+    deliveryHint: 'Le mois est ajouté au Squiduuverse sur cet e-mail Google (compte créé automatiquement si tu n’en as pas). Connecte-toi ensuite avec ce compte Google.',
   },
   reward: {
     name: '1 mois de Squiduuverse',
@@ -107,7 +107,7 @@ export const squiduu: CreatorConfig = {
     dmFooter: 'SQUIDUU · Clippe, gagne des coins',
     faq: [
       { q: 'Comment je gagne des coins ?', a: 'Tu postes des clips de SQUIDUU sur TikTok, Instagram ou YouTube. Chaque vue compte : 1 000 vues = 10 coins, tous comptes confondus.' },
-      { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, ouvre un ticket et fais /inscription. Tu renseignes tes comptes et ton e-mail Squiduuverse, c’est tout.' },
+      { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, ouvre un ticket et fais /inscription. Tu renseignes tes comptes et ton e-mail Google : c’est sur lui que tes mois de Squiduuverse arrivent, même si tu n’as pas encore de compte.' },
       { q: 'Quand mes vues sont-elles comptées ?', a: 'Une fois par jour. Seules les vues faites après ton inscription rapportent des coins.' },
       { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum. Un compte qui vient de démarrer peut gagner des coins dès son premier clip.' },
     ],
