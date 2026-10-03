@@ -409,22 +409,25 @@ export async function handleStepButtons(interaction: Interaction) {
   if (!interaction.isButton() || !interaction.inCachedGuild()) return;
   const step = interaction.customId === STEP_READ_BUTTON ? 'read' : interaction.customId === STEP_RULES_BUTTON ? 'rules' : null;
   if (!step) return;
+  // Répondu tout de suite : sous l'afflux (des centaines d'arrivées), l'ajout de rôle est mis en file
+  // par Discord et dépasse souvent les 3 s, d'où « L'application n'a pas répondu à temps ».
+  if (!(await interaction.deferReply({ flags: MessageFlags.Ephemeral }).then(() => true, () => false))) return;
   try {
     const names = step === 'read' ? [ROLE_READER] : [ROLE_READER, ROLE_RULES];
     const roles = names.map((n) => interaction.guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => !!r);
-    if (roles.length !== names.length) return void (await interaction.reply({ content: 'Rôle introuvable : un admin doit refaire /setup.', flags: MessageFlags.Ephemeral }));
-    await interaction.member.roles.add(roles.map((r) => r!.id), 'Parcours d’accueil');
+    if (roles.length !== names.length) return void (await interaction.editReply({ content: 'Rôle introuvable : un admin doit refaire /setup.' }));
+    const missing = roles.filter((r) => !interaction.member.roles.cache.has(r!.id));
+    if (missing.length) await interaction.member.roles.add(missing.map((r) => r!.id), 'Parcours d’accueil');
     const ch = (name: string) => interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(name));
-    await interaction.reply({
+    await interaction.editReply({
       content:
         step === 'read'
           ? `✅ C’est débloqué ! Lis ${ch('📜│règles') ?? '#règles'} et ${ch('🧭│déroulement') ?? '#déroulement'}, puis accepte les règles.`
           : `🎉 Règles acceptées ! Regarde ${ch('🎓│tutos') ?? '#tutos'} puis inscris-toi dans ${ch('📝│inscription') ?? '#inscription'}.`,
-      flags: MessageFlags.Ephemeral,
     });
   } catch (err) {
     log.warn(`parcours d’accueil : ${err instanceof Error ? err.message : String(err)}`);
-    await interaction.reply({ content: 'Impossible de te donner l’accès : le rôle du bot doit être tout en haut (Paramètres → Rôles).', flags: MessageFlags.Ephemeral }).catch(() => {});
+    await interaction.editReply({ content: 'Impossible de te donner l’accès pour l’instant, réessaie dans une minute. Si ça continue, préviens le staff.' }).catch(() => {});
   }
 }
 
@@ -460,16 +463,17 @@ async function privateChannelFor(guild: Guild, member: GuildMember): Promise<Tex
 /** Bouton « 🔔 Alerte vidéos » : ajoute ou retire le rôle. */
 export async function handleAlertsButton(interaction: Interaction) {
   if (!interaction.isButton() || interaction.customId !== ALERTS_BUTTON || !interaction.inCachedGuild()) return;
+  if (!(await interaction.deferReply({ flags: MessageFlags.Ephemeral }).then(() => true, () => false))) return;
   try {
     const role = interaction.guild.roles.cache.find((r) => sameName(r.name, ROLE_ALERTS));
-    if (!role) return void (await interaction.reply({ content: 'Rôle introuvable : un admin doit refaire /setup.', flags: MessageFlags.Ephemeral }));
+    if (!role) return void (await interaction.editReply({ content: 'Rôle introuvable : un admin doit refaire /setup.' }));
     const has = interaction.member.roles.cache.has(role.id);
     if (has) await interaction.member.roles.remove(role);
     else await interaction.member.roles.add(role);
-    await interaction.reply({ content: has ? '🔕 Alertes vidéos désactivées.' : '🔔 Alertes activées : tu seras mentionné à chaque nouvelle vidéo.', flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: has ? '🔕 Alertes vidéos désactivées.' : '🔔 Alertes activées : tu seras mentionné à chaque nouvelle vidéo.' });
   } catch (err) {
     log.warn(`alerte vidéos : ${err instanceof Error ? err.message : String(err)}`);
-    await interaction.reply({ content: 'Impossible de changer ton rôle : le rôle du bot doit être tout en haut (Paramètres → Rôles).', flags: MessageFlags.Ephemeral }).catch(() => {});
+    await interaction.editReply({ content: 'Impossible de changer ton rôle pour l’instant, réessaie dans une minute.' }).catch(() => {});
   }
 }
 
