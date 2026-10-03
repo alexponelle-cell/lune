@@ -90,7 +90,7 @@ const ClipperBody = z.object({
 const ItemBody = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(300).default(''),
-  imageUrl: z.string().trim().url().max(500).nullable().optional(),
+  imageUrl: z.string().trim().max(500).refine((v) => /^https?:\/\//.test(v) || /^\/[\w/.-]+$/.test(v), 'Lien d’image invalide').nullable().optional(),
   price: z.number().int().min(1).max(100_000_000),
   kind: z.enum(['gamepass', 'item']),
   ref: z.string().trim().min(1).max(100),
