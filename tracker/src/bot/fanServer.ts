@@ -44,6 +44,8 @@ export const RANKING_CHANNEL = '🏆│classement';
 export const LEVELUP_CHANNEL = '🎉│level-up';
 /** Bouton « 🔔 Alerte vidéos » (ajoute / retire le rôle). */
 export const ALERTS_BUTTON = 'fans:alerts';
+/** SOP de l’agence (tutos clips), mises en avant dans 🎓│tutos */
+export const TUTOS_URL = 'https://neptune-academy.laro-reseaux.workers.dev/';
 /** Nom du rôle d'un niveau (ex. « 🔥 Pro »). */
 export const levelRoleName = (l: { emoji: string; name: string }) => `${l.emoji} ${l.name}`;
 /** Rôles de palier : un par objet de la boutique (ex. « 🎁 1 mois de Squiduuverse »). */
@@ -337,8 +339,11 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
           new EmbedBuilder()
             .setColor(color(fans))
             .setTitle('🎓・Tutos')
-            .setDescription(`Ici, le staff poste les tutos pour apprendre à faire des clips de ${c.creatorName} qui font des vues : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\nQuand tu es prêt, passe à 📝│inscription.`),
+            .setDescription(
+              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont sur **Neptune Academy** : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\n👉 ${TUTOS_URL}\n\nQuand tu es prêt, passe à 📝│inscription.`,
+            ),
         ],
+        components: [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(TUTOS_URL).setLabel('Ouvrir Neptune Academy').setEmoji('🎓'))],
       }),
     ],
     [
