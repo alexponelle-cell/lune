@@ -165,15 +165,16 @@ function overwrites(guild: Guild, access: Access, staffRoleId: string): Overwrit
   const bot = { id: guild.members.me!.id, allow: [V.ViewChannel, V.SendMessages, V.EmbedLinks, V.ManageMessages, V.ManageChannels] };
   const head = guild.roles.cache.find((r) => sameName(r.name, ROLE_HEAD));
   const staff = [
-    { id: staffRoleId, allow: [V.ViewChannel, V.SendMessages] },
-    ...(head ? [{ id: head.id, allow: [V.ViewChannel, V.SendMessages, V.ManageMessages] }] : []),
+    { id: staffRoleId, allow: [V.ViewChannel, V.SendMessages, V.MentionEveryone] },
+    ...(head ? [{ id: head.id, allow: [V.ViewChannel, V.SendMessages, V.ManageMessages, V.MentionEveryone] }] : []),
   ];
   const everyone = guild.roles.everyone.id;
-  if (access.who === 'staff') return [{ id: everyone, deny: [V.ViewChannel] }, ...staff, bot];
-  if (access.who === 'everyone') return [{ id: everyone, allow: [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads, V.AddReactions] }, ...staff, bot];
+  // @everyone / @here : refusé à tous dans chaque salon (même si un rôle l'a), sauf staff et admins
+  if (access.who === 'staff') return [{ id: everyone, deny: [V.ViewChannel, V.MentionEveryone] }, ...staff, bot];
+  if (access.who === 'everyone') return [{ id: everyone, allow: [V.ViewChannel], deny: access.write ? [V.MentionEveryone] : [V.SendMessages, V.CreatePublicThreads, V.AddReactions, V.MentionEveryone] }, ...staff, bot];
   const role = guild.roles.cache.find((r) => sameName(r.name, access.role));
   return [
-    { id: everyone, deny: [V.ViewChannel] },
+    { id: everyone, deny: [V.ViewChannel, V.MentionEveryone] },
     ...(role ? [{ id: role.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] }] : []),
     ...staff,
     bot,
