@@ -304,7 +304,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   const creatorRole = guild.roles.cache.find((r) => sameName(r.name, creatorName));
   const fill = (t: string) => t.replaceAll('{creator}', creatorRole ? `${creatorRole}` : `**${c.creatorName}**`).replaceAll('{rate}', String(rate));
   const tag = `#${fans.clipKeywords()[0] ?? 'createur'}`;
-  /** Rappel obligatoire du tag : ajouté aux textes personnalisés du créateur (bienvenue, règles). */
+  /** Rappel obligatoire du tag dans les règles personnalisées (l'autre rappel est dans le salon privé). */
   const tagRule = `\n\n🏷️ **OBLIGATOIRE : mets ${tag} dans la légende de CHAQUE clip.** Sans ${tag}, le clip ne rapporte **aucun coin**.`;
   const steps = c.texts.steps.map((s, i) => `**${String(i + 1).padStart(2, '0')} · ${s.title}**\n${s.text}`).join('\n\n');
   const posts: Array<[string, () => { embeds: EmbedBuilder[]; components?: ActionRowBuilder<ButtonBuilder>[] }]> = [
@@ -317,7 +317,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setTitle(`Bienvenue sur le serveur clipping de ${c.creatorName}`)
             .setDescription(
               c.discord
-                ? fill(c.discord.welcome) + tagRule
+                ? fill(c.discord.welcome)
                 : `${c.texts.heroText.replace(/\*\*/g, '')}\n\n${steps}\n\n🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus. Les vues sont comptées une fois par jour.`,
             )
             .setThumbnail(`${siteUrl.replace(/\/fan$/, '')}/fan/assets/creator.png`),
@@ -358,7 +358,6 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
                 steps,
                 '',
                 `🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus (YouTube + TikTok + Instagram). Les vues sont comptées une fois par jour, à partir de ton inscription.`,
-                `🏷️ **Mets ${tag} dans la légende de CHAQUE clip** : sans ${tag}, le clip ne rapporte aucun coin.`,
                 c.reward ? `🎁 **${c.reward.name}** : ${c.reward.price.toLocaleString('fr-FR')} coins.` : '🎁 Les récompenses sont dans la boutique du site.',
                 '',
                 '**Ton parcours ici**',
@@ -379,7 +378,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('🎓・Tutos')
             .setDescription(
-              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont dans la formation **Neptune Academy** (6 vidéos courtes) : créer ton compte, CapCut, faire un clip, exporter.\n\n👉 **Clique sur 📚 Ma formation** : ta page perso s'ouvre. Regarde chaque vidéo et coche-la. Quand tout est coché, 📝│inscription se débloque.\n\n🏷️ Rappel : **${tag} dans la légende de chaque clip**, sinon 0 coin.`,
+              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont dans la formation **Neptune Academy** (6 vidéos courtes) : créer ton compte, CapCut, faire un clip, exporter.\n\n👉 **Clique sur 📚 Ma formation** : ta page perso s'ouvre. Regarde chaque vidéo et coche-la. Quand tout est coché, 📝│inscription se débloque.`,
             ),
         ],
         components: [
