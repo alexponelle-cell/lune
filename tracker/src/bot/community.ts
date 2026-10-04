@@ -16,6 +16,7 @@ import {
   TextInputStyle,
 } from 'discord.js';
 import type { Repo } from '../db/repo.js';
+import { isMontageGuild } from './montage.js';
 import { log } from '../log.js';
 import type { AgencyService } from '../services/agency.js';
 import type { RecruitmentService } from '../services/recruitment.js';
@@ -86,7 +87,7 @@ export function attachCommunity(
 
   // --- Accueil -------------------------------------------------------------------------------
   discord.on(Events.GuildMemberAdd, async (member) => {
-    if (member.user.bot) return;
+    if (member.user.bot || isMontageGuild(member.guild)) return;
     const settings = s();
     if (settings.arrivantRoleId) {
       await member.roles.add(settings.arrivantRoleId, 'Arrivée sur le serveur').catch((err) => log.warn(`rôle Arrivant non donné : ${String(err)}`));
@@ -125,7 +126,7 @@ export function attachCommunity(
 
   // --- Départs : DM best-effort + log fiable --------------------------------------------------
   discord.on(Events.GuildMemberRemove, async (member) => {
-    if (member.user.bot) return;
+    if (member.user.bot || isMontageGuild(member.guild)) return;
     const roles = member.roles.cache.filter((r) => r.id !== member.guild.id).map((r) => r.name);
     let dmSent = false;
     try {

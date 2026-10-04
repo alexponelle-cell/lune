@@ -628,3 +628,19 @@ describe('automatisations du serveur', () => {
     expect(fans.botState('x', [])).toEqual([1, 2]);
   });
 });
+
+describe('serveur des monteurs (/setup-montage)', () => {
+  it('4 créateurs, 4 salons par section (annonces en lecture seule), commande réservée aux admins', async () => {
+    const m = await import('../src/bot/montage.js');
+    expect(m.MONTAGE_CREATORS).toEqual(['Elie', 'Science', 'Sabrina', 'Adrien']);
+    expect(m.CREATOR_CHANNELS.map((c) => [c.name, c.write])).toEqual([
+      ['📣│annonces', false],
+      ['💬│général', true],
+      ['📝│feedback', true],
+      ['🚀│à-publier', true],
+    ]);
+    expect(m.creatorRole('Elie')).toBe('✂️ Team Elie');
+    expect(m.setupMontageCommand.name).toBe('setup-montage');
+    expect(m.setupMontageCommand.default_member_permissions).toBe('8');
+  });
+});

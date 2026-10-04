@@ -8,6 +8,7 @@ import type { Analytics } from '../services/analytics.js';
 import type { FanService } from '../services/fans.js';
 import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
+import { attachMontage } from './montage.js';
 import { handleCommand } from './commands.js';
 import { formatComptesReply, registerAccountsFromMessage } from './comptes.js';
 import { attachFanCommands, FAN_COMMANDS } from './fans.js';
@@ -86,6 +87,8 @@ function createClient(
   const communityBridge = attachCommunity(discord, { repo, recruitment: deps.recruitment, agency: deps.agency, guildId: deps.guildId });
 
   if (deps.fans) attachFanCommands(discord, deps.fans);
+  // Serveur des monteurs (/setup-montage) sur les autres serveurs où le bot est invité
+  attachMontage(discord, { token: deps.token, agencyGuildId: deps.guildId });
 
   // Salon COMPTES : enregistrement des comptes postés par les clippers.
   discord.on(Events.MessageCreate, async (message) => {
@@ -108,7 +111,7 @@ function createClient(
   });
 
   discord.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand() || RECRUITMENT_COMMANDS.has(interaction.commandName) || FAN_COMMANDS.has(interaction.commandName)) return;
+    if (!interaction.isChatInputCommand() || RECRUITMENT_COMMANDS.has(interaction.commandName) || FAN_COMMANDS.has(interaction.commandName) || interaction.commandName === 'setup-montage') return;
     const name = interaction.commandName;
     log.info(`commande /${name} par ${interaction.user.username} (salon ${interaction.channelId})`);
     try {

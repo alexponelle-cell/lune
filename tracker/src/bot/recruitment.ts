@@ -17,6 +17,7 @@ import {
 } from 'discord.js';
 import type { Repo } from '../db/repo.js';
 import { parseAccountInput, PLATFORMS } from '../domain/links.js';
+import { isMontageGuild } from './montage.js';
 import { log } from '../log.js';
 import type { RecruitmentService } from '../services/recruitment.js';
 
@@ -95,7 +96,7 @@ export function attachRecruitment(
 
   // --- Arrivée d'un membre : qui l'a invité ? (nécessite Server Members Intent) -----------
   discord.on(Events.GuildMemberAdd, async (member) => {
-    if (member.user.bot) return;
+    if (member.user.bot || isMontageGuild(member.guild)) return;
     try {
       const before = inviteUses.get(member.guild.id) ?? new Map();
       await snapshotInvites(member.guild);
