@@ -41,11 +41,12 @@ describe('programme fans (Neptune)', () => {
   }
 
   it('formation : liens réglés dans Mars, tout coché → débloqué une seule fois', async () => {
-    fans.saveSettings({ training: '206 | https://youtu.be/abcdefghijk\n201 https://frame.io/x\nligne sans lien' });
+    fans.saveSettings({ training: '206 | https://youtu.be/abcdefghijk\n201 https://frame.io/x\n203 | https://cdn.test/203.mp4?v=1\nligne sans lien' });
     const fan = fans.ensureFan('d9', 'Clip');
     const t = fans.training(fan.id);
     expect(t.modules.find((m) => m.num === '206')).toMatchObject({ url: 'https://youtu.be/abcdefghijk', embed: 'https://www.youtube-nocookie.com/embed/abcdefghijk?rel=0', done: false });
-    expect(t.modules.find((m) => m.num === '201')).toMatchObject({ url: 'https://frame.io/x', embed: null });
+    expect(t.modules.find((m) => m.num === '201')).toMatchObject({ url: 'https://frame.io/x', embed: null, video: null });
+    expect(t.modules.find((m) => m.num === '203')).toMatchObject({ video: 'https://cdn.test/203.mp4?v=1' });
     const done: string[] = [];
     fans.onTrainingDone = (id) => void done.push(id);
     for (const m of t.modules) fans.setTrainingStep(fan, m.num, true);

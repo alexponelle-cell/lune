@@ -122,7 +122,8 @@ function open(m) {
   current = m;
   $('#mt').textContent = `${m.num} · ${m.title}`;
   $('#mark').textContent = m.done ? '✓ Déjà vue' : "✓ J'ai vu cette vidéo";
-  $('#vid').innerHTML = m.embed ? `<iframe src="${esc(m.embed)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
+  $('#vid').innerHTML = m.video ? `<video src="${esc(m.video)}" controls autoplay playsinline style="width:100%;height:100%;background:#000"></video>`
+    : m.embed ? `<iframe src="${esc(m.embed)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
     : `<div style="height:100%;display:grid;place-items:center;text-align:center;padding:20px">${m.url ? `<a class="btn" href="${esc(m.url)}" target="_blank" rel="noopener">▶ Ouvrir la vidéo</a>` : '<p style="color:var(--muted)">Vidéo bientôt disponible.</p>'}</div>`;
   $('#modal').classList.add('open');
 }

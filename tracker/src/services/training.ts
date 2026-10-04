@@ -33,6 +33,9 @@ export function parseTrainingLinks(text: string): Map<string, string> {
   return links;
 }
 
+/** Fichier vidéo direct (.mp4, .webm, .mov, .m3u8) : lu dans la page avec le lecteur du navigateur. */
+export const isVideoFile = (url: string) => /\.(mp4|webm|mov|m4v|m3u8)(\?|#|$)/i.test(url);
+
 /** Lien YouTube → lien intégrable (lecture dans la page) ; autre lien → null (ouvert dans un onglet). */
 export function youtubeEmbed(url: string): string | null {
   const id = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/|live\/))([\w-]{11})/i)?.[1];

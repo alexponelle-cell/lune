@@ -1,5 +1,5 @@
 import type { FanRepo, ItemInput, ShopOrder } from '../db/fans.js';
-import { parseTrainingLinks, TRAINING_MODULES, youtubeEmbed } from './training.js';
+import { isVideoFile, parseTrainingLinks, TRAINING_MODULES, youtubeEmbed } from './training.js';
 import type { Clipper, Repo } from '../db/repo.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
@@ -155,7 +155,7 @@ export class FanService {
     const seen = new Set(this.repo.getSetting<string[]>(`training:${clipperId}`, []));
     const modules = TRAINING_MODULES.map((m) => {
       const url = links.get(m.num) ?? null;
-      return { ...m, url, embed: url ? youtubeEmbed(url) : null, done: seen.has(m.num) };
+      return { ...m, url, embed: url ? youtubeEmbed(url) : null, video: url && isVideoFile(url) ? url : null, done: seen.has(m.num) };
     });
     return { modules, completed: modules.every((m) => m.done) };
   }
