@@ -184,6 +184,19 @@ export class FanRepo {
     ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at }));
   }
 
+  /** Discord des fans du client qui ont posté au moins un clip après avoir relié le compte (1er clip = accès au serveur). */
+  firstClipDiscordIds(clientId: number): Set<string> {
+    const rows = this.db
+      .prepare(
+        `SELECT DISTINCT c.discord_id AS id FROM clippers c
+           JOIN accounts a ON a.clipper_id = c.id AND a.active = 1
+           JOIN videos v ON v.account_id = a.id
+         WHERE c.client_id = ? AND COALESCE(v.published_at, v.first_seen_at) >= a.created_at`,
+      )
+      .all(clientId) as Array<{ id: string }>;
+    return new Set(rows.map((r) => r.id));
+  }
+
   clipCount(clipperId: number): number {
     const r = this.db
       .prepare('SELECT COUNT(*) AS n FROM videos v JOIN accounts a ON a.id = v.account_id WHERE a.clipper_id = ? AND a.active = 1')

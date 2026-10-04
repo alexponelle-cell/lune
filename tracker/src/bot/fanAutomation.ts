@@ -1,7 +1,7 @@
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
-import { bare, ensureTierRoles, LEVELUP_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
+import { bare, ensureTierRoles, LEVELUP_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
 
 /**
  * Automatisations des serveurs montés par /setup (sans effet ailleurs : rôles et salons introuvables).
@@ -23,6 +23,41 @@ const setupGuilds = (client: Client<true>, fans: FanService) => {
   const ids = new Set(fans.botState<string[]>('setup-guilds', []));
   return [...client.guilds.cache.values()].filter((g) => ids.has(g.id));
 };
+
+/**
+ * 1er clip détecté → la communauté se débloque : rôle 🎬 Clippeur à la place de « 1er clip à poster »,
+ * message dans son salon privé. Chaque fan n'est traité qu'une fois. Renvoie le nombre de débloqués.
+ */
+export async function unlockFirstClips(client: Client<true>, fans: FanService): Promise<number> {
+  const done = fans.firstClipDone();
+  const handled = new Set(fans.botState<string[]>('first-clip-unlocked', []));
+  const todo = [...done].filter((id) => !handled.has(id) && !id.startsWith('manual:'));
+  if (!todo.length) return 0;
+  let unlocked = 0;
+  for (const guild of setupGuilds(client, fans)) {
+    const clipper = roleNamed(guild, ROLE_CLIPPER);
+    const pending = roleNamed(guild, ROLE_PENDING);
+    if (!clipper || !pending) continue;
+    for (const id of todo) {
+      const member = guild.members.cache.get(id) ?? (await guild.members.fetch(id).catch(() => null));
+      if (!member) continue;
+      handled.add(id);
+      if (!member.roles.cache.has(pending.id)) continue; // ancien clippeur (déjà dans la communauté)
+      try {
+        await member.roles.add(clipper.id, '1er clip détecté');
+        await member.roles.remove(pending.id, '1er clip détecté');
+        unlocked++;
+        const priv = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${id}]`)) as TextChannel | undefined;
+        await priv?.send({ content: `🎉 ${member} **ton 1er clip est détecté !** Toute la communauté est débloquée : annonces, #général, classement. Continue comme ça 🔥` }).catch(() => {});
+      } catch (err) {
+        handled.delete(id);
+        log.warn(`1er clip (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+  fans.setBotState('first-clip-unlocked', [...handled]);
+  return unlocked;
+}
 
 /**
  * Rôles de palier = objets de la boutique : chaque fan a le rôle du plus gros objet que ses coins gagnés

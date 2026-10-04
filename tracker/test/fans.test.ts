@@ -40,6 +40,15 @@ describe('programme fans (Neptune)', () => {
     return fan;
   }
 
+  it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {
+    const fan = fanWithViews(); // vidéo publiée avant l'ajout du compte
+    expect(fans.firstClipDone().size).toBe(0);
+    const account = repo.listAccountsForClipper(fan.id)[0]!;
+    const later = Date.now() + 60_000;
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 5100, publishedAt: now - 2 * HOUR }, { platformVideoId: 'v2', views: 10, publishedAt: later }], later);
+    expect([...fans.firstClipDone()]).toEqual(['d1']);
+  });
+
   it('livre les achats via l\'API du jeu (200, 429, rejeu, référence invalide)', async () => {
     const fan = fanWithViews();
     await fans.linkRoblox(fan, 'paulrbx');

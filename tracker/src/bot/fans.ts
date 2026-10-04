@@ -17,7 +17,7 @@ import {
 } from 'discord.js';
 import { log } from '../log.js';
 import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons } from './fanServer.js';
-import { announceNewVideos, syncTierRoles, weeklyRanking } from './fanAutomation.js';
+import { announceNewVideos, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -80,13 +80,13 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         };
         const modal = new ModalBuilder().setCustomId(INSCRIPTION_MODAL).setTitle(`Inscription ${fans.settings().programName}`.slice(0, 45));
         for (const f of PLATFORM_FIELDS) {
-          const input = new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setPlaceholder(f.placeholder).setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(200);
+          const input = new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setPlaceholder(f.placeholder).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(200);
           const v = current(f.id);
           if (v) input.setValue(v);
           modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
         }
         const ra = fans.creator.rewardAccount;
-        const rbx = new TextInputBuilder().setCustomId('roblox').setLabel(ra.label.slice(0, 45)).setPlaceholder(ra.placeholder).setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(ra.kind === 'email' ? 254 : 20);
+        const rbx = new TextInputBuilder().setCustomId('roblox').setLabel(ra.label.slice(0, 45)).setPlaceholder(ra.placeholder).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(ra.kind === 'email' ? 254 : 20);
         const r = fans.rewardAccount(fan.id).value;
         if (r) rbx.setValue(r);
         modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(rbx));
@@ -127,10 +127,13 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
           if (current) lines.push(`${fans.creator.rewardAccount.kind === 'email' ? '📧 E-mail' : '🎮 Roblox'} : **${current}**`);
         }
         if (!lines.length) lines.push('Rien à changer 👍');
-        if (res.linked.length && interaction.inCachedGuild()) {
+        // Les 3 réseaux sont obligatoires pour entrer (TikTok, YouTube, Instagram)
+        const missing = PLATFORM_FIELDS.filter((f) => !fans.accountsOf(fan.id).some((a) => a.platform === f.id)).map((f) => f.label);
+        if (missing.length) lines.push(`\n⚠️ **Il manque : ${missing.join(', ')}.** Les 3 comptes sont obligatoires : reclique sur **S’inscrire** pour compléter.`);
+        if (res.linked.length && !missing.length && interaction.inCachedGuild()) {
           await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl());
         }
-        if (res.linked.length) lines.push('\nTes prochaines vues te rapportent des coins 🪙 (mise à jour 1 fois par jour) · `/site` pour la boutique');
+        if (res.linked.length && !missing.length) lines.push('\n🎬 **Dernière étape : poste ton 1er clip.** Dès qu’il est détecté (1 relevé par jour), toute la communauté se débloque · `/site` pour la boutique');
         await interaction.editReply(lines.join('\n'));
       }
     } catch (err) {
@@ -260,6 +263,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     void sendNotifications().catch(() => {});
     // Serveur monté par /setup (toutes les 15 min) : rôles de palier, classement du lundi, nouvelles vidéos
     const automations = async () => {
+      await unlockFirstClips(c, opts.fans).catch((err) => log.error('1er clip', err));
       await syncTierRoles(c, opts.fans).catch((err) => log.error('rôles de palier', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
       if (opts.youtubeApiKey) await announceNewVideos(c, opts.fans, opts.youtubeApiKey).catch((err) => log.error('nouvelles vidéos', err));

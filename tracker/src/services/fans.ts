@@ -197,6 +197,12 @@ export class FanService {
   // --- Espace fan --------------------------------------------------------------------
 
   /** Classement de la semaine (7 derniers jours) : pseudo, avatar, vues, coins gagnés. */
+  /** Fans (Discord) dont le 1er clip a été détecté : ils débloquent la communauté. */
+  firstClipDone(): Set<string> {
+    const s = this.settings();
+    return s.clientId ? this.fans.firstClipDiscordIds(s.clientId) : new Set();
+  }
+
   leaderboard(now = Date.now(), limit = 10) {
     const s = this.settings();
     if (!s.clientId) return [];

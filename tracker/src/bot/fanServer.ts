@@ -97,6 +97,8 @@ interface ChannelPlan {
 }
 export const ROLE_READER = '📖 Lecteur';
 export const ROLE_RULES = '✅ Règles acceptées';
+/** Inscrit mais 1er clip pas encore détecté : seul son salon privé est visible, la communauté est fermée. */
+export const ROLE_PENDING = '🎬 1er clip à poster';
 export const STEP_READ_BUTTON = 'fans:step:read';
 export const STEP_RULES_BUTTON = 'fans:step:rules';
 export const PRIVATE_CATEGORY = '🔒 ESPACES PRIVÉS';
@@ -208,6 +210,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   await role(ROLE_TOP, 0xffd24a, true);
   await ensureTierRoles(guild, fans);
   await role(ROLE_CLIPPER, color(fans), false);
+  await role(ROLE_PENDING, 0xb07cff, false);
   await role(ROLE_RULES, 0x9b9aa3, false);
   await role(ROLE_READER, 0x6b6a73, false);
   await role(ROLE_ALERTS, 0x5ab0e0, false);
@@ -254,7 +257,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     }
   }
   // Personne ne peut mentionner @everyone / @here sauf les admins (permission retirée de @everyone et des rôles des fans)
-  for (const r of [guild.roles.everyone, ...guild.roles.cache.filter((x) => [ROLE_CLIPPER, ROLE_RULES, ROLE_READER, ROLE_ALERTS, ROLE_TOP].some((n) => sameName(x.name, n)) || x.name.startsWith(TIER_PREFIX)).values()]) {
+  for (const r of [guild.roles.everyone, ...guild.roles.cache.filter((x) => [ROLE_CLIPPER, ROLE_PENDING, ROLE_RULES, ROLE_READER, ROLE_ALERTS, ROLE_TOP].some((n) => sameName(x.name, n)) || x.name.startsWith(TIER_PREFIX)).values()]) {
     if (r.permissions.has(V.MentionEveryone)) await r.setPermissions(r.permissions.remove(V.MentionEveryone), 'Pas de ping @everyone').catch(() => {});
   }
   // Messages d'arrivée de Discord (« X a bondi dans le serveur ») : envoyés dans le log staff, plus dans #général
@@ -344,8 +347,8 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
                 '**Ton parcours ici**',
                 '1️⃣ Accepte les règles (bouton dans 📜│règles)',
                 '2️⃣ Regarde les tutos dans 🎓│tutos',
-                '3️⃣ Inscris-toi dans 📝│inscription',
-                '4️⃣ Tu débloques ton salon privé, les annonces et toute la communauté 🎉',
+                '3️⃣ Inscris-toi dans 📝│inscription avec **tes 3 comptes** (TikTok, YouTube, Instagram)',
+                '4️⃣ Poste **ton 1er clip** : dès qu’il est détecté, tu débloques les annonces et toute la communauté 🎉',
               ].join('\n'),
             ),
         ],
@@ -373,7 +376,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('Inscris-toi')
             .setDescription(
-              `Clique sur **S’inscrire** et renseigne tes comptes TikTok, YouTube, Instagram et ton ${c.rewardAccount.label.charAt(0).toLowerCase()}${c.rewardAccount.label.slice(1)}.\n\nTu peux recliquer à tout moment pour modifier tes comptes. Seules les vues faites après ton inscription comptent.`,
+              `Clique sur **S’inscrire** et renseigne **tes 3 comptes** TikTok, YouTube et Instagram, plus ton ${c.rewardAccount.label.charAt(0).toLowerCase()}${c.rewardAccount.label.slice(1)}.\n\nEnsuite, **poste ton 1er clip** de ${c.creatorName} : dès qu’il est détecté, toute la communauté se débloque.\n\nTu peux recliquer à tout moment pour modifier tes comptes. Seules les vues faites après ton inscription comptent.`,
             ),
         ],
         components: [buttons],
@@ -513,7 +516,10 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
 /** Après une inscription réussie : rôles, salon privé et trace dans le salon staff (si le serveur a été monté par /setup). */
 export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string) {
   try {
-    const roles = [ROLE_CLIPPER, ROLE_READER, ROLE_RULES].map((n) => guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => r && !member.roles.cache.has(r.id));
+    // Accès à la communauté seulement après le 1er clip (rôle Clippeur donné par l'automatisation) ; déjà clippeur = inchangé
+    const clipper = guild.roles.cache.find((r) => sameName(r.name, ROLE_CLIPPER));
+    const already = !!clipper && member.roles.cache.has(clipper.id);
+    const roles = [ROLE_READER, ROLE_RULES, ...(already ? [] : [ROLE_PENDING])].map((n) => guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => r && !member.roles.cache.has(r.id));
     if (roles.length) await member.roles.add(roles.map((r) => r!.id), 'Inscription clippeur');
     if (guild.roles.cache.some((r) => sameName(r.name, ROLE_CLIPPER)) && guild.channels.cache.some((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY))) {
       const priv = await privateChannelFor(guild, member);
@@ -533,6 +539,7 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
                   '',
                   `✅ Comptes suivis : ${accounts.join(', ')}`,
                   '📈 Tes vues sont comptées une fois par jour, à partir de maintenant.',
+                  ...(already ? [] : ['', `🎬 **Dernière étape : poste ton 1er clip** sur un de ces comptes. Dès qu’il est détecté (relevé 1 fois par jour), tu débloques les annonces, #général et toute la communauté.`]),
                   siteUrl ? `🪙 Suis tes coins et échange-les sur le site : ${siteUrl}` : '🪙 Tape `/coins` pour voir tes coins.',
                   '',
                   'Une question sur tes clips ou ton montage ? Écris ici, le staff te répond.',
