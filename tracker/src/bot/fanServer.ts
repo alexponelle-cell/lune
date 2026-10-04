@@ -303,6 +303,9 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   const rate = fans.settings().pointsPer1000;
   const creatorRole = guild.roles.cache.find((r) => sameName(r.name, creatorName));
   const fill = (t: string) => t.replaceAll('{creator}', creatorRole ? `${creatorRole}` : `**${c.creatorName}**`).replaceAll('{rate}', String(rate));
+  const tag = `#${fans.clipKeywords()[0] ?? 'createur'}`;
+  /** Rappel obligatoire du tag : ajouté aux textes personnalisés du créateur (bienvenue, règles). */
+  const tagRule = `\n\n🏷️ **OBLIGATOIRE : mets ${tag} dans la légende de CHAQUE clip.** Sans ${tag}, le clip ne rapporte **aucun coin**.`;
   const steps = c.texts.steps.map((s, i) => `**${String(i + 1).padStart(2, '0')} · ${s.title}**\n${s.text}`).join('\n\n');
   const posts: Array<[string, () => { embeds: EmbedBuilder[]; components?: ActionRowBuilder<ButtonBuilder>[] }]> = [
     [
@@ -314,7 +317,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setTitle(`Bienvenue sur le serveur clipping de ${c.creatorName}`)
             .setDescription(
               c.discord
-                ? fill(c.discord.welcome)
+                ? fill(c.discord.welcome) + tagRule
                 : `${c.texts.heroText.replace(/\*\*/g, '')}\n\n${steps}\n\n🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus. Les vues sont comptées une fois par jour.`,
             )
             .setThumbnail(`${siteUrl.replace(/\/fan$/, '')}/fan/assets/creator.png`),
@@ -330,10 +333,10 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('📜・Règlement du serveur')
             .setDescription(
-              c.discord ? fill(c.discord.rules) : [
+              c.discord ? fill(c.discord.rules) + tagRule : [
                 `1. Tes clips doivent venir des contenus de ${c.creatorName}.`,
                 '2. Un compte TikTok, YouTube ou Instagram ne peut être relié qu’à une seule personne.',
-                `3. **Chaque clip doit citer ${c.creatorName} dans sa légende** (ex. #${fans.clipKeywords()[0] ?? 'createur'}) : sinon il ne rapporte rien.`,
+                `3. **Chaque clip doit citer ${c.creatorName} dans sa légende** (ex. ${tag}) : sinon il ne rapporte rien.`,
                 '4. Pas de faux comptes, pas de vidéos d’un autre créateur, pas de vues achetées : les coins gagnés ainsi sont retirés.',
                 '5. Respect de tout le monde, dans les salons comme en message privé.',
                 '6. Le staff peut retirer un compte ou des coins en cas d’abus.',
@@ -355,7 +358,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
                 steps,
                 '',
                 `🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus (YouTube + TikTok + Instagram). Les vues sont comptées une fois par jour, à partir de ton inscription.`,
-                `🏷️ **Mets #${fans.clipKeywords()[0] ?? 'createur'} (ou le nom ${c.creatorName}) dans la légende de chaque clip** : sans ça, le clip ne compte pas.`,
+                `🏷️ **Mets ${tag} dans la légende de CHAQUE clip** : sans ${tag}, le clip ne rapporte aucun coin.`,
                 c.reward ? `🎁 **${c.reward.name}** : ${c.reward.price.toLocaleString('fr-FR')} coins.` : '🎁 Les récompenses sont dans la boutique du site.',
                 '',
                 '**Ton parcours ici**',
@@ -376,7 +379,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('🎓・Tutos')
             .setDescription(
-              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont dans la formation **Neptune Academy** (6 vidéos courtes) : créer ton compte, CapCut, faire un clip, exporter.\n\n👉 **Clique sur 📚 Ma formation** : ta page perso s'ouvre. Regarde chaque vidéo et coche-la. Quand tout est coché, 📝│inscription se débloque.`,
+              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont dans la formation **Neptune Academy** (6 vidéos courtes) : créer ton compte, CapCut, faire un clip, exporter.\n\n👉 **Clique sur 📚 Ma formation** : ta page perso s'ouvre. Regarde chaque vidéo et coche-la. Quand tout est coché, 📝│inscription se débloque.\n\n🏷️ Rappel : **${tag} dans la légende de chaque clip**, sinon 0 coin.`,
             ),
         ],
         components: [
