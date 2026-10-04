@@ -524,6 +524,21 @@ export class FanRepo {
     return this.db.prepare("UPDATE shop_orders SET approved_at = ? WHERE id = ? AND status = 'pending' AND approved_at IS NULL").run(now, orderId).changes > 0;
   }
 
+  /**
+   * Comptes déjà suivis avant la vérification par le staff, qui ont rapporté au moins `minViews` vues :
+   * remis dans la file « à vérifier » (une seule fois) pour rattraper un éventuel compte volé.
+   */
+  requeueEarners(clientId: number, minViews: number): number {
+    return this.db
+      .prepare(
+        `UPDATE accounts SET verified_at = NULL WHERE id IN (
+           SELECT a.id FROM accounts a JOIN clippers c ON c.id = a.clipper_id JOIN videos v ON v.account_id = a.id
+            WHERE c.client_id = ? AND a.active = 1 AND a.verified_at IS NOT NULL AND v.published_at >= a.created_at
+            GROUP BY a.id HAVING SUM(MAX(v.views - v.baseline_views, 0)) >= ?)`,
+      )
+      .run(clientId, minViews).changes;
+  }
+
   /** Comptes actifs pas encore validés par le staff, avec leurs derniers clips (titre + lien). */
   accountsToReview(clientId: number): Array<{ id: number; clipperId: number; username: string; discordId: string; platform: string; handle: string; url: string; followers: number | null; createdAt: number; clips: Array<{ title: string | null; url: string | null; views: number }> }> {
     const rows = this.db

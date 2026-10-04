@@ -375,12 +375,26 @@ export function createApp(deps: WebDeps): Hono {
       setCookie(c, 'staff', staffToken, { httpOnly: true, secure: isHttps(c), sameSite: 'Lax', path: '/', maxAge: 30 * 86_400 });
       return c.redirect('/', 302);
     });
+    // Anti-force brute : 10 mauvais mots de passe par IP en 15 min → bloqué 15 min (page de connexion et en-tête)
+    const fails = new Map<string, { n: number; at: number }>();
+    const ipOf = (c: Context) => c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-real-ip') || 'local';
+    const blocked = (c: Context) => {
+      const f = fails.get(ipOf(c));
+      return !!f && f.n >= 10 && Date.now() - f.at < 15 * 60_000;
+    };
+    const failed = (c: Context) => {
+      const ip = ipOf(c);
+      const f = fails.get(ip);
+      fails.set(ip, f && Date.now() - f.at < 15 * 60_000 ? { n: f.n + 1, at: f.at } : { n: 1, at: Date.now() });
+    };
     app.post('/login', async (c) => {
+      if (blocked(c)) return c.text('Trop d’essais : réessaie dans 15 minutes.', 429);
       const form = await c.req.parseBody();
       if (typeof form.password === 'string' && same(form.password, password)) {
         setCookie(c, 'staff', staffToken, { httpOnly: true, secure: isHttps(c), sameSite: 'Lax', path: '/', maxAge: 30 * 86_400 });
         return c.redirect('/', 303);
       }
+      failed(c);
       await new Promise((r) => setTimeout(r, 600));
       return c.redirect('/login?e=1', 303);
     });
@@ -393,7 +407,12 @@ export function createApp(deps: WebDeps): Hono {
       if (cookie && same(cookie, staffToken)) return next();
       // Accès par en-tête (scripts, anciens favoris) toujours accepté
       const basic = c.req.header('authorization')?.match(/^Basic (.+)$/)?.[1];
-      if (basic && same(Buffer.from(basic, 'base64').toString().split(':').slice(1).join(':'), password)) return next();
+      if (basic) {
+        if (blocked(c)) return c.json({ error: 'Trop d’essais : réessaie dans 15 minutes' }, 429);
+        if (same(Buffer.from(basic, 'base64').toString().split(':').slice(1).join(':'), password)) return next();
+        failed(c);
+        await new Promise((r) => setTimeout(r, 600));
+      }
       if (c.req.path.startsWith('/api/')) return c.json({ error: 'Non connecté' }, 401);
       return c.redirect('/login', 302);
     });

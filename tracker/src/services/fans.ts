@@ -552,6 +552,18 @@ export class FanService {
     return results;
   }
 
+  /**
+   * Rattrapage (une fois) : les comptes inscrits avant la vérification par le staff et qui ont déjà rapporté
+   * (≥ 20 000 vues) repassent « à vérifier ». Leurs vues comptent à nouveau dès la validation.
+   */
+  requeueOldEarners(): number {
+    const clientId = this.settings().clientId;
+    if (!clientId || !this.settings().accountReview || this.repo.getSetting('requeue-earners-done', false)) return 0;
+    const n = this.fans.requeueEarners(clientId, 20_000);
+    this.repo.setSetting('requeue-earners-done', true);
+    return n;
+  }
+
   /** File du staff : nouveaux comptes à vérifier (lien du profil + derniers clips). */
   accountsToReview() {
     const clientId = this.settings().clientId;

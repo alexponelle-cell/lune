@@ -139,6 +139,8 @@ const stopGameDelivery = game ? every('livraison jeu', 1, () => deliverPendingOr
 const emailApi = config.SQUIDUU_API_URL && config.SQUIDUU_API_TOKEN ? new EmailGrantClient(config.SQUIDUU_API_URL, config.SQUIDUU_API_TOKEN) : undefined;
 const stopEmailDelivery = emailApi ? every('livraison e-mail', 1, () => deliverEmailOrders(emailApi, fans.fans)) : () => {};
 // Règle anti-triche gratuite : le clip doit citer le créateur dans sa légende
+// Rattrapage unique : comptes déjà inscrits qui ont rapporté → repassent par la vérification du staff
+log.info(`comptes remis à vérifier : ${fans.requeueOldEarners()}`);
 const stopClipCheck = every('vérif des clips', 10, async () => fans.checkClips());
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 

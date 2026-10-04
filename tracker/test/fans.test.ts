@@ -140,6 +140,21 @@ describe('programme fans (Neptune)', () => {
     expect(repo.listAccountsForClipper(fan.id).some((a) => a.id === yt!.id && a.active)).toBe(false); // refusé : plus suivi
   });
 
+  it('rattrapage : les anciens comptes qui ont rapporté repassent une fois par la vérification du staff', () => {
+    const fan = fanWithViews(); // 5 000 vues
+    const big = fans.ensureFan('d7', 'Gros', now - 3 * HOUR);
+    fans.addAccounts(big, 'https://www.youtube.com/@unchained');
+    const acc = repo.listAccountsForClipper(big.id)[0]!;
+    backdate(repo, now - 3 * HOUR);
+    repo.recordCollection(acc.id, [{ platformVideoId: 'u1', views: 500_000, publishedAt: now - 2 * HOUR }], now - HOUR);
+    fans.saveSettings({ accountReview: true });
+    expect(fans.requeueOldEarners()).toBe(1); // seul le compte à 500 000 vues (≥ 20 000)
+    expect(fans.accountsToReview().map((a) => a.handle)).toEqual(['unchained']);
+    expect(fans.balance(big.id).views).toBe(0);
+    expect(fans.balance(fan.id).views).toBe(5000);
+    expect(fans.requeueOldEarners()).toBe(0); // une seule fois
+  });
+
   it('validation du staff : l’achat attend « Valider » avant d’être livré (jeu, e-mail), livraison manuelle = validé', async () => {
     fans.saveSettings({ orderReview: true });
     const fan = fanWithViews();
