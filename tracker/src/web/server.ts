@@ -887,6 +887,7 @@ export function createApp(deps: WebDeps): Hono {
         training: z.string().max(5000).optional(),
         clipRule: z.boolean().optional(),
         clipKeywords: z.string().max(300).optional(),
+        orderReview: z.boolean().optional(),
       })
       .parse(await c.req.json());
     return c.json(fans.saveSettings(body));
@@ -917,6 +918,7 @@ export function createApp(deps: WebDeps): Hono {
     fans.fans.addBonus(Number(c.req.param('id')), amount);
     return c.json({ ok: true });
   });
+  app.post('/api/shop/orders/:id/approve', (c) => c.json({ ok: fans.fans.approve(Number(c.req.param('id'))) }));
   app.post('/api/shop/orders/:id/refund', (c) => c.json({ ok: fans.fans.refund(Number(c.req.param('id'))) }));
   app.post('/api/shop/orders/:id/delivered', (c) => {
     const ok = fans.fans.markDelivered([Number(c.req.param('id'))], null) > 0;

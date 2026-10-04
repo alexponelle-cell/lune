@@ -374,4 +374,10 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   ALTER TABLE videos ADD COLUMN clip_reason TEXT;
   UPDATE accounts SET verified_at = created_at WHERE verified_at IS NULL;
   `,
+
+  // v14 : chaque achat est validé par le staff avant livraison (il regarde les clips qui ont rapporté les coins)
+  `
+  ALTER TABLE shop_orders ADD COLUMN approved_at INTEGER;
+  UPDATE shop_orders SET approved_at = created_at;
+  `,
 ];

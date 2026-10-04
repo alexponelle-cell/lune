@@ -36,6 +36,8 @@ export interface FanSettings {
   clipRuleSince: number;
   /** Mots-clés acceptés, séparés par des virgules ('' = nom + chaînes YouTube du créateur). */
   clipKeywords: string;
+  /** Chaque achat attend la validation du staff avant d'être livré. */
+  orderReview: boolean;
 }
 
 export const DEFAULT_FANS: FanSettings = {
@@ -52,6 +54,7 @@ export const DEFAULT_FANS: FanSettings = {
   clipRule: true,
   clipRuleSince: 0,
   clipKeywords: '',
+  orderReview: true,
 };
 
 const FEATURED_KINDS = ['video', 'podcast', 'best'] as const;
@@ -156,6 +159,7 @@ export class FanService {
     if (patch.creatorRoblox !== undefined) next.creatorRoblox = patch.creatorRoblox.trim().replace(/^@/, '').slice(0, 20);
     if (patch.training !== undefined) next.training = patch.training.slice(0, 5000);
     if (patch.clipKeywords !== undefined) next.clipKeywords = patch.clipKeywords.slice(0, 300);
+    if (patch.orderReview !== undefined) next.orderReview = patch.orderReview;
     if (patch.clipRule !== undefined) {
       if (patch.clipRule && !next.clipRule) next.clipRuleSince = Date.now(); // réactivée : pas de rétroactif
       next.clipRule = patch.clipRule;
@@ -579,7 +583,8 @@ export class FanService {
     if (item?.kind === 'gamepass' && this.fans.orders({ clipperId: clipper.id }).some((o) => o.ref === item.ref && o.status !== 'refunded')) {
       throw new Error('Tu as déjà ce gamepass');
     }
-    return this.fans.placeOrder(clipper.id, itemId, this.balance(clipper.id, now).earned, now);
+    // Validation du staff avant livraison (il regarde les clips qui ont rapporté les coins)
+    return this.fans.placeOrder(clipper.id, itemId, this.balance(clipper.id, now).earned, now, !this.settings().orderReview);
   }
 
   // --- Notifications Discord (envoyées par Neptune) -----------------------------------
@@ -768,6 +773,8 @@ export class FanService {
     const names = new Map(clippers.map((c) => [c.id, c.username]));
     const orders = this.fans.orders({ limit: 200 }).map((o) => ({
       ...o,
+      // À valider : les clips qui ont rapporté le plus, pour vérifier en 30 s que ce sont de vrais clips
+      topClips: o.status === 'pending' && o.approvedAt === null ? this.fans.clips(o.clipperId, 50).sort((a, b) => b.gained - a.gained).slice(0, 3) : [],
       username: names.get(o.clipperId) ?? this.repo.getClipper(o.clipperId)?.username ?? '?',
       roblox: this.rewardAccount(o.clipperId).value,
     }));

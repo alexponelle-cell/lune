@@ -1551,6 +1551,7 @@ async function pageBoutique() {
         <label class="field"><span>Liens des vidéos de la formation (optionnel)</span><textarea class="input" name="training" rows="6" placeholder="206 | https://youtu.be/…&#10;201 | https://youtu.be/…&#10;202 | …">${esc(s.training ?? '')}</textarea><small>Vidéos déjà en place par défaut. Pour en remplacer une : « numéro | lien » (206, 201, 202, 203, 205, 204). Lien YouTube (non répertorié) ou lien direct du fichier vidéo (.mp4) = vidéo lue dans la page. Page : <a href="/formation" target="_blank" rel="noopener">/formation</a>. Tout coché → 📝│inscription débloqué.</small></label>
         <div class="grid-form">
           <label class="field"><span>Anti-triche : le clip doit citer le créateur</span><select class="select" name="clipRule"><option value="1" ${s.clipRule !== false ? 'selected' : ''}>Activé (recommandé)</option><option value="0" ${s.clipRule === false ? 'selected' : ''}>Coupé</option></select><small>Un clip ne rapporte des coins que si sa légende / son titre contient un des mots-clés. Gratuit, revérifié à chaque relevé.</small></label>
+          <label class="field"><span>Validation des achats par le staff</span><select class="select" name="orderReview"><option value="1" ${s.orderReview !== false ? 'selected' : ''}>Activée (recommandé)</option><option value="0" ${s.orderReview === false ? 'selected' : ''}>Coupée (livraison directe)</option></select><small>Chaque achat attend « ✅ Valider » dans Commandes avant d'être livré.</small></label>
           <label class="field"><span>Mots-clés acceptés dans la légende</span><input class="input" name="clipKeywords" value="${esc(s.clipKeywords ?? '')}" placeholder="${esc((d.clipKeywords ?? []).join(', '))}"><small>Séparés par des virgules. Vide = ${esc((d.clipKeywords ?? []).join(', '))}</small></label>
         </div>
         <div><button class="btn green">Sauvegarder</button> <a class="btn" href="/fan" target="_blank" rel="noopener">Voir le site</a></div></form>
@@ -1571,10 +1572,10 @@ async function pageBoutique() {
           <td class="r"><button class="icon-btn" data-edit-item="${i.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-item="${i.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucun objet. Ajoute le premier gamepass ou objet.</td></tr>'}
         </tbody></table></div></div>
 
-      <div class="card"><div class="card-head"><div><h2>Commandes</h2><p>${d.gameApi ? '« À livrer » : envoyé automatiquement au jeu (le joueur le reçoit en jeu ou à sa prochaine connexion)' : d.emailApi ? '« À livrer » : envoyé automatiquement à l’API (le mois arrive sur l’e-mail en 1 à 2 min, le fan est prévenu sur Discord)' : d.accountLabel === 'E-mail' ? '« À livrer » : active la récompense sur le compte lié à l’e-mail, puis clique « Marquer livré » (le fan est prévenu sur Discord)' : '« À livrer » : envoie la récompense sur le compte Roblox indiqué, puis clique « Marquer livré » (le fan est prévenu sur Discord)'}</p></div></div>
+      <div class="card"><div class="card-head"><div><h2>Commandes${d.orders.some((o) => o.status === 'pending' && o.approvedAt === null) ? ` <span class="pill wait" style="background:var(--orange);color:#111">${d.orders.filter((o) => o.status === 'pending' && o.approvedAt === null).length} à valider</span>` : ''}</h2><p>${s.orderReview !== false ? '<b>Chaque achat attend ta validation :</b> regarde ses clips, puis ✅ Valider (la livraison part) ou Refuser (coins rendus). ' : ''}${d.gameApi ? '« À livrer » : envoyé automatiquement au jeu (le joueur le reçoit en jeu ou à sa prochaine connexion)' : d.emailApi ? '« À livrer » : envoyé automatiquement à l’API (le mois arrive sur l’e-mail en 1 à 2 min, le fan est prévenu sur Discord)' : d.accountLabel === 'E-mail' ? '« À livrer » : active la récompense sur le compte lié à l’e-mail, puis clique « Marquer livré » (le fan est prévenu sur Discord)' : '« À livrer » : envoie la récompense sur le compte Roblox indiqué, puis clique « Marquer livré » (le fan est prévenu sur Discord)'}</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Date</th><th>Fan</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th>Objet</th><th class="r">Prix</th><th>État</th><th class="r"></th></tr></thead><tbody>
-        ${d.orders.map((o) => `<tr><td class="num faint">${dm(o.createdAt)}</td><td>${esc(o.username)}</td><td>${esc(o.roblox ?? '—')}</td><td>${esc(o.itemName)}</td><td class="r num">${n(o.price)}</td><td>${ORDER_PILL[o.status]}${o.status === 'pending' && o.deliveryError ? `<small style="display:block;color:var(--orange);white-space:normal;max-width:260px">⚠️ ${esc(o.deliveryError)}</small>` : ''}</td>
-          <td class="r">${o.status === 'pending' ? `<button class="btn sm" data-delivered="${o.id}">Marquer livré</button> <button class="btn sm danger" data-refund="${o.id}">Rembourser</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucune commande.</td></tr>'}
+        ${d.orders.map((o) => `<tr><td class="num faint">${dm(o.createdAt)}</td><td>${esc(o.username)}${o.topClips?.length ? `<small style="display:block;white-space:normal;max-width:300px">Ses clips qui ont rapporté le plus : ${o.topClips.map((c) => c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc((c.title || 'clip').slice(0, 40))}</a> (${n(c.gained)} vues)` : esc((c.title || 'clip').slice(0, 40))).join(' · ')}</small>` : ''}</td><td>${esc(o.roblox ?? '—')}</td><td>${esc(o.itemName)}</td><td class="r num">${n(o.price)}</td><td>${o.status === 'pending' && o.approvedAt === null ? '<span class="pill wait" style="background:var(--orange);color:#111">À valider</span>' : ORDER_PILL[o.status]}${o.status === 'pending' && o.deliveryError ? `<small style="display:block;color:var(--orange);white-space:normal;max-width:260px">⚠️ ${esc(o.deliveryError)}</small>` : ''}</td>
+          <td class="r">${o.status === 'pending' && o.approvedAt === null ? `<button class="btn sm green" data-approve-order="${o.id}" title="Ce sont de vrais clips du créateur : la livraison part">✅ Valider</button> <button class="btn sm danger" data-refund="${o.id}" title="Faux clips : les coins sont rendus, pas de livraison">Refuser</button>` : o.status === 'pending' ? `<button class="btn sm" data-delivered="${o.id}">Marquer livré</button> <button class="btn sm danger" data-refund="${o.id}">Rembourser</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucune commande.</td></tr>'}
         </tbody></table></div></div>
 
       <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues des clips publiés après l'inscription${d.clipRule ? ` · ✅ seuls les clips qui citent le créateur dans la légende comptent (${esc(d.clipKeywords.join(', '))})` : ' · <span style="color:var(--orange)">règle « légende » coupée : tous les clips comptent</span>'}${d.fans.some((f) => f.review?.status === 'pending') ? ` · <b style="color:var(--orange)">⚠️ ${d.fans.filter((f) => f.review?.status === 'pending').length} à vérifier (achats bloqués)</b>` : ''}</p></div></div>
@@ -1600,6 +1601,7 @@ async function pageBoutique() {
           training: fd.get('training') ?? undefined,
           clipRule: fd.get('clipRule') === '1',
           clipKeywords: fd.get('clipKeywords') ?? undefined,
+          orderReview: fd.get('orderReview') === '1',
         } });
       toast('Réglages sauvegardés ✅');
       pageBoutique();
@@ -1625,6 +1627,15 @@ async function pageBoutique() {
     imageUrl: fd.get('imageUrl') || null,
     active: fd.get('active') === 'on',
   });
+  root.querySelectorAll('[data-approve-order]').forEach((b) => b.addEventListener('click', async () => {
+    try {
+      await api(`/api/shop/orders/${b.dataset.approveOrder}/approve`, { method: 'POST' });
+      toast('Achat validé ✅ : la livraison part');
+      pageBoutique();
+    } catch (err) {
+      toast(err.message, true);
+    }
+  }));
   root.querySelectorAll('[data-approve]').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('Valider ce fan ? Ses comptes sont bien à lui, ses achats seront débloqués.')) return;
     try {

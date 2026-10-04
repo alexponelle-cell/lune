@@ -598,7 +598,7 @@ function pageProfile() {
         <form class="row" id="roblox"><input name="username" placeholder="Ton pseudo Roblox" value="${esc(ME.roblox.username ?? '')}" required minlength="3" maxlength="20" autocomplete="off"><button class="btn purple">${ME.roblox.username ? 'Changer' : 'Relier'}</button></form></div>
       <div class="card panel reveal"><h3>🔔 Notifications Discord</h3><p>Neptune t'envoie un message quand tu gagnes des coins, montes de niveau ou peux t'offrir une récompense (1 par jour maximum).</p>
         <label class="switch"><input type="checkbox" id="notify" ${ME.notify ? 'checked' : ''}><span></span><b>${ME.notify ? 'Activées' : 'Désactivées'}</b></label></div>
-      <div class="card panel reveal"><h3>📦 Mes échanges</h3>${ME.orders.length ? ME.orders.map((o) => `<div class="list-row"><span>${esc(o.itemName)} · ${fmt(o.price)} 🪙</span><span class="st ${o.status}">${STATUS[o.status]}</span></div>`).join('') : '<p style="margin:0">Aucun échange pour l\'instant. <a href="#/recompenses" style="color:var(--purple);font-weight:800">Voir les récompenses →</a></p>'}</div>
+      <div class="card panel reveal"><h3>📦 Mes échanges</h3>${ME.orders.length ? ME.orders.map((o) => `<div class="list-row"><span>${esc(o.itemName)} · ${fmt(o.price)} 🪙</span><span class="st ${o.status}">${o.status === 'pending' && o.approvedAt === null ? '⏳ En validation' : STATUS[o.status]}</span></div>`).join('') : '<p style="margin:0">Aucun échange pour l\'instant. <a href="#/recompenses" style="color:var(--purple);font-weight:800">Voir les récompenses →</a></p>'}</div>
       <div><button class="btn white small" id="logout">Se déconnecter</button></div>
     </div></div></section>`;
 }

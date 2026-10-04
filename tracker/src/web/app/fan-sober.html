@@ -574,7 +574,7 @@ function pageProfile() {
         <form class="row" id="account"><input type="${ra.kind === 'email' ? 'email' : 'text'}" name="v" placeholder="${esc(ra.placeholder)}" aria-label="${esc(ra.label)}" value="${esc(ME.rewardAccount?.value ?? '')}" required><button class="btn">${ME.rewardAccount?.value ? 'Modifier' : 'Enregistrer'}</button></form></div>
       <div class="card panel rv"><h3>Notifications Discord</h3><p>Un message privé quand tu gagnes des coins, passes un niveau ou peux échanger une récompense. Un par jour au maximum.</p>
         <label class="switch"><input type="checkbox" id="notify" ${ME.notify ? 'checked' : ''}><span></span><b>${ME.notify ? 'Activées' : 'Désactivées'}</b></label></div>
-      <div class="card panel rv"><h3>Mes échanges</h3>${ME.orders.length ? ME.orders.map((o) => `<div class="list-row"><span style="font-weight:600">${esc(o.itemName)} <span class="muted">· ${fmt(o.price)} coins</span></span><span class="st ${o.status}">${esc(C.statuses[o.status] ?? o.status)}</span></div>`).join('') : '<p>Aucun échange pour l\'instant.</p>'}</div>
+      <div class="card panel rv"><h3>Mes échanges</h3>${ME.orders.length ? ME.orders.map((o) => `<div class="list-row"><span style="font-weight:600">${esc(o.itemName)} <span class="muted">· ${fmt(o.price)} coins</span></span><span class="st ${o.status}">${o.status === 'pending' && o.approvedAt === null ? 'En validation par le staff' : esc(C.statuses[o.status] ?? o.status)}</span></div>`).join('') : '<p>Aucun échange pour l\'instant.</p>'}</div>
       <div><button class="btn" id="logout">Se déconnecter</button></div>
     </div></div></section>`;
 }

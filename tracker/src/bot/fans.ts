@@ -17,7 +17,7 @@ import {
 } from 'discord.js';
 import { log } from '../log.js';
 import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow, verifyText } from './fanServer.js';
-import { announceNewVideos, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
+import { announceNewVideos, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -290,6 +290,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     // Serveur monté par /setup (toutes les 15 min) : rôles de palier, classement du lundi, nouvelles vidéos
     const automations = async () => {
       await reportSuspicious(c, opts.fans).catch((err) => log.error('fans à vérifier', err));
+      await reportOrdersToApprove(c, opts.fans).catch((err) => log.error('achats à valider', err));
       await unlockFirstClips(c, opts.fans).catch((err) => log.error('1er clip', err));
       await syncTierRoles(c, opts.fans).catch((err) => log.error('rôles de palier', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));

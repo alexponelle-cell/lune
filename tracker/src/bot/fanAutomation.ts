@@ -24,6 +24,25 @@ const setupGuilds = (client: Client<true>, fans: FanService) => {
   return [...client.guilds.cache.values()].filter((g) => ids.has(g.id));
 };
 
+/** Achats à valider : signalés une fois au staff dans le log (validation dans Mars). */
+export async function reportOrdersToApprove(client: Client<true>, fans: FanService): Promise<number> {
+  const told = new Set(fans.botState<number[]>('orders-announced', []));
+  const fresh = fans.fans.toApprove().filter((o) => !told.has(o.id));
+  if (!fresh.length) return 0;
+  for (const guild of setupGuilds(client, fans)) {
+    const log = channel(guild, LOG_CHANNEL);
+    if (!log) continue;
+    for (const o of fresh) {
+      const who = fans.fans.discordIdOf(o.clipperId);
+      await log
+        .send({ content: `🛒 **Achat à valider** : ${who ? `<@${who}>` : 'un fan'} · ${o.itemName} (${nf(o.price)} coins)\nRegarde ses clips dans Mars (Boutique fans → Commandes), puis ✅ Valider ou Refuser.`, allowedMentions: { parse: [] } })
+        .catch(() => {});
+    }
+  }
+  fans.setBotState('orders-announced', [...told, ...fresh.map((o) => o.id)].slice(-500));
+  return fresh.length;
+}
+
 /** Fans suspects (gros compte, clip qui explose d'emblée) : mis « à vérifier » et signalés au staff dans le log. */
 export async function reportSuspicious(client: Client<true>, fans: FanService): Promise<number> {
   const found = fans.flagSuspicious();

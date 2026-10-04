@@ -30,7 +30,7 @@ describe('programme fans (Neptune)', () => {
       name.toLowerCase() === 'paulrbx' ? { id: 42, name: 'PaulRbx' } : null,
     );
     const client = repo.upsertClient({ name: 'BeOne', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
-    fans.saveSettings({ clientId: client.id, pointsPer1000: 10 });
+    fans.saveSettings({ clientId: client.id, pointsPer1000: 10, orderReview: false });
   });
 
   /** Le fan poste un compte ; 1re collecte = référence, puis +5 000 vues → 50 points. */
@@ -120,6 +120,27 @@ describe('programme fans (Neptune)', () => {
     expect(fans.balance(fan.id).views).toBe(903_000);
     fans.saveSettings({ clipKeywords: 'squiduu, #sqd' });
     expect(fans.clipKeywords()).toEqual(['squiduu', 'sqd']);
+  });
+
+  it('validation du staff : l’achat attend « Valider » avant d’être livré (jeu, e-mail), livraison manuelle = validé', async () => {
+    fans.saveSettings({ orderReview: true });
+    const fan = fanWithViews();
+    await fans.linkRoblox(fan, 'paulrbx');
+    const item = fans.saveItem(null, { name: 'VIP', price: 10, kind: 'gamepass', ref: '123' });
+    const order = fans.buy(fan, item.id);
+    expect(order.approvedAt).toBeNull();
+    expect(fans.fans.pendingForGame()).toEqual([]);
+    expect(fans.fans.pendingForRoblox(42)).toEqual([]);
+    expect(fans.fans.toApprove().map((o) => o.id)).toEqual([order.id]);
+    expect(fans.overview().orders[0]!.topClips[0]).toMatchObject({ views: 5000 });
+    expect(fans.fans.approve(order.id)).toBe(true);
+    expect(fans.fans.pendingForGame().map((o) => o.id)).toEqual([order.id]);
+    expect(fans.fans.toApprove()).toEqual([]);
+    // Livré à la main (DEBO, Loann) sans clic « Valider » : vaut validation
+    const other = fans.saveItem(null, { name: 'Robux', price: 10, kind: 'item', ref: 'rbx' });
+    const o2 = fans.buy(fan, other.id);
+    expect(fans.fans.markDelivered([o2.id], null)).toBe(1);
+    expect(fans.fans.order(o2.id)).toMatchObject({ status: 'delivered', approvedAt: expect.any(Number) });
   });
 
   it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {
@@ -458,6 +479,7 @@ describe('créateur configurable (SQUIDUU)', () => {
     const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('squiduu'));
     fans.bootstrap();
     fans.bootstrap(); // idempotent
+    fans.saveSettings({ orderReview: false });
     const s = fans.settings();
     expect(repo.getClient(s.clientId!)?.name).toBe('SQUIDUU');
     expect(s.programName).toBe('SQUIDUU');

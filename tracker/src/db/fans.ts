@@ -32,6 +32,8 @@ export interface ShopOrder {
   deliveredAt: number | null;
   /** Dernière erreur de livraison par l'API du jeu (null si aucune). */
   deliveryError: string | null;
+  /** Validé par le staff (null = à valider : pas encore livré). */
+  approvedAt: number | null;
 }
 
 export interface Roblox {
@@ -64,6 +66,7 @@ const toOrder = (r: Row): ShopOrder => ({
   createdAt: r.created_at,
   deliveredAt: r.delivered_at,
   deliveryError: r.delivery_error ?? null,
+  approvedAt: r.approved_at ?? null,
 });
 
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -424,7 +427,7 @@ export class FanRepo {
    * Passe une commande si le solde et le stock le permettent (tout ou rien).
    * `earned` = points gagnés grâce aux vues, calculés par le service.
    */
-  placeOrder(clipperId: number, itemId: number, earned: number, now = Date.now()): ShopOrder {
+  placeOrder(clipperId: number, itemId: number, earned: number, now = Date.now(), approved = true): ShopOrder {
     return this.db.transaction(() => {
       const item = this.item(itemId);
       if (!item || !item.active) throw new Error('Objet indisponible');
@@ -433,9 +436,9 @@ export class FanRepo {
       if (item.stock !== null) this.db.prepare('UPDATE shop_items SET stock = stock - 1 WHERE id = ?').run(item.id);
       const r = this.db
         .prepare(
-          'INSERT INTO shop_orders (clipper_id, item_id, item_name, kind, ref, price, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *',
+          'INSERT INTO shop_orders (clipper_id, item_id, item_name, kind, ref, price, created_at, approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
         )
-        .get(clipperId, item.id, item.name, item.kind, item.ref, item.price, now);
+        .get(clipperId, item.id, item.name, item.kind, item.ref, item.price, now, approved ? now : null);
       return toOrder(r as Row);
     })();
   }
@@ -466,7 +469,7 @@ export class FanRepo {
   pendingForRoblox(robloxUserId: number): ShopOrder[] {
     return this.db
       .prepare(
-        "SELECT o.* FROM shop_orders o JOIN clippers c ON c.id = o.clipper_id WHERE c.roblox_user_id = ? AND o.status = 'pending' ORDER BY o.id",
+        "SELECT o.* FROM shop_orders o JOIN clippers c ON c.id = o.clipper_id WHERE c.roblox_user_id = ? AND o.status = 'pending' AND o.approved_at IS NOT NULL ORDER BY o.id",
       )
       .all(robloxUserId)
       .map((r) => toOrder(r as Row));
@@ -479,7 +482,7 @@ export class FanRepo {
       this.db
         .prepare(
           `SELECT o.*, c.roblox_user_id FROM shop_orders o JOIN clippers c ON c.id = o.clipper_id
-           WHERE o.status = 'pending' AND c.roblox_user_id IS NOT NULL AND (o.next_try_at IS NULL OR o.next_try_at <= ?)
+           WHERE o.status = 'pending' AND o.approved_at IS NOT NULL AND c.roblox_user_id IS NOT NULL AND (o.next_try_at IS NULL OR o.next_try_at <= ?)
            ORDER BY o.id LIMIT ?`,
         )
         .all(now, limit) as Row[]
@@ -492,7 +495,7 @@ export class FanRepo {
       this.db
         .prepare(
           `SELECT o.*, c.reward_email FROM shop_orders o JOIN clippers c ON c.id = o.clipper_id
-           WHERE o.status = 'pending' AND c.reward_email IS NOT NULL AND (o.next_try_at IS NULL OR o.next_try_at <= ?)
+           WHERE o.status = 'pending' AND o.approved_at IS NOT NULL AND c.reward_email IS NOT NULL AND (o.next_try_at IS NULL OR o.next_try_at <= ?)
            ORDER BY o.id LIMIT ?`,
         )
         .all(now, limit) as Row[]
@@ -507,12 +510,28 @@ export class FanRepo {
     let n = 0;
     const stmt =
       robloxUserId === null
-        ? this.db.prepare("UPDATE shop_orders SET status = 'delivered', delivered_at = ? WHERE id = ? AND status = 'pending'")
+        ? // Livré à la main par le staff : vaut validation
+          this.db.prepare("UPDATE shop_orders SET status = 'delivered', delivered_at = @at, approved_at = COALESCE(approved_at, @at) WHERE id = @id AND status = 'pending'")
         : this.db.prepare(
-            "UPDATE shop_orders SET status = 'delivered', delivered_at = ? WHERE id = ? AND status = 'pending' AND clipper_id IN (SELECT id FROM clippers WHERE roblox_user_id = ?)",
+            "UPDATE shop_orders SET status = 'delivered', delivered_at = @at WHERE id = @id AND status = 'pending' AND approved_at IS NOT NULL AND clipper_id IN (SELECT id FROM clippers WHERE roblox_user_id = @rbx)",
           );
-    for (const id of orderIds) n += (robloxUserId === null ? stmt.run(now, id) : stmt.run(now, id, robloxUserId)).changes;
+    for (const id of orderIds) n += (robloxUserId === null ? stmt.run({ at: now, id }) : stmt.run({ at: now, id, rbx: robloxUserId })).changes;
     return n;
+  }
+
+  /** Achat validé par le staff : la livraison peut partir. */
+  approve(orderId: number, now = Date.now()): boolean {
+    return this.db.prepare("UPDATE shop_orders SET approved_at = ? WHERE id = ? AND status = 'pending' AND approved_at IS NULL").run(now, orderId).changes > 0;
+  }
+
+  discordIdOf(clipperId: number): string | null {
+    const id = (this.db.prepare('SELECT discord_id FROM clippers WHERE id = ?').get(clipperId) as Row | undefined)?.discord_id as string | undefined;
+    return id && !id.startsWith('manual:') ? id : null;
+  }
+
+  /** Achats en attente de validation (alerte staff). */
+  toApprove(): ShopOrder[] {
+    return this.db.prepare("SELECT * FROM shop_orders WHERE status = 'pending' AND approved_at IS NULL ORDER BY id").all().map((r) => toOrder(r as Row));
   }
 
   /** Rembourse une commande non livrée : les points reviennent, le stock aussi. */
