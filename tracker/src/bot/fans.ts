@@ -16,7 +16,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleQuiz } from './fanServer.js';
+import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons } from './fanServer.js';
 import { announceNewVideos, syncTierRoles, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
@@ -279,7 +279,6 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     d.on(Events.InteractionCreate, (i) => void handleSetup(i, opts.fans, opts.siteUrl));
     d.on(Events.InteractionCreate, (i) => void handleAlertsButton(i));
     d.on(Events.InteractionCreate, (i) => void handleStepButtons(i));
-    d.on(Events.InteractionCreate, (i) => void handleQuiz(i, opts.fans));
     if (readsMessages) attachAccountsChannel(d, opts.fans);
   };
 
