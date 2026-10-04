@@ -498,7 +498,7 @@ function renderSidebar() {
       ${items.map(([id, label, ic, soon]) => `<a href="#/${id}" class="${route === id || (id === 'clippers' && route === 'clipper') ? 'active' : ''}">${icon(ic)}${label}${soon ? '<span class="soon">bientôt</span>' : ''}</a>`).join('')}</div>`,
     ).join('')}</nav>
     <div class="box bot-box"><b>Bot Discord ${b.state === 'ready' ? 'actif' : 'inactif'}</b>
-      <small>${b.tag ? esc(b.tag) : 'Clipping Tracker'}${b.guilds != null ? ` · ${b.guilds} serveur(s)` : ''}</small>
+      <small>${b.tag ? esc(b.tag) : 'Bot Discord'}${b.guilds != null ? ` · ${b.guilds} serveur(s)` : ''}</small>
       <small>Dernière synchro : ${META.status.startedAt ? new Date(META.status.startedAt).toLocaleDateString('fr-FR') : '—'}</small>
       <div style="margin-top:6px">${botLine}</div></div>`;
 }
