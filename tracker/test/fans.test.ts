@@ -437,6 +437,25 @@ describe('serveur fans monté par /setup', () => {
     expect(visible).toEqual(['👋│bienvenue']);
     expect(setupCommand.default_member_permissions).toBe('8');
   });
+
+  it('test d’accès : #inscription réservé au test réussi (et aux clippeurs déjà inscrits), questions valides', async () => {
+    const { SERVER_PLAN, ROLE_QUIZ, ROLE_CLIPPER } = await import('../src/bot/fanServer.js');
+    const { quizFor, answerId, parseAnswer } = await import('../src/bot/quiz.js');
+    const { CREATORS } = await import('../src/creators/index.js');
+    const inscription = SERVER_PLAN.flatMap((g) => g.channels).find((c) => c.name.includes('inscription'))!;
+    expect(inscription.access).toMatchObject({ who: 'role', role: ROLE_QUIZ, also: [ROLE_CLIPPER] });
+    for (const c of Object.values(CREATORS)) {
+      const qs = quizFor(c, 10);
+      expect(qs.length).toBeGreaterThanOrEqual(3);
+      for (const q of qs) {
+        expect(q.answers.length).toBeGreaterThanOrEqual(2);
+        expect(q.answers.length).toBeLessThanOrEqual(5);
+        expect(q.answers[q.correct]).toBeDefined();
+      }
+    }
+    expect(parseAnswer(answerId(3, 1))).toEqual({ question: 3, answer: 1 });
+    expect(parseAnswer('fans:quiz:start')).toBeNull();
+  });
 });
 
 describe('automatisations du serveur', () => {

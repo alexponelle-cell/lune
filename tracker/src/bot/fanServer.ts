@@ -18,6 +18,7 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { log } from '../log.js';
+import { answerId, parseAnswer, QUIZ_PREFIX, QUIZ_START, quizFor } from './quiz.js';
 import type { FanService } from '../services/fans.js';
 
 /**
@@ -88,7 +89,7 @@ export async function ensureTierRoles(guild: Guild, fans: FanService): Promise<R
  */
 type Access =
   | { who: 'everyone'; write: boolean }
-  | { who: 'role'; role: string; write: boolean }
+  | { who: 'role'; role: string; write: boolean; /** Rôles qui voient aussi le salon (ex. clippeurs déjà inscrits) */ also?: string[] }
   | { who: 'staff' };
 interface ChannelPlan {
   name: string;
@@ -97,6 +98,7 @@ interface ChannelPlan {
 }
 export const ROLE_READER = '📖 Lecteur';
 export const ROLE_RULES = '✅ Règles acceptées';
+export const ROLE_QUIZ = '🎓 Test réussi';
 export const STEP_READ_BUTTON = 'fans:step:read';
 export const STEP_RULES_BUTTON = 'fans:step:rules';
 export const PRIVATE_CATEGORY = '🔒 ESPACES PRIVÉS';
@@ -126,7 +128,7 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
     access: readonly(ROLE_RULES),
     channels: [
       { name: '🎓│tutos', access: readonly(ROLE_RULES), topic: 'Apprends à faire des clips qui marchent' },
-      { name: '📝│inscription', access: readonly(ROLE_RULES), topic: 'Clique sur « S’inscrire » pour relier tes comptes' },
+      { name: '📝│inscription', access: { who: 'role', role: ROLE_QUIZ, write: false, also: [ROLE_CLIPPER] }, topic: 'Clique sur « S’inscrire » pour relier tes comptes' },
     ],
   },
   {
@@ -175,7 +177,9 @@ function overwrites(guild: Guild, access: Access, staffRoleId: string): Overwrit
   const role = guild.roles.cache.find((r) => sameName(r.name, access.role));
   return [
     { id: everyone, deny: [V.ViewChannel, V.MentionEveryone] },
-    ...(role ? [{ id: role.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] }] : []),
+    ...[role, ...(access.also ?? []).map((n) => guild.roles.cache.find((r) => sameName(r.name, n)))]
+      .filter((r) => !!r)
+      .map((r) => ({ id: r!.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] })),
     ...staff,
     bot,
   ];
@@ -208,6 +212,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   await role(ROLE_TOP, 0xffd24a, true);
   await ensureTierRoles(guild, fans);
   await role(ROLE_CLIPPER, color(fans), false);
+  await role(ROLE_QUIZ, 0x9b9aa3, false);
   await role(ROLE_RULES, 0x9b9aa3, false);
   await role(ROLE_READER, 0x6b6a73, false);
   await role(ROLE_ALERTS, 0x5ab0e0, false);
@@ -254,7 +259,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     }
   }
   // Personne ne peut mentionner @everyone / @here sauf les admins (permission retirée de @everyone et des rôles des fans)
-  for (const r of [guild.roles.everyone, ...guild.roles.cache.filter((x) => [ROLE_CLIPPER, ROLE_RULES, ROLE_READER, ROLE_ALERTS, ROLE_TOP].some((n) => sameName(x.name, n)) || x.name.startsWith(TIER_PREFIX)).values()]) {
+  for (const r of [guild.roles.everyone, ...guild.roles.cache.filter((x) => [ROLE_CLIPPER, ROLE_QUIZ, ROLE_RULES, ROLE_READER, ROLE_ALERTS, ROLE_TOP].some((n) => sameName(x.name, n)) || x.name.startsWith(TIER_PREFIX)).values()]) {
     if (r.permissions.has(V.MentionEveryone)) await r.setPermissions(r.permissions.remove(V.MentionEveryone), 'Pas de ping @everyone').catch(() => {});
   }
   // Messages d'arrivée de Discord (« X a bondi dans le serveur ») : envoyés dans le log staff, plus dans #général
@@ -343,7 +348,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
                 '',
                 '**Ton parcours ici**',
                 '1️⃣ Accepte les règles (bouton dans 📜│règles)',
-                '2️⃣ Regarde les tutos dans 🎓│tutos',
+                '2️⃣ Regarde les tutos dans 🎓│tutos et réussis le test',
                 '3️⃣ Inscris-toi dans 📝│inscription',
                 '4️⃣ Tu débloques ton salon privé, les annonces et toute la communauté 🎉',
               ].join('\n'),
@@ -359,10 +364,15 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('🎓・Tutos')
             .setDescription(
-              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont sur **Neptune Academy** : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\n👉 ${TUTOS_URL}\n\nQuand tu es prêt, passe à 📝│inscription.`,
+              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont sur **Neptune Academy** : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\n👉 ${TUTOS_URL}\n\n**Quand tu as tout lu, passe le test** (${quizFor(c, rate).length} questions). Une fois réussi, 📝│inscription se débloque.`,
             ),
         ],
-        components: [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(TUTOS_URL).setLabel('Ouvrir Neptune Academy').setEmoji('🎓'))],
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(TUTOS_URL).setLabel('Ouvrir Neptune Academy').setEmoji('🎓'),
+            new ButtonBuilder().setCustomId(QUIZ_START).setStyle(ButtonStyle.Success).setLabel('Passer le test').setEmoji('📝'),
+          ),
+        ],
       }),
     ],
     [
@@ -428,11 +438,56 @@ export async function handleStepButtons(interaction: Interaction) {
       content:
         step === 'read'
           ? `✅ C’est débloqué ! Lis ${ch('📜│règles') ?? '#règles'} et ${ch('🧭│déroulement') ?? '#déroulement'}, puis accepte les règles.`
-          : `🎉 Règles acceptées ! Regarde ${ch('🎓│tutos') ?? '#tutos'} puis inscris-toi dans ${ch('📝│inscription') ?? '#inscription'}.`,
+          : `🎉 Règles acceptées ! Regarde les tutos dans ${ch('🎓│tutos') ?? '#tutos'} et passe le test : il débloque l’inscription.`,
     });
   } catch (err) {
     log.warn(`parcours d’accueil : ${err instanceof Error ? err.message : String(err)}`);
     await interaction.editReply({ content: 'Impossible de te donner l’accès pour l’instant, réessaie dans une minute. Si ça continue, préviens le staff.' }).catch(() => {});
+  }
+}
+
+/** Test d'accès : « Passer le test » dans 🎓│tutos → questions en boutons → rôle 🎓 Test réussi (débloque 📝│inscription). */
+export async function handleQuiz(interaction: Interaction, fans: FanService) {
+  if (!interaction.isButton() || !interaction.customId.startsWith(QUIZ_PREFIX) || !interaction.inCachedGuild()) return;
+  const questions = quizFor(fans.creator, fans.settings().pointsPer1000);
+  const letters = ['A', 'B', 'C', 'D', 'E'];
+  const screen = (i: number) => {
+    const q = questions[i]!;
+    return {
+      content: `**📝 Test · question ${i + 1}/${questions.length}**\n\n${q.q}\n\n${q.answers.map((a, k) => `**${letters[k]}.** ${a}`).join('\n')}`,
+      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(q.answers.map((_, k) => new ButtonBuilder().setCustomId(answerId(i, k)).setStyle(ButtonStyle.Secondary).setLabel(letters[k]!)))],
+    };
+  };
+  const ch = (name: string) => interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(name));
+  const ephemeral = interaction.message.flags.has(MessageFlags.Ephemeral);
+  try {
+    if (interaction.customId === QUIZ_START) {
+      const passed = interaction.guild.roles.cache.find((r) => sameName(r.name, ROLE_QUIZ));
+      if (passed && interaction.member.roles.cache.has(passed.id)) {
+        return void (await interaction.reply({ content: `✅ Tu as déjà réussi le test. Inscris-toi dans ${ch('📝│inscription') ?? '#inscription'}.`, flags: MessageFlags.Ephemeral }));
+      }
+      return void (ephemeral ? await interaction.update(screen(0)) : await interaction.reply({ ...screen(0), flags: MessageFlags.Ephemeral }));
+    }
+    const a = parseAnswer(interaction.customId);
+    const q = a ? questions[a.question] : undefined;
+    if (!a || !q) return;
+    if (a.answer !== q.correct) {
+      return void (await interaction.update({
+        content: `❌ **Mauvaise réponse.** Relis les tutos (bouton **Ouvrir Neptune Academy**) puis recommence le test.`,
+        components: [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(QUIZ_START).setStyle(ButtonStyle.Primary).setLabel('Recommencer').setEmoji('🔁'))],
+      }));
+    }
+    if (a.question + 1 < questions.length) return void (await interaction.update(screen(a.question + 1)));
+    // Dernière bonne réponse : rôle donné (peut être lent sous l'afflux, d'où la réponse différée)
+    await interaction.deferUpdate();
+    const role = interaction.guild.roles.cache.find((r) => sameName(r.name, ROLE_QUIZ));
+    if (!role) return void (await interaction.editReply({ content: 'Rôle introuvable : un admin doit refaire /setup.', components: [] }));
+    await interaction.member.roles.add(role, 'Test réussi');
+    await interaction.editReply({ content: `🎉 **Test réussi !** ${ch('📝│inscription') ?? '#inscription'} est débloqué : clique sur **S’inscrire** pour relier tes comptes.`, components: [] });
+  } catch (err) {
+    log.warn(`test d’accès : ${err instanceof Error ? err.message : String(err)}`);
+    const msg = { content: 'Impossible pour l’instant, réessaie dans une minute.', components: [] };
+    await (interaction.deferred || interaction.replied ? interaction.editReply(msg) : interaction.reply({ ...msg, flags: MessageFlags.Ephemeral })).catch(() => {});
   }
 }
 
@@ -513,7 +568,7 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
 /** Après une inscription réussie : rôles, salon privé et trace dans le salon staff (si le serveur a été monté par /setup). */
 export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string) {
   try {
-    const roles = [ROLE_CLIPPER, ROLE_READER, ROLE_RULES].map((n) => guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => r && !member.roles.cache.has(r.id));
+    const roles = [ROLE_CLIPPER, ROLE_READER, ROLE_RULES, ROLE_QUIZ].map((n) => guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => r && !member.roles.cache.has(r.id));
     if (roles.length) await member.roles.add(roles.map((r) => r!.id), 'Inscription clippeur');
     if (guild.roles.cache.some((r) => sameName(r.name, ROLE_CLIPPER)) && guild.channels.cache.some((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY))) {
       const priv = await privateChannelFor(guild, member);

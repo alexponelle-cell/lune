@@ -53,6 +53,8 @@ export interface CreatorConfig {
     linkLabel: string;
   };
   levels: Array<{ name: string; emoji: string; min: number }>;
+  /** Test d'accès à l'inscription (questions par défaut si absent). */
+  quiz?: Array<{ q: string; answers: string[]; correct: number }>;
   /** Libellés des statuts dans « Mes échanges ». */
   statuses: { pending: string; delivered: string; refunded: string };
   texts: {
