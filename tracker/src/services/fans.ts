@@ -154,7 +154,7 @@ export class FanService {
     const links = parseTrainingLinks(this.settings().training);
     const seen = new Set(this.repo.getSetting<string[]>(`training:${clipperId}`, []));
     const modules = TRAINING_MODULES.map((m) => {
-      const url = links.get(m.num) ?? null;
+      const url = links.get(m.num) ?? m.url ?? null;
       return { ...m, url, embed: url ? youtubeEmbed(url) : null, video: url && isVideoFile(url) ? url : null, done: seen.has(m.num) };
     });
     return { modules, completed: modules.every((m) => m.done) };
