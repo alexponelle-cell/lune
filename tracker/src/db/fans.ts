@@ -184,6 +184,27 @@ export class FanRepo {
     ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at }));
   }
 
+  /**
+   * Vues gagnées par fan sur ses clips publiés APRÈS avoir relié le compte (règle du programme fans :
+   * les vidéos déjà en ligne avant l'inscription ne rapportent rien, même si elles continuent de monter).
+   * `from` : seulement les vues gagnées depuis cette date (classement de la semaine).
+   */
+  freshClipViews(clientId: number, from = 0): Map<number, number> {
+    const rows = this.db
+      .prepare(
+        `SELECT a.clipper_id AS id, SUM(MAX(v.views - COALESCE(
+              (SELECT vs.views FROM video_snapshots vs WHERE vs.video_id = v.id AND vs.captured_at <= @from ORDER BY vs.captured_at DESC LIMIT 1),
+              v.baseline_views), 0)) AS views
+           FROM videos v
+           JOIN accounts a ON a.id = v.account_id AND a.active = 1
+           JOIN clippers c ON c.id = a.clipper_id
+          WHERE c.client_id = @clientId AND v.published_at IS NOT NULL AND v.published_at >= a.created_at
+          GROUP BY a.clipper_id`,
+      )
+      .all({ clientId, from }) as Array<{ id: number; views: number }>;
+    return new Map(rows.map((r) => [r.id, r.views]));
+  }
+
   /** Discord des fans du client qui ont posté au moins un clip après avoir relié le compte (1er clip = accès au serveur). */
   firstClipDiscordIds(clientId: number): Set<string> {
     const rows = this.db

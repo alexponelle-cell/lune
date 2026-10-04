@@ -223,9 +223,10 @@ export class FanService {
   }
 
   /** Vues depuis l'inscription (les vues déjà faites avant l'ajout d'un compte ne comptent pas). */
-  private viewsByClipper(now = Date.now()): Map<number, number> {
-    const rows = this.agency.ranked(this.agency.range({ preset: 'all' }, now), this.settings().clientId ?? undefined, now);
-    return new Map(rows.map((r) => [r.clipper.id, r.views]));
+  /** Vues qui rapportent des coins : clips publiés après l'inscription uniquement. */
+  private viewsByClipper(_now = Date.now()): Map<number, number> {
+    const clientId = this.settings().clientId;
+    return clientId ? this.fans.freshClipViews(clientId) : new Map();
   }
 
   balance(clipperId: number, now = Date.now()): FanBalance {
@@ -237,22 +238,25 @@ export class FanService {
 
   // --- Espace fan --------------------------------------------------------------------
 
-  /** Classement de la semaine (7 derniers jours) : pseudo, avatar, vues, coins gagnés. */
   /** Fans (Discord) dont le 1er clip a été détecté : ils débloquent la communauté. */
   firstClipDone(): Set<string> {
     const s = this.settings();
     return s.clientId ? this.fans.firstClipDiscordIds(s.clientId) : new Set();
   }
 
+  /** Classement de la semaine (7 derniers jours) : pseudo, avatar, vues, coins gagnés. */
   leaderboard(now = Date.now(), limit = 10) {
     const s = this.settings();
     if (!s.clientId) return [];
-    const rows = this.agency
-      .ranked(this.agency.range({ preset: '7d' }, now), s.clientId, now)
-      .filter((r) => r.views > 0)
-      .slice(0, limit);
-    const avatars = this.fans.avatars(rows.map((r) => r.clipper.id));
-    return rows.map((r, i) => ({ rank: i + 1, id: r.clipper.id, name: r.clipper.username, avatar: avatars.get(r.clipper.id) ?? null, views: r.views, coins: this.points(r.views) }));
+    // Vues des 7 derniers jours, sur les clips publiés après l'inscription (comme les coins)
+    const rows = [...this.fans.freshClipViews(s.clientId, now - 7 * 86_400_000)]
+      .filter(([, views]) => views > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([id, views]) => ({ clipper: this.repo.getClipper(id), views }))
+      .filter((r) => !!r.clipper);
+    const avatars = this.fans.avatars(rows.map((r) => r.clipper!.id));
+    return rows.map((r, i) => ({ rank: i + 1, id: r.clipper!.id, name: r.clipper!.username, avatar: avatars.get(r.clipper!.id) ?? null, views: r.views, coins: this.points(r.views) }));
   }
 
   // --- Automatisations du serveur Discord (rôles de niveau, classement, vidéos) ---------

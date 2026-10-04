@@ -14,6 +14,9 @@ import { deliverPendingOrders, GameClient } from '../src/services/game.js';
 import { creatorConfig } from '../src/creators/index.js';
 import { deliverEmailOrders, EmailGrantClient, monthsOf } from '../src/services/emailGrant.js';
 
+/** Compte relié avant les clips du test (seuls les clips publiés après l'ajout du compte rapportent). */
+const backdate = (repo: Repo, at: number) => repo.db.prepare('UPDATE accounts SET created_at = ?').run(at);
+
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
   let agency: AgencyService;
@@ -35,8 +38,9 @@ describe('programme fans (Neptune)', () => {
     const fan = fans.ensureFan('d1', 'Paul', now - 3 * HOUR);
     expect(fans.addAccounts(fan, 'https://www.tiktok.com/@paul.clips').added).toHaveLength(1);
     const account = repo.listAccountsForClipper(fan.id)[0]!;
-    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 100, publishedAt: now - 2 * HOUR }], now - 2 * HOUR);
-    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 5100, publishedAt: now - 2 * HOUR }], now - HOUR);
+    backdate(repo, now - 3 * HOUR);
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 0, publishedAt: now - 2 * HOUR }], now - 2 * HOUR);
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 5000, publishedAt: now - 2 * HOUR }], now - HOUR);
     return fan;
   }
 
@@ -62,12 +66,18 @@ describe('programme fans (Neptune)', () => {
   });
 
   it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {
-    const fan = fanWithViews(); // vidéo publiée avant l'ajout du compte
-    expect(fans.firstClipDone().size).toBe(0);
+    const fan = fans.ensureFan('d1', 'Paul', now - 3 * HOUR);
+    fans.addAccounts(fan, 'https://www.tiktok.com/@paul.clips');
     const account = repo.listAccountsForClipper(fan.id)[0]!;
+    // Vieille vidéo (publiée avant l'ajout du compte) qui continue de monter : ni 1er clip, ni coins
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 100, publishedAt: now - 2 * HOUR }], now);
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 900_000, publishedAt: now - 2 * HOUR }], now + 1000);
+    expect(fans.firstClipDone().size).toBe(0);
+    expect(fans.balance(fan.id).earned).toBe(0);
     const later = Date.now() + 60_000;
-    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 5100, publishedAt: now - 2 * HOUR }, { platformVideoId: 'v2', views: 10, publishedAt: later }], later);
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 900_000, publishedAt: now - 2 * HOUR }, { platformVideoId: 'v2', views: 10_000, publishedAt: later }], later);
     expect([...fans.firstClipDone()]).toEqual(['d1']);
+    expect(fans.balance(fan.id).views).toBe(10_000);
   });
 
   it('livre les achats via l\'API du jeu (200, 429, rejeu, référence invalide)', async () => {
@@ -268,14 +278,15 @@ describe('programme fans (Neptune)', () => {
     const fan = fans.ensureFan('d1', 'Paul', now - 3 * HOUR);
     fans.addAccounts(fan, 'https://www.tiktok.com/@paul.clips');
     const account = repo.listAccountsForClipper(fan.id)[0]!;
+    backdate(repo, now - 4 * HOUR);
     const collect = (views: number, at: number) => repo.recordCollection(account.id, [{ platformVideoId: 'v1', views, publishedAt: now - 3 * HOUR }], at);
-    collect(100, now - 2 * HOUR);
-    collect(5100, now - HOUR); // 5 000 vues = 50 coins
+    collect(0, now - 2 * HOUR);
+    collect(5000, now - HOUR); // 5 000 vues = 50 coins
     const item = fans.saveItem(null, { name: 'VIP', price: 80, kind: 'gamepass', ref: '1' });
 
     const T0 = now;
     expect(fans.generateNotifications(T0)).toBe(0); // premier passage : on mémorise l'état
-    collect(9100, T0 + HOUR); // +4 000 vues → 90 coins
+    collect(9000, T0 + HOUR); // +4 000 vues → 90 coins
     expect(fans.generateNotifications(T0 + 2 * HOUR)).toBe(1);
     let q = fans.fans.pendingNotifications();
     expect(q).toHaveLength(1);
@@ -287,7 +298,7 @@ describe('programme fans (Neptune)', () => {
     expect(fans.generateNotifications(T0 + 3 * HOUR)).toBe(0);
 
     // Lendemain : passage Clippeur (≥ 10 000 vues) prioritaire sur les coins
-    collect(12_100, T0 + 20 * HOUR);
+    collect(12_000, T0 + 20 * HOUR);
     expect(fans.generateNotifications(T0 + 24 * HOUR)).toBe(1);
     q = fans.fans.pendingNotifications();
     expect(q[0]!.kind).toBe('level');
@@ -400,6 +411,7 @@ describe('créateur configurable (SQUIDUU)', () => {
     const fan = fans.ensureFan('d9', 'Léa', now - 3 * HOUR);
     fans.setAccounts(fan, { tiktok: '@lea.clips' });
     const account = repo.listAccountsForClipper(fan.id)[0]!;
+    backdate(repo, now - 3 * HOUR);
     repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 0, publishedAt: now - 2 * HOUR }], now - 2 * HOUR);
     repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 2_500_000, publishedAt: now - 2 * HOUR }], now - HOUR);
     expect(fans.balance(fan.id).balance).toBe(25_000);
@@ -486,6 +498,7 @@ describe('automatisations du serveur', () => {
     const fan = fans.ensureFan('777', 'Léa', now - 3 * HOUR);
     fans.setAccounts(fan, { tiktok: '@lea.clips' });
     const a = repo.listAccountsForClipper(fan.id)[0]!;
+    backdate(repo, now - 3 * HOUR);
     repo.recordCollection(a.id, [{ platformVideoId: 'v1', views: 0, publishedAt: now - 2 * HOUR }], now - 2 * HOUR);
     repo.recordCollection(a.id, [{ platformVideoId: 'v1', views: 150_000, publishedAt: now - 2 * HOUR }], now - HOUR);
     expect(fans.fanLevels()).toEqual([{ clipperId: fan.id, discordId: '777', username: 'Léa', views: 150_000, level: 2 }]);
