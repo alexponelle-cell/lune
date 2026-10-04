@@ -453,6 +453,8 @@ export class FanService {
   /** Branché au démarrage si ANTHROPIC_API_KEY est là ; sinon tous les clips comptent. */
   clipChecker?: ClipChecker;
   private creatorRef?: { at: number; ref: CreatorReference };
+  /** Dernier passage IA par compte : 1 fois par jour maximum (au rythme du relevé des vues). */
+  private clipCheckedAt = new Map<number, number>();
 
   /** Photo + miniatures et titres récents du créateur (rafraîchi toutes les 12 h). */
   private async creatorReference(youtubeApiKey: string | undefined, now: number): Promise<CreatorReference> {
@@ -468,23 +470,39 @@ export class FanService {
     return ref;
   }
 
-  /** Vérifie jusqu'à `limit` nouveaux clips. Renvoie le nombre de validés / refusés. */
-  async checkClips(youtubeApiKey: string | undefined, limit = 20, now = Date.now()): Promise<{ validés: number; refusés: number }> {
+  /**
+   * Passe IA : pour chaque compte qui a de nouveaux clips (relevés 1 fois par jour), un seul appel qui les
+   * juge tous (10 max, les plus vus d'abord ; le reste au passage suivant). `maxAccounts` comptes par passage.
+   */
+  async checkClips(youtubeApiKey: string | undefined, maxAccounts = 30, now = Date.now()): Promise<{ comptes: number; validés: number; refusés: number }> {
     const clientId = this.settings().clientId;
-    if (!this.clipChecker || !clientId) return { validés: 0, refusés: 0 };
-    const todo = this.fans.uncheckedClips(clientId, limit);
-    if (!todo.length) return { validés: 0, refusés: 0 };
-    const ref = await this.creatorReference(youtubeApiKey, now);
-    let ok = 0;
-    let no = 0;
-    for (const clip of todo) {
-      const v = await this.clipChecker.check(ref, clip);
-      if (!v) continue;
-      this.fans.setClipCheck(clip.id, v.ok, v.reason);
-      if (v.ok) ok++;
-      else no++;
+    const done = { comptes: 0, validés: 0, refusés: 0 };
+    if (!this.clipChecker || !clientId) return done;
+    const byAccount = new Map<number, ReturnType<FanRepo['uncheckedClips']>>();
+    for (const clip of this.fans.uncheckedClips(clientId, 2000)) {
+      // Clip sans miniature (rare) : rien à regarder, accepté
+      if (!clip.thumbnail) {
+        this.fans.setClipCheck(clip.id, true, 'pas de miniature : accepté sans vérification');
+        continue;
+      }
+      if (now - (this.clipCheckedAt.get(clip.accountId) ?? 0) < 23 * 3_600_000) continue;
+      const list = byAccount.get(clip.accountId) ?? [];
+      if (list.length < 10) byAccount.set(clip.accountId, [...list, clip]);
     }
-    return { validés: ok, refusés: no };
+    if (!byAccount.size) return done;
+    const ref = await this.creatorReference(youtubeApiKey, now);
+    for (const clips of [...byAccount.values()].slice(0, maxAccounts)) {
+      this.clipCheckedAt.set(clips[0]!.accountId, now);
+      const verdicts = await this.clipChecker.checkAccount(ref, clips);
+      done.comptes++;
+      verdicts.forEach((v, i) => {
+        if (!v) return;
+        this.fans.setClipCheck(clips[i]!.id, v.ok, v.reason);
+        if (v.ok) done.validés++;
+        else done.refusés++;
+      });
+    }
+    return done;
   }
 
   // --- Anti-triche : comptes vérifiés par un code dans la bio, gros comptes contrôlés par le staff ---

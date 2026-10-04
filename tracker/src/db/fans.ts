@@ -147,16 +147,16 @@ export class FanRepo {
   }
 
   /** Clips de fans pas encore vérifiés par l'IA (publiés après l'ajout du compte), les plus vus d'abord. */
-  uncheckedClips(clientId: number, limit: number): Array<{ id: number; platform: string; title: string | null; thumbnail: string | null; url: string | null }> {
+  uncheckedClips(clientId: number, limit: number): Array<{ id: number; accountId: number; platform: string; title: string | null; thumbnail: string | null; url: string | null }> {
     return this.db
       .prepare(
-        `SELECT v.id, a.platform, v.title, v.thumbnail_url AS thumbnail, v.url FROM videos v
+        `SELECT v.id, a.id AS accountId, a.platform, v.title, v.thumbnail_url AS thumbnail, v.url FROM videos v
            JOIN accounts a ON a.id = v.account_id AND a.active = 1 AND a.verified_at IS NOT NULL
            JOIN clippers c ON c.id = a.clipper_id
           WHERE c.client_id = ? AND v.clip_check IS NULL AND v.published_at IS NOT NULL AND v.published_at >= a.created_at
           ORDER BY v.views DESC LIMIT ?`,
       )
-      .all(clientId, limit) as Array<{ id: number; platform: string; title: string | null; thumbnail: string | null; url: string | null }>;
+      .all(clientId, limit) as Array<{ id: number; accountId: number; platform: string; title: string | null; thumbnail: string | null; url: string | null }>;
   }
 
   setClipCheck(videoId: number, ok: boolean, reason: string): void {

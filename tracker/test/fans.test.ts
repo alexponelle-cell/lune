@@ -107,13 +107,22 @@ describe('programme fans (Neptune)', () => {
     ], later + 1000);
     expect(fans.balance(fan.id).views).toBe(903_050); // sans IA : tout compte
     const seen: string[] = [];
-    fans.clipChecker = { check: async (_ref: unknown, clip: { title: string | null; thumbnail: string | null }) => (seen.push(clip.title ?? ''), clip.thumbnail ? { ok: clip.title === 'BeOne rage', reason: 'test' } : null) } as never;
+    let calls = 0;
+    fans.clipChecker = {
+      checkAccount: async (_ref: unknown, clips: Array<{ title: string | null; thumbnail: string | null }>) => {
+        calls++;
+        seen.push(...clips.map((c) => c.title ?? ''));
+        return clips.map((c) => (c.thumbnail ? { ok: c.title === 'BeOne rage', reason: 'test' } : null));
+      },
+    } as never;
     expect(fans.balance(fan.id).views).toBe(0); // IA branchée : rien ne compte tant que ce n'est pas vérifié
-    expect(await fans.checkClips(undefined)).toEqual({ validés: 1, refusés: 1 });
+    expect(await fans.checkClips(undefined)).toEqual({ comptes: 1, validés: 1, refusés: 1 });
+    expect(calls).toBe(1); // un seul appel pour tous les clips du compte
     expect(seen[0]).toBe('Autre YouTubeur'); // les plus vus d'abord
-    expect(fans.balance(fan.id).views).toBe(3000);
+    expect(seen).not.toContain('pas de miniature'); // rien à montrer à l'IA : accepté d'office
+    expect(fans.balance(fan.id).views).toBe(3050);
     expect(fans.overview().fans.find((f) => f.id === fan.id)!.refused).toEqual([{ title: 'Autre YouTubeur', url: null, reason: 'test' }]);
-    expect(await fans.checkClips(undefined)).toEqual({ validés: 0, refusés: 0 }); // sans miniature : rien à décider, réessayé plus tard
+    expect(await fans.checkClips(undefined)).toEqual({ comptes: 0, validés: 0, refusés: 0 }); // compte déjà passé aujourd'hui
   });
 
   it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {
