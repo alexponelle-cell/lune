@@ -25,6 +25,8 @@ export interface FanSettings {
   creatorYoutube: string;
   /** Pseudo Roblox du créateur : son avatar Roblox est utilisé sur le site. */
   creatorRoblox: string;
+  /** Vidéos de la formation à cocher avant l'inscription, une par ligne : « Titre | lien ». */
+  training: string;
 }
 
 export const DEFAULT_FANS: FanSettings = {
@@ -37,6 +39,7 @@ export const DEFAULT_FANS: FanSettings = {
   featured: '',
   creatorYoutube: 'BeOnePourcent',
   creatorRoblox: 'BeOnePourcentt',
+  training: '',
 };
 
 const FEATURED_KINDS = ['video', 'podcast', 'best'] as const;
@@ -137,8 +140,23 @@ export class FanService {
     if (patch.creatorYoutube !== undefined)
       next.creatorYoutube = patch.creatorYoutube.split(',').map((h) => h.trim().replace(/^@/, '')).filter(Boolean).join(',').slice(0, 120);
     if (patch.creatorRoblox !== undefined) next.creatorRoblox = patch.creatorRoblox.trim().replace(/^@/, '').slice(0, 20);
+    if (patch.training !== undefined) next.training = patch.training.slice(0, 5000);
     this.repo.setSetting('fans', next);
     return next;
+  }
+
+  /** Vidéos de la formation (25 max : limite d'un menu Discord), lignes « Titre | lien » ou juste un lien. */
+  trainingVideos(): Array<{ title: string; url: string }> {
+    return this.settings()
+      .training.split('\n')
+      .map((line) => {
+        const parts = line.split('|').map((x) => x.trim());
+        const url = parts.find((x) => /^https?:\/\//i.test(x)) ?? '';
+        const title = parts.find((x) => x && x !== url) ?? '';
+        return { title: (title || url).slice(0, 100), url };
+      })
+      .filter((v) => v.url)
+      .slice(0, 25);
   }
 
   /** Crée le fan au premier /site (rattaché à l'agence du programme). */

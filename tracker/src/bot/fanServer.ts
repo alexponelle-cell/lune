@@ -15,6 +15,7 @@ import {
   type Role,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  StringSelectMenuBuilder,
   type TextChannel,
 } from 'discord.js';
 import { log } from '../log.js';
@@ -88,7 +89,7 @@ export async function ensureTierRoles(guild: Guild, fans: FanService): Promise<R
  */
 type Access =
   | { who: 'everyone'; write: boolean }
-  | { who: 'role'; role: string; write: boolean }
+  | { who: 'role'; role: string; write: boolean; /** Rôles qui voient aussi le salon (ex. clippeurs déjà inscrits) */ also?: string[] }
   | { who: 'staff' };
 interface ChannelPlan {
   name: string;
@@ -99,6 +100,10 @@ export const ROLE_READER = '📖 Lecteur';
 export const ROLE_RULES = '✅ Règles acceptées';
 /** Inscrit mais 1er clip pas encore détecté : seul son salon privé est visible, la communauté est fermée. */
 export const ROLE_PENDING = '🎬 1er clip à poster';
+/** Toutes les vidéos de la formation cochées : débloque 📝│inscription. */
+export const ROLE_TRAINED = '🎓 Formation validée';
+export const TRAINING_BUTTON = 'fans:training';
+export const TRAINING_SELECT = 'fans:training:check';
 export const STEP_READ_BUTTON = 'fans:step:read';
 export const STEP_RULES_BUTTON = 'fans:step:rules';
 export const PRIVATE_CATEGORY = '🔒 ESPACES PRIVÉS';
@@ -128,7 +133,7 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
     access: readonly(ROLE_RULES),
     channels: [
       { name: '🎓│tutos', access: readonly(ROLE_RULES), topic: 'Apprends à faire des clips qui marchent' },
-      { name: '📝│inscription', access: readonly(ROLE_RULES), topic: 'Clique sur « S’inscrire » pour relier tes comptes' },
+      { name: '📝│inscription', access: { who: 'role', role: ROLE_TRAINED, write: false, also: [ROLE_CLIPPER, ROLE_PENDING] }, topic: 'Clique sur « S’inscrire » pour relier tes comptes' },
     ],
   },
   {
@@ -177,7 +182,9 @@ function overwrites(guild: Guild, access: Access, staffRoleId: string): Overwrit
   const role = guild.roles.cache.find((r) => sameName(r.name, access.role));
   return [
     { id: everyone, deny: [V.ViewChannel, V.MentionEveryone] },
-    ...(role ? [{ id: role.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] }] : []),
+    ...[role, ...(access.also ?? []).map((n) => guild.roles.cache.find((r) => sameName(r.name, n)))]
+      .filter((r) => !!r)
+      .map((r) => ({ id: r!.id, allow: access.write ? [V.ViewChannel, V.SendMessages] : [V.ViewChannel], deny: access.write ? [] : [V.SendMessages, V.CreatePublicThreads] })),
     ...staff,
     bot,
   ];
@@ -211,6 +218,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   await ensureTierRoles(guild, fans);
   await role(ROLE_CLIPPER, color(fans), false);
   await role(ROLE_PENDING, 0xb07cff, false);
+  await role(ROLE_TRAINED, 0x9b9aa3, false);
   await role(ROLE_RULES, 0x9b9aa3, false);
   await role(ROLE_READER, 0x6b6a73, false);
   await role(ROLE_ALERTS, 0x5ab0e0, false);
@@ -257,7 +265,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     }
   }
   // Personne ne peut mentionner @everyone / @here sauf les admins (permission retirée de @everyone et des rôles des fans)
-  for (const r of [guild.roles.everyone, ...guild.roles.cache.filter((x) => [ROLE_CLIPPER, ROLE_PENDING, ROLE_RULES, ROLE_READER, ROLE_ALERTS, ROLE_TOP].some((n) => sameName(x.name, n)) || x.name.startsWith(TIER_PREFIX)).values()]) {
+  for (const r of [guild.roles.everyone, ...guild.roles.cache.filter((x) => [ROLE_CLIPPER, ROLE_PENDING, ROLE_TRAINED, ROLE_RULES, ROLE_READER, ROLE_ALERTS, ROLE_TOP].some((n) => sameName(x.name, n)) || x.name.startsWith(TIER_PREFIX)).values()]) {
     if (r.permissions.has(V.MentionEveryone)) await r.setPermissions(r.permissions.remove(V.MentionEveryone), 'Pas de ping @everyone').catch(() => {});
   }
   // Messages d'arrivée de Discord (« X a bondi dans le serveur ») : envoyés dans le log staff, plus dans #général
@@ -346,7 +354,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
                 '',
                 '**Ton parcours ici**',
                 '1️⃣ Accepte les règles (bouton dans 📜│règles)',
-                '2️⃣ Regarde les tutos dans 🎓│tutos',
+                '2️⃣ Regarde **toutes les vidéos de la formation** et coche-les (bouton 📚 Ma formation dans 🎓│tutos)',
                 '3️⃣ Inscris-toi dans 📝│inscription avec **tes 3 comptes** (TikTok, YouTube, Instagram)',
                 '4️⃣ Poste **ton 1er clip** : dès qu’il est détecté, tu débloques les annonces et toute la communauté 🎉',
               ].join('\n'),
@@ -362,10 +370,15 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('🎓・Tutos')
             .setDescription(
-              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont sur **Neptune Academy** : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\n👉 ${TUTOS_URL}\n\nQuand tu es prêt, passe à 📝│inscription.`,
+              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont sur **Neptune Academy** : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\n👉 ${TUTOS_URL}\n\n**Regarde toutes les vidéos de la formation**, puis clique sur **📚 Ma formation** et coche-les toutes : 📝│inscription se débloque.`,
             ),
         ],
-        components: [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(TUTOS_URL).setLabel('Ouvrir Neptune Academy').setEmoji('🎓'))],
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(TUTOS_URL).setLabel('Ouvrir Neptune Academy').setEmoji('🎓'),
+            new ButtonBuilder().setCustomId(TRAINING_BUTTON).setStyle(ButtonStyle.Success).setLabel('Ma formation').setEmoji('📚'),
+          ),
+        ],
       }),
     ],
     [
@@ -431,11 +444,63 @@ export async function handleStepButtons(interaction: Interaction) {
       content:
         step === 'read'
           ? `✅ C’est débloqué ! Lis ${ch('📜│règles') ?? '#règles'} et ${ch('🧭│déroulement') ?? '#déroulement'}, puis accepte les règles.`
-          : `🎉 Règles acceptées ! Regarde ${ch('🎓│tutos') ?? '#tutos'} puis inscris-toi dans ${ch('📝│inscription') ?? '#inscription'}.`,
+          : `🎉 Règles acceptées ! Va dans ${ch('🎓│tutos') ?? '#tutos'}, regarde la formation et coche toutes les vidéos (📚 Ma formation) : ça débloque l’inscription.`,
     });
   } catch (err) {
     log.warn(`parcours d’accueil : ${err instanceof Error ? err.message : String(err)}`);
     await interaction.editReply({ content: 'Impossible de te donner l’accès pour l’instant, réessaie dans une minute. Si ça continue, préviens le staff.' }).catch(() => {});
+  }
+}
+
+/** 📚 Ma formation : liste des vidéos + menu à cocher ; toutes cochées → rôle 🎓 Formation validée (débloque 📝│inscription). */
+export async function handleTraining(interaction: Interaction, fans: FanService) {
+  if (!interaction.inCachedGuild()) return;
+  const isButton = interaction.isButton() && interaction.customId === TRAINING_BUTTON;
+  const isSelect = interaction.isStringSelectMenu() && interaction.customId === TRAINING_SELECT;
+  if (!isButton && !isSelect) return;
+  const videos = fans.trainingVideos();
+  const ch = (name: string) => interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(name));
+  const done = `🎉 **Formation validée !** ${ch('📝│inscription') ?? '#inscription'} est débloqué : clique sur **S’inscrire** et relie tes 3 comptes.`;
+  const grant = async () => {
+    const role = interaction.guild.roles.cache.find((r) => sameName(r.name, ROLE_TRAINED));
+    if (!role) throw new Error('Rôle introuvable : un admin doit refaire /setup.');
+    if (!interaction.member.roles.cache.has(role.id)) await interaction.member.roles.add(role, 'Formation validée');
+  };
+  const menu = () =>
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(TRAINING_SELECT)
+        .setPlaceholder('Coche toutes les vidéos que tu as regardées')
+        .setMinValues(1)
+        .setMaxValues(videos.length)
+        .addOptions(videos.map((v, i) => ({ label: `${i + 1}. ${v.title}`.slice(0, 100), value: String(i) }))),
+    );
+  const list = videos.map((v, i) => `**${i + 1}.** [${v.title}](${v.url})`).join('\n');
+  try {
+    if (isButton) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      if (!videos.length) {
+        await grant();
+        return void (await interaction.editReply(done));
+      }
+      return void (await interaction.editReply({ content: `**📚 Ta formation (${videos.length} vidéos)**\nRegarde-les toutes, puis coche-les dans le menu.\n\n${list}`, components: [menu()] }));
+    }
+    if (!interaction.isStringSelectMenu()) return;
+    const seen = new Set(interaction.values.map(Number));
+    const missing = videos.map((v, i) => ({ ...v, i })).filter((v) => !seen.has(v.i));
+    if (missing.length) {
+      return void (await interaction.update({
+        content: `⏳ **Il te manque ${missing.length} vidéo${missing.length > 1 ? 's' : ''}** : ${missing.map((v) => `**${v.i + 1}.** [${v.title}](${v.url})`).join(', ')}\nRegarde-les, puis recoche **toutes** les vidéos.\n\n${list}`,
+        components: [menu()],
+      }));
+    }
+    await interaction.deferUpdate();
+    await grant();
+    await interaction.editReply({ content: done, components: [] });
+  } catch (err) {
+    log.warn(`formation : ${err instanceof Error ? err.message : String(err)}`);
+    const msg = { content: 'Impossible pour l’instant, réessaie dans une minute.', components: [] };
+    await (interaction.deferred || interaction.replied ? interaction.editReply(msg) : interaction.reply({ ...msg, flags: MessageFlags.Ephemeral })).catch(() => {});
   }
 }
 
@@ -519,7 +584,7 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
     // Accès à la communauté seulement après le 1er clip (rôle Clippeur donné par l'automatisation) ; déjà clippeur = inchangé
     const clipper = guild.roles.cache.find((r) => sameName(r.name, ROLE_CLIPPER));
     const already = !!clipper && member.roles.cache.has(clipper.id);
-    const roles = [ROLE_READER, ROLE_RULES, ...(already ? [] : [ROLE_PENDING])].map((n) => guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => r && !member.roles.cache.has(r.id));
+    const roles = [ROLE_READER, ROLE_RULES, ROLE_TRAINED, ...(already ? [] : [ROLE_PENDING])].map((n) => guild.roles.cache.find((r) => sameName(r.name, n))).filter((r) => r && !member.roles.cache.has(r.id));
     if (roles.length) await member.roles.add(roles.map((r) => r!.id), 'Inscription clippeur');
     if (guild.roles.cache.some((r) => sameName(r.name, ROLE_CLIPPER)) && guild.channels.cache.some((c) => c.type === ChannelType.GuildCategory && c.name.startsWith(PRIVATE_CATEGORY))) {
       const priv = await privateChannelFor(guild, member);

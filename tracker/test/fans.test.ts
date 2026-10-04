@@ -40,6 +40,17 @@ describe('programme fans (Neptune)', () => {
     return fan;
   }
 
+  it('formation : liste « Titre | lien » lue depuis les réglages, #inscription réservé à la formation validée', async () => {
+    fans.saveSettings({ training: 'Trouver le moment | https://a.test/1\n\nhttps://a.test/2\nligne sans lien' });
+    expect(fans.trainingVideos()).toEqual([
+      { title: 'Trouver le moment', url: 'https://a.test/1' },
+      { title: 'https://a.test/2', url: 'https://a.test/2' },
+    ]);
+    const { SERVER_PLAN, ROLE_TRAINED, ROLE_CLIPPER, ROLE_PENDING } = await import('../src/bot/fanServer.js');
+    const inscription = SERVER_PLAN.flatMap((g) => g.channels).find((c) => c.name.includes('inscription'))!;
+    expect(inscription.access).toMatchObject({ who: 'role', role: ROLE_TRAINED, also: [ROLE_CLIPPER, ROLE_PENDING] });
+  });
+
   it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {
     const fan = fanWithViews(); // vidéo publiée avant l'ajout du compte
     expect(fans.firstClipDone().size).toBe(0);
