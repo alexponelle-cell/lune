@@ -885,6 +885,8 @@ export function createApp(deps: WebDeps): Hono {
         creatorYoutube: z.string().max(60).optional(),
         creatorRoblox: z.string().max(20).optional(),
         training: z.string().max(5000).optional(),
+        clipRule: z.boolean().optional(),
+        clipKeywords: z.string().max(300).optional(),
       })
       .parse(await c.req.json());
     return c.json(fans.saveSettings(body));

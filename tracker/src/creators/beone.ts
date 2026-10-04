@@ -5,6 +5,7 @@ export const beone: CreatorConfig = {
   id: 'beone',
   programName: 'BEONE REWARDS',
   creatorName: 'BeOnePourcent',
+  clipKeywords: ['BeOne'],
   youtube: 'BeOnePourcent',
   robloxUsername: 'BeOnePourcentt',
   theme: 'playful',

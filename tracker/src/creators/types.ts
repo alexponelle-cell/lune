@@ -53,6 +53,8 @@ export interface CreatorConfig {
     linkLabel: string;
   };
   levels: Array<{ name: string; emoji: string; min: number }>;
+  /** Mots acceptés dans la légende d'un clip pour qu'il compte (en plus du nom et des chaînes YouTube). */
+  clipKeywords?: string[];
   /** Libellés des statuts dans « Mes échanges ». */
   statuses: { pending: string; delivered: string; refunded: string };
   texts: {

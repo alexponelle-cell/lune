@@ -2,7 +2,7 @@ import type { FanRepo, ItemInput, ShopOrder } from '../db/fans.js';
 import { isVideoFile, parseTrainingLinks, TRAINING_MODULES, youtubeEmbed } from './training.js';
 import type { Account, Clipper, Repo } from '../db/repo.js';
 import type { FetcherRegistry } from '../platforms/types.js';
-import type { ClipChecker, CreatorReference } from './clipCheck.js';
+import { citesCreator, clipKeywords } from './clipCheck.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
 import { beone } from '../creators/beone.js';
@@ -30,6 +30,12 @@ export interface FanSettings {
   creatorRoblox: string;
   /** Vidéos de la formation à cocher avant l'inscription, une par ligne : « Titre | lien ». */
   training: string;
+  /** Règle anti-triche : un clip doit citer le créateur dans sa légende pour rapporter des coins. */
+  clipRule: boolean;
+  /** Date d'activation de la règle (les clips publiés avant ne sont pas concernés). */
+  clipRuleSince: number;
+  /** Mots-clés acceptés, séparés par des virgules ('' = nom + chaînes YouTube du créateur). */
+  clipKeywords: string;
 }
 
 export const DEFAULT_FANS: FanSettings = {
@@ -43,6 +49,9 @@ export const DEFAULT_FANS: FanSettings = {
   creatorYoutube: 'BeOnePourcent',
   creatorRoblox: 'BeOnePourcentt',
   training: '',
+  clipRule: true,
+  clipRuleSince: 0,
+  clipKeywords: '',
 };
 
 const FEATURED_KINDS = ['video', 'podcast', 'best'] as const;
@@ -105,6 +114,8 @@ export class FanService {
    */
   bootstrap(now = Date.now()): void {
     const c = this.creator;
+    // Règle « le clip cite le créateur » : s'applique aux clips publiés à partir de sa mise en place
+    if (!this.repo.getSetting<Partial<FanSettings>>('fans', {}).clipRuleSince) this.repo.setSetting('fans', { ...this.repo.getSetting('fans', {}), clipRuleSince: now });
     if (c.id !== 'beone' && !this.settings().clientId) {
       const existing = this.repo.listClients().find((x) => x.name.toLowerCase() === c.creatorName.toLowerCase());
       const client = existing ?? this.repo.upsertClient({ name: c.creatorName, rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
@@ -144,6 +155,11 @@ export class FanService {
       next.creatorYoutube = patch.creatorYoutube.split(',').map((h) => h.trim().replace(/^@/, '')).filter(Boolean).join(',').slice(0, 120);
     if (patch.creatorRoblox !== undefined) next.creatorRoblox = patch.creatorRoblox.trim().replace(/^@/, '').slice(0, 20);
     if (patch.training !== undefined) next.training = patch.training.slice(0, 5000);
+    if (patch.clipKeywords !== undefined) next.clipKeywords = patch.clipKeywords.slice(0, 300);
+    if (patch.clipRule !== undefined) {
+      if (patch.clipRule && !next.clipRule) next.clipRuleSince = Date.now(); // réactivée : pas de rétroactif
+      next.clipRule = patch.clipRule;
+    }
     this.repo.setSetting('fans', next);
     return next;
   }
@@ -228,7 +244,7 @@ export class FanService {
   /** Vues qui rapportent des coins : clips publiés après l'inscription uniquement. */
   private viewsByClipper(_now = Date.now()): Map<number, number> {
     const clientId = this.settings().clientId;
-    return clientId ? this.fans.freshClipViews(clientId, 0, !!this.clipChecker) : new Map();
+    return clientId ? this.fans.freshClipViews(clientId, 0, this.clipRuleSince()) : new Map();
   }
 
   balance(clipperId: number, now = Date.now()): FanBalance {
@@ -243,7 +259,7 @@ export class FanService {
   /** Fans (Discord) dont le 1er clip a été détecté : ils débloquent la communauté. */
   firstClipDone(): Set<string> {
     const s = this.settings();
-    return s.clientId ? this.fans.firstClipDiscordIds(s.clientId, !!this.clipChecker) : new Set();
+    return s.clientId ? this.fans.firstClipDiscordIds(s.clientId, this.clipRuleSince()) : new Set();
   }
 
   /** Classement de la semaine (7 derniers jours) : pseudo, avatar, vues, coins gagnés. */
@@ -251,7 +267,7 @@ export class FanService {
     const s = this.settings();
     if (!s.clientId) return [];
     // Vues des 7 derniers jours, sur les clips publiés après l'inscription (comme les coins)
-    const rows = [...this.fans.freshClipViews(s.clientId, now - 7 * 86_400_000, !!this.clipChecker)]
+    const rows = [...this.fans.freshClipViews(s.clientId, now - 7 * 86_400_000, this.clipRuleSince())]
       .filter(([, views]) => views > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, limit)
@@ -448,59 +464,33 @@ export class FanService {
     return { username: found.name, userId: found.id };
   }
 
-  // --- IA : chaque clip doit venir du créateur (sinon il ne rapporte rien) ---
+  // --- Règle gratuite : un clip doit citer le créateur dans sa légende (sinon il ne rapporte rien) ---
 
-  /** Branché au démarrage si ANTHROPIC_API_KEY est là ; sinon tous les clips comptent. */
-  clipChecker?: ClipChecker;
-  private creatorRef?: { at: number; ref: CreatorReference };
-  /** Dernier passage IA par compte : 1 fois par jour maximum (au rythme du relevé des vues). */
-  private clipCheckedAt = new Map<number, number>();
-
-  /** Photo + miniatures et titres récents du créateur (rafraîchi toutes les 12 h). */
-  private async creatorReference(youtubeApiKey: string | undefined, now: number): Promise<CreatorReference> {
-    if (this.creatorRef && now - this.creatorRef.at < 12 * 3_600_000) return this.creatorRef.ref;
-    const avatars = await this.creatorAvatars(youtubeApiKey, now).catch(() => null);
-    const videos = youtubeApiKey ? await this.latestVideos(youtubeApiKey, 4).catch(() => []) : [];
-    const ref: CreatorReference = {
-      name: this.creator.creatorName,
-      images: [avatars?.youtube, ...videos.map((v) => v.thumbnail)].filter((x): x is string => !!x && /^https:\/\//.test(x)),
-      titles: videos.map((v) => v.title),
-    };
-    this.creatorRef = { at: now, ref };
-    return ref;
+  /** Règle active (réglage Mars, activée par défaut) : date à partir de laquelle elle s'applique, sinon null. */
+  private clipRuleSince(): number | null {
+    const s = this.settings();
+    return s.clipRule && s.clipRuleSince ? s.clipRuleSince : null;
   }
 
-  /**
-   * Passe IA : pour chaque compte qui a de nouveaux clips (relevés 1 fois par jour), un seul appel qui les
-   * juge tous (10 max, les plus vus d'abord ; le reste au passage suivant). `maxAccounts` comptes par passage.
-   */
-  async checkClips(youtubeApiKey: string | undefined, maxAccounts = 30, now = Date.now()): Promise<{ comptes: number; validés: number; refusés: number }> {
+  /** Mots-clés obligatoires dans la légende (réglés dans Mars, sinon nom + chaînes YouTube du créateur). */
+  clipKeywords(): string[] {
+    return clipKeywords(this.settings().clipKeywords, this.creator.creatorName, this.youtubeHandles(), this.creator.clipKeywords);
+  }
+
+  /** Revérifie les clips publiés depuis l'activation de la règle (gratuit : simple lecture du titre). */
+  checkClips(): { validés: number; refusés: number } {
     const clientId = this.settings().clientId;
-    const done = { comptes: 0, validés: 0, refusés: 0 };
-    if (!this.clipChecker || !clientId) return done;
-    const byAccount = new Map<number, ReturnType<FanRepo['uncheckedClips']>>();
-    for (const clip of this.fans.uncheckedClips(clientId, 2000)) {
-      // Clip sans miniature (rare) : rien à regarder, accepté
-      if (!clip.thumbnail) {
-        this.fans.setClipCheck(clip.id, true, 'pas de miniature : accepté sans vérification');
-        continue;
-      }
-      if (now - (this.clipCheckedAt.get(clip.accountId) ?? 0) < 23 * 3_600_000) continue;
-      const list = byAccount.get(clip.accountId) ?? [];
-      if (list.length < 10) byAccount.set(clip.accountId, [...list, clip]);
-    }
-    if (!byAccount.size) return done;
-    const ref = await this.creatorReference(youtubeApiKey, now);
-    for (const clips of [...byAccount.values()].slice(0, maxAccounts)) {
-      this.clipCheckedAt.set(clips[0]!.accountId, now);
-      const verdicts = await this.clipChecker.checkAccount(ref, clips);
-      done.comptes++;
-      verdicts.forEach((v, i) => {
-        if (!v) return;
-        this.fans.setClipCheck(clips[i]!.id, v.ok, v.reason);
-        if (v.ok) done.validés++;
-        else done.refusés++;
-      });
+    const since = this.clipRuleSince();
+    const done = { validés: 0, refusés: 0 };
+    if (!clientId || since === null) return done;
+    const keywords = this.clipKeywords();
+    const shown = this.settings().clipKeywords.trim() || keywords.join(', ');
+    for (const clip of this.fans.clipsToCheck(clientId, since)) {
+      const ok = citesCreator(clip.title, keywords);
+      if ((clip.check === 'ok') === ok && clip.check !== null) continue;
+      this.fans.setClipCheck(clip.id, ok, ok ? 'cite le créateur' : `la légende ne cite pas le créateur (${shown})`);
+      if (ok) done.validés++;
+      else done.refusés++;
     }
     return done;
   }
@@ -781,7 +771,7 @@ export class FanService {
       username: names.get(o.clipperId) ?? this.repo.getClipper(o.clipperId)?.username ?? '?',
       roblox: this.rewardAccount(o.clipperId).value,
     }));
-    return { clipAi: !!this.clipChecker, accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
+    return { clipRule: this.clipRuleSince() !== null, clipKeywords: this.clipKeywords(), accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
   }
 
   saveItem(id: number | null, input: ItemInput) {

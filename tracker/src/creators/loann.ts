@@ -8,6 +8,7 @@ export const loann: CreatorConfig = {
   id: 'loann',
   programName: 'LOANN CLIPPING',
   creatorName: 'Loann',
+  clipKeywords: ['Loann', 'LoannLV'],
   youtube: 'LoannLV,netabonnepas-el2vd',
   theme: 'pop',
   // Palette tirée de sa bannière (coucher de soleil peint) et du logo MS (gemmes rouge-orange, étoile jaune)

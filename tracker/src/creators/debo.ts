@@ -8,6 +8,7 @@ export const debo: CreatorConfig = {
   id: 'debo',
   programName: 'DEBO PLAYS',
   creatorName: 'DEBO',
+  clipKeywords: ['DEBO', 'DeboPlays'],
   youtube: 'DEBO-PLAYS',
   theme: 'pop',
   colors: { bg: '#0D0A24', card: '#1A1540', border: '#2E2762', text: '#FFFFFF', muted: '#B9B2E6', accent: '#FF3EA5', accentInk: '#FFFFFF', accent2: '#FFD60A', accent3: '#29E7FF' },

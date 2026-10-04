@@ -95,34 +95,31 @@ describe('programme fans (Neptune)', () => {
     expect(fans.buy(fan, item.id).status).toBe('pending');
   });
 
-  it('IA : seuls les clips reconnus comme venant du créateur rapportent des coins', async () => {
+  it('règle gratuite : seuls les clips qui citent le créateur dans la légende rapportent des coins', () => {
+    fans.saveSettings({ clipRule: false });
     const fan = fans.ensureFan('d6', 'Clippeur', now - 3 * HOUR);
     fans.addAccounts(fan, 'https://www.tiktok.com/@clips.beone');
     const account = repo.listAccountsForClipper(fan.id)[0]!;
-    const later = Date.now() + 1000;
-    repo.recordCollection(account.id, [
-      { platformVideoId: 'ok', views: 3000, publishedAt: later, title: 'BeOne rage', thumbnailUrl: 'https://img/ok.jpg' },
-      { platformVideoId: 'vol', views: 900_000, publishedAt: later, title: 'Autre YouTubeur', thumbnailUrl: 'https://img/vol.jpg' },
-      { platformVideoId: 'sans', views: 50, publishedAt: later, title: 'pas de miniature' },
-    ], later + 1000);
-    expect(fans.balance(fan.id).views).toBe(903_050); // sans IA : tout compte
-    const seen: string[] = [];
-    let calls = 0;
-    fans.clipChecker = {
-      checkAccount: async (_ref: unknown, clips: Array<{ title: string | null; thumbnail: string | null }>) => {
-        calls++;
-        seen.push(...clips.map((c) => c.title ?? ''));
-        return clips.map((c) => (c.thumbnail ? { ok: c.title === 'BeOne rage', reason: 'test' } : null));
-      },
-    } as never;
-    expect(fans.balance(fan.id).views).toBe(0); // IA branchée : rien ne compte tant que ce n'est pas vérifié
-    expect(await fans.checkClips(undefined)).toEqual({ comptes: 1, validés: 1, refusés: 1 });
-    expect(calls).toBe(1); // un seul appel pour tous les clips du compte
-    expect(seen[0]).toBe('Autre YouTubeur'); // les plus vus d'abord
-    expect(seen).not.toContain('pas de miniature'); // rien à montrer à l'IA : accepté d'office
-    expect(fans.balance(fan.id).views).toBe(3050);
-    expect(fans.overview().fans.find((f) => f.id === fan.id)!.refused).toEqual([{ title: 'Autre YouTubeur', url: null, reason: 'test' }]);
-    expect(await fans.checkClips(undefined)).toEqual({ comptes: 0, validés: 0, refusés: 0 }); // compte déjà passé aujourd'hui
+    const later = Date.now() + 5000;
+    const collect = (title: string) =>
+      repo.recordCollection(account.id, [
+        { platformVideoId: 'ok', views: 3000, publishedAt: later, title: 'Le rage de Be One 😂 #beone' },
+        { platformVideoId: 'vol', views: 900_000, publishedAt: later, title },
+      ], later + 1000);
+    collect('Mon meilleur short de la semaine');
+    expect(fans.balance(fan.id).views).toBe(903_000); // règle coupée : tout compte
+    fans.saveSettings({ clipRule: true }); // activée maintenant : s'applique aux clips publiés à partir de là
+    expect(fans.balance(fan.id).views).toBe(0); // pas encore vérifiés
+    expect(fans.clipKeywords()).toEqual(['beone', 'beonepourcent']);
+    expect(fans.checkClips()).toEqual({ validés: 1, refusés: 1 });
+    expect(fans.balance(fan.id).views).toBe(3000);
+    expect(fans.overview().fans.find((f) => f.id === fan.id)!.refused[0]!.reason).toContain('ne cite pas');
+    expect(fans.checkClips()).toEqual({ validés: 0, refusés: 0 }); // rien n'a changé
+    collect('Mon meilleur short #BeOnePourcent'); // le clippeur corrige sa légende
+    expect(fans.checkClips()).toEqual({ validés: 1, refusés: 0 });
+    expect(fans.balance(fan.id).views).toBe(903_000);
+    fans.saveSettings({ clipKeywords: 'squiduu, #sqd' });
+    expect(fans.clipKeywords()).toEqual(['squiduu', 'sqd']);
   });
 
   it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {

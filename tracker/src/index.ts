@@ -10,7 +10,6 @@ import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
 import { FanRepo } from './db/fans.js';
 import { RecruitmentRepo } from './db/recruitment.js';
-import { ClipChecker } from './services/clipCheck.js';
 import { startFansBot } from './bot/fans.js';
 import { FanService } from './services/fans.js';
 import { creatorConfig } from './creators/index.js';
@@ -43,8 +42,6 @@ const creator = creatorConfig(config.CREATOR);
 const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl, undefined, creator);
 // Lecture des bios à la demande (vérification des comptes par code)
 fans.fetchers = fetchers;
-// IA : seuls les clips reconnus comme venant du créateur rapportent des coins
-if (config.ANTHROPIC_API_KEY) fans.clipChecker = new ClipChecker(config.ANTHROPIC_API_KEY);
 fans.bootstrap();
 log.info(`programme fans : ${creator.programName} (${creator.id})`);
 const botHolder: { current?: Bot['bridge'] } = {};
@@ -141,7 +138,8 @@ const stopGameDelivery = game ? every('livraison jeu', 1, () => deliverPendingOr
 // Livraison automatique par e-mail (Squiduuverse) si l'API est configurée
 const emailApi = config.SQUIDUU_API_URL && config.SQUIDUU_API_TOKEN ? new EmailGrantClient(config.SQUIDUU_API_URL, config.SQUIDUU_API_TOKEN) : undefined;
 const stopEmailDelivery = emailApi ? every('livraison e-mail', 1, () => deliverEmailOrders(emailApi, fans.fans)) : () => {};
-const stopClipCheck = fans.clipChecker ? every('vérif clips IA', 10, () => fans.checkClips(config.YOUTUBE_API_KEY)) : () => {};
+// Règle anti-triche gratuite : le clip doit citer le créateur dans sa légende
+const stopClipCheck = every('vérif des clips', 10, async () => fans.checkClips());
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
 // Comptes des fans : 1 collecte par jour (coût Apify), les clippers de l'agence au rythme normal
