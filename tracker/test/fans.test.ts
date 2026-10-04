@@ -644,3 +644,62 @@ describe('serveur des monteurs (/setup-montage)', () => {
     expect(m.setupMontageCommand.default_member_permissions).toBe('8');
   });
 });
+
+describe('parcours complet d’un nouveau clippeur SQUIDUU (réglages par défaut)', () => {
+  it('formation → 3 comptes → vérif staff → clip #squiduu → 1er clip → coins → achat validé → livré par e-mail', async () => {
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('squiduu'));
+    const t0 = Date.now();
+    fans.bootstrap(t0); // comme au démarrage : agence SQUIDUU, récompense, règle « légende » active
+    const s = fans.settings();
+    expect(s).toMatchObject({ accountReview: true, orderReview: true, clipRule: true });
+    expect(fans.clipKeywords()).toEqual(['squiduu']);
+
+    // 1. Formation : 6 modules à cocher, tout coché → rôle Discord
+    const fan = fans.ensureFan('111', 'Paul');
+    const trained: string[] = [];
+    fans.onTrainingDone = (id) => void trained.push(id);
+    const t = fans.training(fan.id);
+    expect(t.modules).toHaveLength(6);
+    expect(t.modules.every((m) => m.embed?.startsWith('https://www.youtube-nocookie.com/embed/'))).toBe(true);
+    for (const m of t.modules) fans.setTrainingStep(fan, m.num, true);
+    expect(trained).toEqual(['111']);
+
+    // 2. Inscription : 3 comptes + e-mail → comptes à vérifier, rien ne compte encore
+    const res = fans.setAccounts(fan, { tiktok: '@paul.sqd', youtube: '@paulsqd', instagram: '@paul.sqd' });
+    expect(res.linked).toHaveLength(3);
+    expect(fans.linkEmail(fan, 'paul@mail.com')).toBe('paul@mail.com');
+    expect(fans.unverifiedAccounts(fan.id)).toHaveLength(3);
+    expect(fans.accountsToReview()).toHaveLength(3);
+
+    // 3. Clips : un sans #squiduu, un avec ; relevé après l'inscription
+    const tt = repo.listAccountsForClipper(fan.id).find((a) => a.platform === 'tiktok')!;
+    const later = Date.now() + 60_000;
+    repo.recordCollection(tt.id, [
+      { platformVideoId: 'a', views: 2_000_000, publishedAt: later, title: 'Mon clip #squiduu 😂' },
+      { platformVideoId: 'b', views: 500_000, publishedAt: later, title: 'clip sans le tag' },
+    ], later + 1000);
+    fans.checkClips();
+    expect(fans.firstClipDone().size).toBe(0); // compte pas encore validé par le staff
+    expect(fans.balance(fan.id).earned).toBe(0);
+
+    // 4. Le staff valide les comptes → 1er clip débloqué, seules les vues du clip #squiduu comptent
+    for (const a of fans.accountsToReview()) fans.reviewAccount(a.id, true);
+    expect([...fans.firstClipDone()]).toEqual(['111']);
+    expect(fans.balance(fan.id)).toMatchObject({ views: 2_000_000, earned: 20_000 });
+    expect(fans.overview().fans[0]!.refused).toHaveLength(1);
+
+    // 5. Achat → à valider (pas livré) → validé → part à l'API e-mail
+    const item = fans.fans.items()[0]!;
+    expect(item).toMatchObject({ name: '1 mois de Squiduuverse', price: 10_000 });
+    const order = fans.buy(fan, item.id);
+    expect(fans.fans.pendingForEmail()).toEqual([]);
+    expect(fans.overview().orders[0]!.topClips[0]).toMatchObject({ title: 'Mon clip #squiduu 😂' });
+    fans.fans.approve(order.id);
+    expect(fans.fans.pendingForEmail().map((o) => o.email)).toEqual(['paul@mail.com']);
+    const grant = new EmailGrantClient('https://api.test', 'k', (async () => new Response('{}', { status: 200 })) as never);
+    expect(await deliverEmailOrders(grant, fans.fans)).toEqual({ livrées: 1, échecs: 0 });
+    expect(fans.balance(fan.id).balance).toBe(10_000);
+  });
+});

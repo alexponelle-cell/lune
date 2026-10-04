@@ -571,7 +571,7 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
 }
 
 /** Après une inscription réussie : rôles, salon privé et trace dans le salon staff (si le serveur a été monté par /setup). */
-export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string, verifyCode?: string) {
+export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string, extraLines: string[] = []) {
   try {
     // Accès à la communauté seulement après le 1er clip (rôle Clippeur donné par l'automatisation) ; déjà clippeur = inchangé
     const clipper = guild.roles.cache.find((r) => sameName(r.name, ROLE_CLIPPER));
@@ -596,7 +596,7 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
                   '',
                   `✅ Comptes suivis : ${accounts.join(', ')}`,
                   '📈 Tes vues sont comptées une fois par jour, à partir de maintenant.',
-                  ...(verifyCode ? ['', verifyText(verifyCode)] : []),
+                  ...(extraLines.length ? ['', ...extraLines] : []),
                   ...(already ? [] : ['', `🎬 **Dernière étape : poste ton 1er clip** sur un de ces comptes. Dès qu’il est détecté (relevé 1 fois par jour), tu débloques les annonces, #général et toute la communauté.`]),
                   siteUrl ? `🪙 Suis tes coins et échange-les sur le site : ${siteUrl}` : '🪙 Tape `/coins` pour voir tes coins.',
                   '',
@@ -604,7 +604,7 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
                 ].join('\n'),
               ),
           ],
-          components: verifyCode ? [verifyRow()] : [],
+          components: [],
         });
       }
     }
