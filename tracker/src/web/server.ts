@@ -888,6 +888,7 @@ export function createApp(deps: WebDeps): Hono {
         clipRule: z.boolean().optional(),
         clipKeywords: z.string().max(300).optional(),
         orderReview: z.boolean().optional(),
+        accountReview: z.boolean().optional(),
       })
       .parse(await c.req.json());
     return c.json(fans.saveSettings(body));
@@ -916,6 +917,12 @@ export function createApp(deps: WebDeps): Hono {
   app.post('/api/fans/:id/bonus', async (c) => {
     const { amount } = z.object({ amount: z.number().int().min(-1_000_000).max(1_000_000) }).parse(await c.req.json());
     fans.fans.addBonus(Number(c.req.param('id')), amount);
+    return c.json({ ok: true });
+  });
+  // Nouveau compte d'un fan : validé (ses vues comptent) ou refusé (retiré du suivi)
+  app.post('/api/fans/accounts/:id/review', async (c) => {
+    const { ok } = z.object({ ok: z.boolean() }).parse(await c.req.json());
+    fans.reviewAccount(Number(c.req.param('id')), ok);
     return c.json({ ok: true });
   });
   app.post('/api/shop/orders/:id/approve', (c) => c.json({ ok: fans.fans.approve(Number(c.req.param('id'))) }));

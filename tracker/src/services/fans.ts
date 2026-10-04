@@ -38,6 +38,8 @@ export interface FanSettings {
   clipKeywords: string;
   /** Chaque achat attend la validation du staff avant d'être livré. */
   orderReview: boolean;
+  /** Chaque nouveau compte inscrit attend la validation du staff (contenu du bon créateur) avant de rapporter. */
+  accountReview: boolean;
 }
 
 export const DEFAULT_FANS: FanSettings = {
@@ -55,6 +57,7 @@ export const DEFAULT_FANS: FanSettings = {
   clipRuleSince: 0,
   clipKeywords: '',
   orderReview: true,
+  accountReview: true,
 };
 
 const FEATURED_KINDS = ['video', 'podcast', 'best'] as const;
@@ -160,6 +163,7 @@ export class FanService {
     if (patch.training !== undefined) next.training = patch.training.slice(0, 5000);
     if (patch.clipKeywords !== undefined) next.clipKeywords = patch.clipKeywords.slice(0, 300);
     if (patch.orderReview !== undefined) next.orderReview = patch.orderReview;
+    if (patch.accountReview !== undefined) next.accountReview = patch.accountReview;
     if (patch.clipRule !== undefined) {
       if (patch.clipRule && !next.clipRule) next.clipRuleSince = Date.now(); // réactivée : pas de rétroactif
       next.clipRule = patch.clipRule;
@@ -407,6 +411,7 @@ export class FanService {
     const result = { added: [] as AccountLink[], conflicts: [] as AccountLink[] };
     for (const link of links) {
       const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link });
+      if (r.created && this.settings().accountReview) this.repo.setAccountVerified(r.account.id, null);
       if (r.conflict) result.conflicts.push(link);
       else result.added.push(link);
     }
@@ -443,6 +448,8 @@ export class FanService {
         out.conflicts.push(link);
         continue;
       }
+      // Nouveau compte : file « à vérifier » du staff (ses vues comptent dès la validation, rétroactivement)
+      if (r.created && this.settings().accountReview) this.repo.setAccountVerified(r.account.id, null);
       for (const a of current) this.repo.deactivateAccount(a.id);
       out.linked.push(link);
     }
@@ -543,6 +550,18 @@ export class FanService {
       }
     }
     return results;
+  }
+
+  /** File du staff : nouveaux comptes à vérifier (lien du profil + derniers clips). */
+  accountsToReview() {
+    const clientId = this.settings().clientId;
+    return clientId ? this.fans.accountsToReview(clientId) : [];
+  }
+
+  /** Décision du staff sur un compte : validé (ses vues comptent) ou refusé (retiré du suivi). */
+  reviewAccount(accountId: number, ok: boolean, now = Date.now()): void {
+    if (ok) this.repo.setAccountVerified(accountId, now);
+    else this.repo.deactivateAccount(accountId);
   }
 
   /** Seuils du contrôle : au-delà, le fan passe « à vérifier » (achats bloqués jusqu'à validation du staff). */
@@ -778,7 +797,7 @@ export class FanService {
       username: names.get(o.clipperId) ?? this.repo.getClipper(o.clipperId)?.username ?? '?',
       roblox: this.rewardAccount(o.clipperId).value,
     }));
-    return { clipRule: this.clipRuleSince() !== null, clipKeywords: this.clipKeywords(), accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
+    return { creatorName: this.creator.creatorName, accountsToReview: this.accountsToReview(), clipRule: this.clipRuleSince() !== null, clipKeywords: this.clipKeywords(), accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
   }
 
   saveItem(id: number | null, input: ItemInput) {

@@ -30,7 +30,7 @@ describe('programme fans (Neptune)', () => {
       name.toLowerCase() === 'paulrbx' ? { id: 42, name: 'PaulRbx' } : null,
     );
     const client = repo.upsertClient({ name: 'BeOne', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
-    fans.saveSettings({ clientId: client.id, pointsPer1000: 10, orderReview: false });
+    fans.saveSettings({ clientId: client.id, pointsPer1000: 10, orderReview: false, accountReview: false });
   });
 
   /** Le fan poste un compte ; 1re collecte = référence, puis +5 000 vues → 50 points. */
@@ -120,6 +120,24 @@ describe('programme fans (Neptune)', () => {
     expect(fans.balance(fan.id).views).toBe(903_000);
     fans.saveSettings({ clipKeywords: 'squiduu, #sqd' });
     expect(fans.clipKeywords()).toEqual(['squiduu', 'sqd']);
+  });
+
+  it('nouveaux comptes : file « à vérifier » du staff, vues comptées dès la validation (rétroactif), refus = plus suivi', () => {
+    fans.saveSettings({ accountReview: true });
+    const fan = fans.ensureFan('d8', 'Nouveau', now - 3 * HOUR);
+    fans.setAccounts(fan, { tiktok: '@nouveau.clips', youtube: '@nouveauyt' });
+    const [tt, yt] = repo.listAccountsForClipper(fan.id);
+    const later = Date.now() + 1000;
+    repo.recordCollection(tt!.id, [{ platformVideoId: 'c1', views: 4000, publishedAt: later, title: 'clip beone', url: 'https://tiktok.test/c1' }], later + 1);
+    expect(fans.balance(fan.id).views).toBe(0);
+    const queue = fans.accountsToReview();
+    expect(queue.map((a) => a.handle)).toEqual(['nouveau.clips', 'nouveauyt']);
+    expect(queue[0]!.clips[0]).toMatchObject({ title: 'clip beone', views: 4000 });
+    fans.reviewAccount(tt!.id, true);
+    fans.reviewAccount(yt!.id, false);
+    expect(fans.balance(fan.id).views).toBe(4000); // rétroactif
+    expect(fans.accountsToReview()).toEqual([]);
+    expect(repo.listAccountsForClipper(fan.id).some((a) => a.id === yt!.id && a.active)).toBe(false); // refusé : plus suivi
   });
 
   it('validation du staff : l’achat attend « Valider » avant d’être livré (jeu, e-mail), livraison manuelle = validé', async () => {

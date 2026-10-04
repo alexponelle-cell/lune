@@ -16,8 +16,8 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow, verifyText } from './fanServer.js';
-import { announceNewVideos, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
+import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
+import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -131,12 +131,11 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         const missing = PLATFORM_FIELDS.filter((f) => !fans.accountsOf(fan.id).some((a) => a.platform === f.id)).map((f) => f.label);
         if (missing.length) lines.push(`\n⚠️ **Il manque : ${missing.join(', ')}.** Les 3 comptes sont obligatoires : reclique sur **S’inscrire** pour compléter.`);
         if (res.linked.length && !missing.length && interaction.inCachedGuild()) {
-          await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl(), fans.unverifiedAccounts(fan.id).length ? fans.verifyCode(fan.id) : undefined);
+          await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl());
         }
         if (res.linked.length && !missing.length) lines.push('\n🎬 **Dernière étape : poste ton 1er clip.** Dès qu’il est détecté (1 relevé par jour), toute la communauté se débloque · `/site` pour la boutique');
-        const toVerify = fans.unverifiedAccounts(fan.id);
-        if (toVerify.length) lines.push(`\n${verifyText(fans.verifyCode(fan.id))}`);
-        await interaction.editReply({ content: lines.join('\n').slice(0, 2000), components: toVerify.length ? [verifyRow()] : [] });
+        if (fans.unverifiedAccounts(fan.id).length) lines.push('\n🔎 **Tes nouveaux comptes vont être vérifiés par le staff** (sous 24 h) : tes vues compteront dès la validation, rien n’est perdu.');
+        await interaction.editReply({ content: lines.join('\n').slice(0, 2000), components: [] });
       }
       if (interaction.isButton() && interaction.customId === VERIFY_BUTTON) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -291,6 +290,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     const automations = async () => {
       await reportSuspicious(c, opts.fans).catch((err) => log.error('fans à vérifier', err));
       await reportOrdersToApprove(c, opts.fans).catch((err) => log.error('achats à valider', err));
+      await reportAccountsToReview(c, opts.fans).catch((err) => log.error('comptes à vérifier', err));
       await unlockFirstClips(c, opts.fans).catch((err) => log.error('1er clip', err));
       await syncTierRoles(c, opts.fans).catch((err) => log.error('rôles de palier', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));

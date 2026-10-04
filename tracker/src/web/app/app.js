@@ -1551,6 +1551,7 @@ async function pageBoutique() {
         <label class="field"><span>Liens des vidéos de la formation (optionnel)</span><textarea class="input" name="training" rows="6" placeholder="206 | https://youtu.be/…&#10;201 | https://youtu.be/…&#10;202 | …">${esc(s.training ?? '')}</textarea><small>Vidéos déjà en place par défaut. Pour en remplacer une : « numéro | lien » (206, 201, 202, 203, 205, 204). Lien YouTube (non répertorié) ou lien direct du fichier vidéo (.mp4) = vidéo lue dans la page. Page : <a href="/formation" target="_blank" rel="noopener">/formation</a>. Tout coché → 📝│inscription débloqué.</small></label>
         <div class="grid-form">
           <label class="field"><span>Anti-triche : le clip doit citer le créateur</span><select class="select" name="clipRule"><option value="1" ${s.clipRule !== false ? 'selected' : ''}>Activé (recommandé)</option><option value="0" ${s.clipRule === false ? 'selected' : ''}>Coupé</option></select><small>Un clip ne rapporte des coins que si sa légende / son titre contient un des mots-clés. Gratuit, revérifié à chaque relevé.</small></label>
+          <label class="field"><span>Vérification des nouveaux comptes</span><select class="select" name="accountReview"><option value="1" ${s.accountReview !== false ? 'selected' : ''}>Activée (recommandé)</option><option value="0" ${s.accountReview === false ? 'selected' : ''}>Coupée</option></select><small>Chaque compte inscrit attend « ✅ Valider » (liste « Comptes à vérifier ») avant de rapporter.</small></label>
           <label class="field"><span>Validation des achats par le staff</span><select class="select" name="orderReview"><option value="1" ${s.orderReview !== false ? 'selected' : ''}>Activée (recommandé)</option><option value="0" ${s.orderReview === false ? 'selected' : ''}>Coupée (livraison directe)</option></select><small>Chaque achat attend « ✅ Valider » dans Commandes avant d'être livré.</small></label>
           <label class="field"><span>Mots-clés acceptés dans la légende</span><input class="input" name="clipKeywords" value="${esc(s.clipKeywords ?? '')}" placeholder="${esc((d.clipKeywords ?? []).join(', '))}"><small>Séparés par des virgules. Vide = ${esc((d.clipKeywords ?? []).join(', '))}</small></label>
         </div>
@@ -1571,6 +1572,12 @@ async function pageBoutique() {
           <td class="num">${esc(i.ref)}</td><td class="r num">${n(i.price)} coins</td><td class="r num">${i.stock ?? '∞'}</td><td>${i.active ? '<span class="pill ok">En vente</span>' : '<span class="pill gray">Masqué</span>'}</td>
           <td class="r"><button class="icon-btn" data-edit-item="${i.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-item="${i.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucun objet. Ajoute le premier gamepass ou objet.</td></tr>'}
         </tbody></table></div></div>
+
+      ${d.accountsToReview?.length ? `<div class="card" style="border-color:var(--orange)"><div class="card-head"><div><h2>🔎 Comptes à vérifier <span class="pill wait" style="background:var(--orange);color:#111">${d.accountsToReview.length}</span></h2><p>Nouveaux comptes inscrits : ouvre le profil, vérifie que c'est bien du contenu de ${esc(d.creatorName ?? 'ce créateur')}, puis valide. Tant qu'il n'est pas validé, le compte ne rapporte rien (ses vues comptent rétroactivement après validation).</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Compte</th><th>Derniers clips</th><th class="r"></th></tr></thead><tbody>
+        ${d.accountsToReview.map((a) => `<tr><td><b>${esc(a.username)}</b><small style="display:block" class="faint">inscrit le ${dm(a.createdAt)}</small></td><td><a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">${{ tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }[a.platform] ?? a.platform} @${esc(a.handle)} ↗</a>${a.followers ? `<small style="display:block" class="faint">${n(a.followers)} abonnés</small>` : ''}</td><td class="faint" style="white-space:normal;max-width:340px">${a.clips.map((c) => c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc((c.title || 'clip').slice(0, 50))}</a> (${n(c.views)})` : esc((c.title || 'clip').slice(0, 50))).join(' · ') || 'pas encore de clip relevé'}</td>
+          <td class="r" style="white-space:nowrap"><button class="btn sm green" data-acc-ok="${a.id}">✅ Valider</button> <button class="btn sm danger" data-acc-ko="${a.id}">Refuser</button></td></tr>`).join('')}
+        </tbody></table></div></div>` : ''}
 
       <div class="card"><div class="card-head"><div><h2>Commandes${d.orders.some((o) => o.status === 'pending' && o.approvedAt === null) ? ` <span class="pill wait" style="background:var(--orange);color:#111">${d.orders.filter((o) => o.status === 'pending' && o.approvedAt === null).length} à valider</span>` : ''}</h2><p>${s.orderReview !== false ? '<b>Chaque achat attend ta validation :</b> regarde ses clips, puis ✅ Valider (la livraison part) ou Refuser (coins rendus). ' : ''}${d.gameApi ? '« À livrer » : envoyé automatiquement au jeu (le joueur le reçoit en jeu ou à sa prochaine connexion)' : d.emailApi ? '« À livrer » : envoyé automatiquement à l’API (le mois arrive sur l’e-mail en 1 à 2 min, le fan est prévenu sur Discord)' : d.accountLabel === 'E-mail' ? '« À livrer » : active la récompense sur le compte lié à l’e-mail, puis clique « Marquer livré » (le fan est prévenu sur Discord)' : '« À livrer » : envoie la récompense sur le compte Roblox indiqué, puis clique « Marquer livré » (le fan est prévenu sur Discord)'}</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Date</th><th>Fan</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th>Objet</th><th class="r">Prix</th><th>État</th><th class="r"></th></tr></thead><tbody>
@@ -1602,6 +1609,7 @@ async function pageBoutique() {
           clipRule: fd.get('clipRule') === '1',
           clipKeywords: fd.get('clipKeywords') ?? undefined,
           orderReview: fd.get('orderReview') === '1',
+          accountReview: fd.get('accountReview') === '1',
         } });
       toast('Réglages sauvegardés ✅');
       pageBoutique();
@@ -1627,6 +1635,17 @@ async function pageBoutique() {
     imageUrl: fd.get('imageUrl') || null,
     active: fd.get('active') === 'on',
   });
+  root.querySelectorAll('[data-acc-ok], [data-acc-ko]').forEach((b) => b.addEventListener('click', async () => {
+    const ok = !!b.dataset.accOk;
+    if (!ok && !confirm('Refuser ce compte ? Il ne sera plus suivi (ses vues ne compteront jamais).')) return;
+    try {
+      await api(`/api/fans/accounts/${b.dataset.accOk ?? b.dataset.accKo}/review`, { method: 'POST', body: { ok } });
+      toast(ok ? 'Compte validé ✅' : 'Compte refusé');
+      pageBoutique();
+    } catch (err) {
+      toast(err.message, true);
+    }
+  }));
   root.querySelectorAll('[data-approve-order]').forEach((b) => b.addEventListener('click', async () => {
     try {
       await api(`/api/shop/orders/${b.dataset.approveOrder}/approve`, { method: 'POST' });

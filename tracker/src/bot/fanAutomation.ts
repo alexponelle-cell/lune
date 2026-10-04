@@ -24,6 +24,23 @@ const setupGuilds = (client: Client<true>, fans: FanService) => {
   return [...client.guilds.cache.values()].filter((g) => ids.has(g.id));
 };
 
+/** Nouveaux comptes à vérifier : signalés une fois au staff dans le log. */
+export async function reportAccountsToReview(client: Client<true>, fans: FanService): Promise<number> {
+  const told = new Set(fans.botState<number[]>('accounts-announced', []));
+  const fresh = fans.accountsToReview().filter((a) => !told.has(a.id));
+  if (!fresh.length) return 0;
+  for (const guild of setupGuilds(client, fans)) {
+    const log = channel(guild, LOG_CHANNEL);
+    if (!log) continue;
+    const lines = fresh.slice(0, 15).map((a) => `• <@${a.discordId}> · ${a.platform} ${a.url}`);
+    await log
+      .send({ content: `🔎 **${fresh.length} compte(s) à vérifier** (contenu de ${fans.creator.creatorName} ?) :\n${lines.join('\n')}${fresh.length > 15 ? '\n…' : ''}\nValide-les dans Mars (Boutique fans → Comptes à vérifier).`, allowedMentions: { parse: [] } })
+      .catch(() => {});
+  }
+  fans.setBotState('accounts-announced', [...told, ...fresh.map((a) => a.id)].slice(-2000));
+  return fresh.length;
+}
+
 /** Achats à valider : signalés une fois au staff dans le log (validation dans Mars). */
 export async function reportOrdersToApprove(client: Client<true>, fans: FanService): Promise<number> {
   const told = new Set(fans.botState<number[]>('orders-announced', []));

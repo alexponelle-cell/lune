@@ -524,6 +524,19 @@ export class FanRepo {
     return this.db.prepare("UPDATE shop_orders SET approved_at = ? WHERE id = ? AND status = 'pending' AND approved_at IS NULL").run(now, orderId).changes > 0;
   }
 
+  /** Comptes actifs pas encore validés par le staff, avec leurs derniers clips (titre + lien). */
+  accountsToReview(clientId: number): Array<{ id: number; clipperId: number; username: string; discordId: string; platform: string; handle: string; url: string; followers: number | null; createdAt: number; clips: Array<{ title: string | null; url: string | null; views: number }> }> {
+    const rows = this.db
+      .prepare(
+        `SELECT a.id, a.clipper_id AS clipperId, c.username, c.discord_id AS discordId, a.platform, a.handle, a.url, a.followers, a.created_at AS createdAt
+           FROM accounts a JOIN clippers c ON c.id = a.clipper_id
+          WHERE c.client_id = ? AND a.active = 1 AND a.verified_at IS NULL ORDER BY a.created_at`,
+      )
+      .all(clientId) as Array<{ id: number; clipperId: number; username: string; discordId: string; platform: string; handle: string; url: string; followers: number | null; createdAt: number }>;
+    const clips = this.db.prepare('SELECT title, url, views FROM videos WHERE account_id = ? ORDER BY COALESCE(published_at, first_seen_at) DESC LIMIT 4');
+    return rows.map((r) => ({ ...r, clips: clips.all(r.id) as Array<{ title: string | null; url: string | null; views: number }> }));
+  }
+
   discordIdOf(clipperId: number): string | null {
     const id = (this.db.prepare('SELECT discord_id FROM clippers WHERE id = ?').get(clipperId) as Row | undefined)?.discord_id as string | undefined;
     return id && !id.startsWith('manual:') ? id : null;
