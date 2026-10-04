@@ -2,6 +2,7 @@ import type { FanRepo, ItemInput, ShopOrder } from '../db/fans.js';
 import { isVideoFile, parseTrainingLinks, TRAINING_MODULES, youtubeEmbed } from './training.js';
 import type { Account, Clipper, Repo } from '../db/repo.js';
 import type { FetcherRegistry } from '../platforms/types.js';
+import type { ClipChecker, CreatorReference } from './clipCheck.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
 import { beone } from '../creators/beone.js';
@@ -227,7 +228,7 @@ export class FanService {
   /** Vues qui rapportent des coins : clips publiés après l'inscription uniquement. */
   private viewsByClipper(_now = Date.now()): Map<number, number> {
     const clientId = this.settings().clientId;
-    return clientId ? this.fans.freshClipViews(clientId) : new Map();
+    return clientId ? this.fans.freshClipViews(clientId, 0, !!this.clipChecker) : new Map();
   }
 
   balance(clipperId: number, now = Date.now()): FanBalance {
@@ -242,7 +243,7 @@ export class FanService {
   /** Fans (Discord) dont le 1er clip a été détecté : ils débloquent la communauté. */
   firstClipDone(): Set<string> {
     const s = this.settings();
-    return s.clientId ? this.fans.firstClipDiscordIds(s.clientId) : new Set();
+    return s.clientId ? this.fans.firstClipDiscordIds(s.clientId, !!this.clipChecker) : new Set();
   }
 
   /** Classement de la semaine (7 derniers jours) : pseudo, avatar, vues, coins gagnés. */
@@ -250,7 +251,7 @@ export class FanService {
     const s = this.settings();
     if (!s.clientId) return [];
     // Vues des 7 derniers jours, sur les clips publiés après l'inscription (comme les coins)
-    const rows = [...this.fans.freshClipViews(s.clientId, now - 7 * 86_400_000)]
+    const rows = [...this.fans.freshClipViews(s.clientId, now - 7 * 86_400_000, !!this.clipChecker)]
       .filter(([, views]) => views > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, limit)
@@ -386,7 +387,6 @@ export class FanService {
     const result = { added: [] as AccountLink[], conflicts: [] as AccountLink[] };
     for (const link of links) {
       const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link });
-      if (r.created) this.repo.setAccountVerified(r.account.id, null);
       if (r.conflict) result.conflicts.push(link);
       else result.added.push(link);
     }
@@ -423,7 +423,6 @@ export class FanService {
         out.conflicts.push(link);
         continue;
       }
-      if (r.created) this.repo.setAccountVerified(r.account.id, null);
       for (const a of current) this.repo.deactivateAccount(a.id);
       out.linked.push(link);
     }
@@ -447,6 +446,45 @@ export class FanService {
     if (owner !== null && owner !== clipper.id) throw new Error('Ce compte Roblox est déjà relié à un autre fan');
     this.fans.setRoblox(clipper.id, found.name, found.id);
     return { username: found.name, userId: found.id };
+  }
+
+  // --- IA : chaque clip doit venir du créateur (sinon il ne rapporte rien) ---
+
+  /** Branché au démarrage si ANTHROPIC_API_KEY est là ; sinon tous les clips comptent. */
+  clipChecker?: ClipChecker;
+  private creatorRef?: { at: number; ref: CreatorReference };
+
+  /** Photo + miniatures et titres récents du créateur (rafraîchi toutes les 12 h). */
+  private async creatorReference(youtubeApiKey: string | undefined, now: number): Promise<CreatorReference> {
+    if (this.creatorRef && now - this.creatorRef.at < 12 * 3_600_000) return this.creatorRef.ref;
+    const avatars = await this.creatorAvatars(youtubeApiKey, now).catch(() => null);
+    const videos = youtubeApiKey ? await this.latestVideos(youtubeApiKey, 4).catch(() => []) : [];
+    const ref: CreatorReference = {
+      name: this.creator.creatorName,
+      images: [avatars?.youtube, ...videos.map((v) => v.thumbnail)].filter((x): x is string => !!x && /^https:\/\//.test(x)),
+      titles: videos.map((v) => v.title),
+    };
+    this.creatorRef = { at: now, ref };
+    return ref;
+  }
+
+  /** Vérifie jusqu'à `limit` nouveaux clips. Renvoie le nombre de validés / refusés. */
+  async checkClips(youtubeApiKey: string | undefined, limit = 20, now = Date.now()): Promise<{ validés: number; refusés: number }> {
+    const clientId = this.settings().clientId;
+    if (!this.clipChecker || !clientId) return { validés: 0, refusés: 0 };
+    const todo = this.fans.uncheckedClips(clientId, limit);
+    if (!todo.length) return { validés: 0, refusés: 0 };
+    const ref = await this.creatorReference(youtubeApiKey, now);
+    let ok = 0;
+    let no = 0;
+    for (const clip of todo) {
+      const v = await this.clipChecker.check(ref, clip);
+      if (!v) continue;
+      this.fans.setClipCheck(clip.id, v.ok, v.reason);
+      if (v.ok) ok++;
+      else no++;
+    }
+    return { validés: ok, refusés: no };
   }
 
   // --- Anti-triche : comptes vérifiés par un code dans la bio, gros comptes contrôlés par le staff ---
@@ -704,6 +742,7 @@ export class FanService {
     const s = this.settings();
     const views = this.viewsByClipper(now);
     const spent = this.fans.spentByClipper();
+    const refused = s.clientId ? this.fans.refusedClips(s.clientId) : new Map();
     const clippers = s.clientId ? this.repo.listClippers({ clientId: s.clientId, includeInactive: true }) : [];
     const fans = clippers
       .map((c) => {
@@ -714,7 +753,7 @@ export class FanService {
           .listAccountsForClipper(c.id)
           .filter((a) => a.active)
           .map((a) => ({ platform: a.platform, handle: a.handle, verified: a.verifiedAt !== null, followers: a.followers }));
-        return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.rewardAccount(c.id).value, accounts, views: v, earned, spent: sp, balance: earned - sp, review: this.review(c.id) };
+        return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.rewardAccount(c.id).value, accounts, views: v, earned, spent: sp, balance: earned - sp, review: this.review(c.id), refused: refused.get(c.id) ?? [] };
       })
       // Fans « à vérifier » en premier, puis par vues
       .sort((a, b) => Number(b.review.status === 'pending') - Number(a.review.status === 'pending') || b.views - a.views);
@@ -724,7 +763,7 @@ export class FanService {
       username: names.get(o.clipperId) ?? this.repo.getClipper(o.clipperId)?.username ?? '?',
       roblox: this.rewardAccount(o.clipperId).value,
     }));
-    return { accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
+    return { clipAi: !!this.clipChecker, accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
   }
 
   saveItem(id: number | null, input: ItemInput) {

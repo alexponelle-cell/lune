@@ -367,4 +367,11 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   ALTER TABLE clippers ADD COLUMN verify_code TEXT;
   ALTER TABLE clippers ADD COLUMN review_status TEXT;
   `,
+
+  // v13 : vérification des clips des fans par IA (clip du bon créateur ?) ; le code dans la bio n'est plus exigé
+  `
+  ALTER TABLE videos ADD COLUMN clip_check TEXT;
+  ALTER TABLE videos ADD COLUMN clip_reason TEXT;
+  UPDATE accounts SET verified_at = created_at WHERE verified_at IS NULL;
+  `,
 ];

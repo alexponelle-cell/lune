@@ -69,7 +69,8 @@ describe('programme fans (Neptune)', () => {
     const fan = fans.ensureFan('d5', 'Tricheur', now - 3 * HOUR);
     fans.addAccounts(fan, 'https://www.youtube.com/@unchained');
     const account = repo.listAccountsForClipper(fan.id)[0]!;
-    expect(account.verifiedAt).toBeNull();
+    expect(account.verifiedAt).not.toBeNull(); // plus de code exigé par défaut (l'IA vérifie les clips)
+    repo.setAccountVerified(account.id, null); // vérification par code (gardée pour plus tard)
     repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 900_000, publishedAt: Date.now() + 1000 }], Date.now() + 2000);
     expect(fans.balance(fan.id).earned).toBe(0); // compte pas vérifié : rien ne compte
     const code = fans.verifyCode(fan.id);
@@ -92,6 +93,27 @@ describe('programme fans (Neptune)', () => {
     fans.setReview(fan.id, true);
     expect(fans.flagSuspicious()).toEqual([]);
     expect(fans.buy(fan, item.id).status).toBe('pending');
+  });
+
+  it('IA : seuls les clips reconnus comme venant du créateur rapportent des coins', async () => {
+    const fan = fans.ensureFan('d6', 'Clippeur', now - 3 * HOUR);
+    fans.addAccounts(fan, 'https://www.tiktok.com/@clips.beone');
+    const account = repo.listAccountsForClipper(fan.id)[0]!;
+    const later = Date.now() + 1000;
+    repo.recordCollection(account.id, [
+      { platformVideoId: 'ok', views: 3000, publishedAt: later, title: 'BeOne rage', thumbnailUrl: 'https://img/ok.jpg' },
+      { platformVideoId: 'vol', views: 900_000, publishedAt: later, title: 'Autre YouTubeur', thumbnailUrl: 'https://img/vol.jpg' },
+      { platformVideoId: 'sans', views: 50, publishedAt: later, title: 'pas de miniature' },
+    ], later + 1000);
+    expect(fans.balance(fan.id).views).toBe(903_050); // sans IA : tout compte
+    const seen: string[] = [];
+    fans.clipChecker = { check: async (_ref: unknown, clip: { title: string | null; thumbnail: string | null }) => (seen.push(clip.title ?? ''), clip.thumbnail ? { ok: clip.title === 'BeOne rage', reason: 'test' } : null) } as never;
+    expect(fans.balance(fan.id).views).toBe(0); // IA branchée : rien ne compte tant que ce n'est pas vérifié
+    expect(await fans.checkClips(undefined)).toEqual({ validés: 1, refusés: 1 });
+    expect(seen[0]).toBe('Autre YouTubeur'); // les plus vus d'abord
+    expect(fans.balance(fan.id).views).toBe(3000);
+    expect(fans.overview().fans.find((f) => f.id === fan.id)!.refused).toEqual([{ title: 'Autre YouTubeur', url: null, reason: 'test' }]);
+    expect(await fans.checkClips(undefined)).toEqual({ validés: 0, refusés: 0 }); // sans miniature : rien à décider, réessayé plus tard
   });
 
   it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {

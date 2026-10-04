@@ -39,6 +39,8 @@ const schema = z.object({
   /** API de livraison par e-mail (ex. Squiduuverse : +1 mois au compte de cet e-mail). */
   SQUIDUU_API_URL: optionalString,
   SQUIDUU_API_TOKEN: optionalString,
+  /** Clé API Claude : vérification par IA que les clips des fans viennent bien du créateur. */
+  ANTHROPIC_API_KEY: optionalString,
 
   DATABASE_PATH: z.string().default('./data/tracker.db'),
 
