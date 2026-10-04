@@ -15,7 +15,7 @@ import { creatorConfig } from '../src/creators/index.js';
 import { deliverEmailOrders, EmailGrantClient, monthsOf } from '../src/services/emailGrant.js';
 
 /** Compte relié avant les clips du test (seuls les clips publiés après l'ajout du compte rapportent). */
-const backdate = (repo: Repo, at: number) => repo.db.prepare('UPDATE accounts SET created_at = ?').run(at);
+const backdate = (repo: Repo, at: number) => repo.db.prepare('UPDATE accounts SET created_at = ?, verified_at = ?').run(at, at);
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -65,10 +65,40 @@ describe('programme fans (Neptune)', () => {
     expect(inscription.access).toMatchObject({ who: 'role', role: ROLE_TRAINED, also: [ROLE_CLIPPER, ROLE_PENDING] });
   });
 
+  it('anti-triche : compte vérifié par le code dans la bio, gros compte « à vérifier » et achats bloqués', async () => {
+    const fan = fans.ensureFan('d5', 'Tricheur', now - 3 * HOUR);
+    fans.addAccounts(fan, 'https://www.youtube.com/@unchained');
+    const account = repo.listAccountsForClipper(fan.id)[0]!;
+    expect(account.verifiedAt).toBeNull();
+    repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 900_000, publishedAt: Date.now() + 1000 }], Date.now() + 2000);
+    expect(fans.balance(fan.id).earned).toBe(0); // compte pas vérifié : rien ne compte
+    const code = fans.verifyCode(fan.id);
+    expect(code).toMatch(/^NEP-[A-Z0-9]{4}$/);
+    expect(fans.verifyCode(fan.id)).toBe(code);
+    let bio = 'pas de code';
+    fans.fetchers = { youtube: { platform: 'youtube', fetchAccount: async () => ({ videos: [] }), fetchProfile: async () => ({ bio, followers: 2_000_000 }) } } as never;
+    expect((await fans.verifyAccounts(fan, 0))[0]).toMatchObject({ ok: false, error: 'code introuvable dans la bio' });
+    await expect(fans.verifyAccounts(fan, 30_000)).rejects.toThrow(/Patiente/);
+    bio = `Clippeur officiel ${code.toLowerCase()}`;
+    expect((await fans.verifyAccounts(fan, 61_000))[0]).toMatchObject({ ok: true });
+    expect(repo.listAccountsForClipper(fan.id)[0]).toMatchObject({ followers: 2_000_000 });
+    expect(fans.balance(fan.id).earned).toBe(9000);
+    // Gros compte → à vérifier, achat bloqué, puis validé par le staff
+    expect(fans.flagSuspicious().map((f) => f.id)).toEqual([fan.id]);
+    expect(fans.review(fan.id)).toMatchObject({ status: 'pending', reason: expect.stringContaining('abonnés') });
+    const item = fans.saveItem(null, { name: 'VIP', price: 100, kind: 'item', ref: 'vip' });
+    await fans.linkRoblox(fan, 'paulrbx');
+    expect(() => fans.buy(fan, item.id)).toThrow(/vérification/);
+    fans.setReview(fan.id, true);
+    expect(fans.flagSuspicious()).toEqual([]);
+    expect(fans.buy(fan, item.id).status).toBe('pending');
+  });
+
   it('1er clip : seul un clip posté après avoir relié le compte débloque la communauté', () => {
     const fan = fans.ensureFan('d1', 'Paul', now - 3 * HOUR);
     fans.addAccounts(fan, 'https://www.tiktok.com/@paul.clips');
     const account = repo.listAccountsForClipper(fan.id)[0]!;
+    repo.setAccountVerified(account.id, now);
     // Vieille vidéo (publiée avant l'ajout du compte) qui continue de monter : ni 1er clip, ni coins
     repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 100, publishedAt: now - 2 * HOUR }], now);
     repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 900_000, publishedAt: now - 2 * HOUR }], now + 1000);

@@ -146,6 +146,46 @@ export class FanRepo {
     this.db.prepare('UPDATE clippers SET bonus_coins = bonus_coins + ? WHERE id = ?').run(amount, clipperId);
   }
 
+  /** Code perso à mettre dans la bio pour prouver que le compte est à soi. */
+  verifyCode(clipperId: number): string | null {
+    return ((this.db.prepare('SELECT verify_code FROM clippers WHERE id = ?').get(clipperId) as Row | undefined)?.verify_code as string | null) ?? null;
+  }
+
+  setVerifyCode(clipperId: number, code: string): void {
+    this.db.prepare('UPDATE clippers SET verify_code = ? WHERE id = ?').run(code, clipperId);
+  }
+
+  /** null = rien à signaler · pending = à vérifier par le staff (achats bloqués) · approved = validé par le staff. */
+  reviewStatus(clipperId: number): 'pending' | 'approved' | null {
+    return ((this.db.prepare('SELECT review_status FROM clippers WHERE id = ?').get(clipperId) as Row | undefined)?.review_status as 'pending' | 'approved' | null) ?? null;
+  }
+
+  setReviewStatus(clipperId: number, status: 'pending' | 'approved' | null): void {
+    this.db.prepare('UPDATE clippers SET review_status = ? WHERE id = ?').run(status, clipperId);
+  }
+
+  /**
+   * Fans à faire vérifier : compte avec beaucoup d'abonnés, ou clip qui explose dans les 7 jours qui suivent
+   * l'ajout du compte (signe d'un compte qui n'est pas à lui). Jamais ceux déjà validés par le staff.
+   */
+  suspiciousClippers(clientId: number, maxFollowers: number, maxEarlyViews: number): Array<{ id: number; reason: string }> {
+    const rows = this.db
+      .prepare(
+        `SELECT c.id, a.platform, a.handle, a.followers,
+                (SELECT MAX(v.views) FROM videos v
+                  WHERE v.account_id = a.id AND v.published_at >= a.created_at AND v.published_at < a.created_at + 7 * 86400000) AS early
+           FROM clippers c JOIN accounts a ON a.clipper_id = c.id AND a.active = 1
+          WHERE c.client_id = ? AND c.review_status IS NULL`,
+      )
+      .all(clientId) as Array<{ id: number; platform: string; handle: string; followers: number | null; early: number | null }>;
+    const out = new Map<number, string>();
+    for (const r of rows) {
+      if ((r.followers ?? 0) > maxFollowers) out.set(r.id, `@${r.handle} (${r.platform}) : ${r.followers!.toLocaleString('fr-FR')} abonnés`);
+      else if ((r.early ?? 0) > maxEarlyViews && !out.has(r.id)) out.set(r.id, `@${r.handle} (${r.platform}) : un clip à ${r.early!.toLocaleString('fr-FR')} vues dès les premiers jours`);
+    }
+    return [...out].map(([id, reason]) => ({ id, reason }));
+  }
+
   clipperByEmail(email: string): number | null {
     const r = this.db.prepare('SELECT id FROM clippers WHERE reward_email = ?').get(email) as Row | undefined;
     return r?.id ?? null;
@@ -198,7 +238,7 @@ export class FanRepo {
            FROM videos v
            JOIN accounts a ON a.id = v.account_id AND a.active = 1
            JOIN clippers c ON c.id = a.clipper_id
-          WHERE c.client_id = @clientId AND v.published_at IS NOT NULL AND v.published_at >= a.created_at
+          WHERE c.client_id = @clientId AND a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND v.published_at >= a.created_at
           GROUP BY a.clipper_id`,
       )
       .all({ clientId, from }) as Array<{ id: number; views: number }>;
@@ -210,7 +250,7 @@ export class FanRepo {
     const rows = this.db
       .prepare(
         `SELECT DISTINCT c.discord_id AS id FROM clippers c
-           JOIN accounts a ON a.clipper_id = c.id AND a.active = 1
+           JOIN accounts a ON a.clipper_id = c.id AND a.active = 1 AND a.verified_at IS NOT NULL
            JOIN videos v ON v.account_id = a.id
          WHERE c.client_id = ? AND COALESCE(v.published_at, v.first_seen_at) >= a.created_at`,
       )

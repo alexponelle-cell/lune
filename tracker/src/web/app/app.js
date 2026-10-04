@@ -1573,10 +1573,10 @@ async function pageBoutique() {
           <td class="r">${o.status === 'pending' ? `<button class="btn sm" data-delivered="${o.id}">Marquer livré</button> <button class="btn sm danger" data-refund="${o.id}">Rembourser</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Aucune commande.</td></tr>'}
         </tbody></table></div></div>
 
-      <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues depuis leur inscription</p></div></div>
+      <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues des clips publiés après l'inscription, sur les comptes vérifiés (code dans la bio)${d.fans.some((f) => f.review?.status === 'pending') ? ` · <b style="color:var(--orange)">⚠️ ${d.fans.filter((f) => f.review?.status === 'pending').length} à vérifier (achats bloqués)</b>` : ''}</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Comptes</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th><th class="r"></th></tr></thead><tbody>
-        ${d.fans.map((f) => `<tr><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div></td><td class="faint">${f.accounts.map((a) => `${{ tiktok: 'TT', instagram: 'IG', youtube: 'YT' }[a.platform]} @${esc(a.handle)}`).join(' · ') || '<span class="pill wait">à relier</span>'}</td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td>
-          <td class="r"><button class="btn sm" data-bonus="${f.id}" title="Ajouter ou retirer des coins">± coins</button> <button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
+        ${d.fans.map((f) => `<tr><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div>${f.review?.status === 'pending' ? `<small style="display:block;color:var(--orange);white-space:normal;max-width:260px">⚠️ À vérifier : ${esc(f.review.reason ?? '')}</small>` : ''}</td><td class="faint">${f.accounts.map((a) => `${a.verified ? '' : '<span title="Pas encore vérifié (code pas trouvé dans la bio) : ses vues ne comptent pas">🔐</span>'}${{ tiktok: 'TT', instagram: 'IG', youtube: 'YT' }[a.platform]} @${esc(a.handle)}${a.followers ? ` <small>(${n(a.followers)} ab.)</small>` : ''}`).join(' · ') || '<span class="pill wait">à relier</span>'}</td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td>
+          <td class="r">${f.review?.status === 'pending' ? `<button class="btn sm green" data-approve="${f.id}" title="Le compte est bien à lui : débloque ses achats">✅ Valider</button> ` : ''}<button class="btn sm" data-bonus="${f.id}" title="Ajouter ou retirer des coins">± coins</button> <button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
         </tbody></table></div></div>
     </div>`;
   const root = main();
@@ -1619,6 +1619,16 @@ async function pageBoutique() {
     imageUrl: fd.get('imageUrl') || null,
     active: fd.get('active') === 'on',
   });
+  root.querySelectorAll('[data-approve]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Valider ce fan ? Ses comptes sont bien à lui, ses achats seront débloqués.')) return;
+    try {
+      await api(`/api/fans/${b.dataset.approve}/review`, { method: 'POST', body: { approved: true } });
+      toast('Fan validé ✅');
+      pageBoutique();
+    } catch (err) {
+      toast(err.message, true);
+    }
+  }));
   root.querySelectorAll('[data-bonus]').forEach((b) => b.addEventListener('click', async () => {
     const v = prompt('Coins à ajouter (négatif pour retirer) :', '10000');
     if (v === null) return;

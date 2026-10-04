@@ -1,4 +1,4 @@
-import type { FetchedAccount, PlatformFetcher } from './types.js';
+import type { FetchedAccount, FetchedProfile, PlatformFetcher } from './types.js';
 
 /**
  * TikTok et Instagram n'ont pas d'API publique pour lire les stats d'un compte tiers
@@ -29,6 +29,7 @@ export class TikTokApifyFetcher implements PlatformFetcher {
     private readonly token: string,
     private readonly maxVideos: number,
     private readonly actorId = 'clockworks~tiktok-scraper',
+    private readonly profileActorId = 'clockworks~tiktok-profile-scraper',
   ) {}
 
   async fetchAccount(account: { handle: string }): Promise<FetchedAccount> {
@@ -41,6 +42,8 @@ export class TikTokApifyFetcher implements PlatformFetcher {
     return {
       displayName: items[0]?.authorMeta?.nickName,
       externalId: items[0]?.authorMeta?.id,
+      bio: items[0]?.authorMeta?.signature,
+      followers: num(items[0]?.authorMeta?.fans),
       videos: items
         .filter((i) => i.id)
         .map((i) => ({
@@ -55,6 +58,13 @@ export class TikTokApifyFetcher implements PlatformFetcher {
         })),
     };
   }
+
+  async fetchProfile(account: { handle: string }): Promise<FetchedProfile> {
+    const items = await runActor<Record<string, any>>(this.token, this.profileActorId, { profiles: [account.handle], resultsPerPage: 1, shouldDownloadVideos: false, shouldDownloadCovers: false });
+    const a = items.find((i) => i.authorMeta)?.authorMeta;
+    if (!a) throw new Error(`Profil TikTok introuvable : @${account.handle}`);
+    return { externalId: a.id, bio: a.signature ?? '', followers: num(a.fans) };
+  }
 }
 
 export class InstagramApifyFetcher implements PlatformFetcher {
@@ -64,7 +74,15 @@ export class InstagramApifyFetcher implements PlatformFetcher {
     private readonly token: string,
     private readonly maxVideos: number,
     private readonly actorId = 'apify~instagram-reel-scraper',
+    private readonly profileActorId = 'apify~instagram-profile-scraper',
   ) {}
+
+  async fetchProfile(account: { handle: string }): Promise<FetchedProfile> {
+    const items = await runActor<Record<string, any>>(this.token, this.profileActorId, { usernames: [account.handle] });
+    const p = items[0];
+    if (!p || p.error) throw new Error(`Profil Instagram introuvable : @${account.handle}`);
+    return { externalId: p.id ? String(p.id) : undefined, bio: p.biography ?? '', followers: num(p.followersCount) };
+  }
 
   async fetchAccount(account: { handle: string }): Promise<FetchedAccount> {
     const items = await runActor<Record<string, any>>(this.token, this.actorId, {

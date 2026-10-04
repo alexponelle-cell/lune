@@ -7,11 +7,22 @@ export interface FetchedAccount {
   displayName?: string;
   /** Vidéos récentes du compte avec leurs compteurs actuels. */
   videos: VideoInput[];
+  /** Bio / description du compte (vérification par code) et nombre d'abonnés, si la source les donne. */
+  bio?: string;
+  followers?: number;
+}
+
+export interface FetchedProfile {
+  externalId?: string;
+  bio?: string;
+  followers?: number;
 }
 
 export interface PlatformFetcher {
   readonly platform: Platform;
   fetchAccount(account: { handle: string; externalId: string | null }): Promise<FetchedAccount>;
+  /** Profil seul (bio + abonnés), à la demande : vérification du code dans la bio. */
+  fetchProfile?(account: { handle: string; externalId: string | null }): Promise<FetchedProfile>;
 }
 
 export type FetcherRegistry = Record<Platform, PlatformFetcher>;

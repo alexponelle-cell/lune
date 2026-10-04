@@ -1,7 +1,7 @@
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
-import { bare, ensureTierRoles, LEVELUP_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
+import { bare, ensureTierRoles, LEVELUP_CHANNEL, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
 
 /**
  * Automatisations des serveurs montés par /setup (sans effet ailleurs : rôles et salons introuvables).
@@ -23,6 +23,24 @@ const setupGuilds = (client: Client<true>, fans: FanService) => {
   const ids = new Set(fans.botState<string[]>('setup-guilds', []));
   return [...client.guilds.cache.values()].filter((g) => ids.has(g.id));
 };
+
+/** Fans suspects (gros compte, clip qui explose d'emblée) : mis « à vérifier » et signalés au staff dans le log. */
+export async function reportSuspicious(client: Client<true>, fans: FanService): Promise<number> {
+  const found = fans.flagSuspicious();
+  if (!found.length) return 0;
+  for (const guild of setupGuilds(client, fans)) {
+    const log = channel(guild, LOG_CHANNEL);
+    if (!log) continue;
+    for (const f of found) {
+      const c = f;
+      if (c.discordId.startsWith('manual:') || !c.discordId) continue;
+      await log
+        .send({ content: `⚠️ **À vérifier** : <@${c.discordId}> (${c.username}) · ${f.reason}\nSes achats sont bloqués. Vérifie que le compte est bien à lui, puis valide-le dans Mars (Boutique fans → Fans) ou supprime-le.`, allowedMentions: { parse: [] } })
+        .catch(() => {});
+    }
+  }
+  return found.length;
+}
 
 /**
  * 1er clip détecté → la communauté se débloque : rôle 🎬 Clippeur à la place de « 1er clip à poster »,

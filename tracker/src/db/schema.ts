@@ -356,4 +356,15 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
 
   // v11 : coins ajoutés à la main par le staff (tests, gestes commerciaux)
   `ALTER TABLE clippers ADD COLUMN bonus_coins INTEGER NOT NULL DEFAULT 0;`,
+
+  // v12 : comptes des fans vérifiés par un code dans la bio (anti-vol de compte), abonnés,
+  // et fans « à vérifier » par le staff (gros compte / vidéo qui explose) : achats bloqués d'ici là.
+  // Comptes déjà suivis : considérés vérifiés.
+  `
+  ALTER TABLE accounts ADD COLUMN verified_at INTEGER;
+  ALTER TABLE accounts ADD COLUMN followers INTEGER;
+  UPDATE accounts SET verified_at = created_at;
+  ALTER TABLE clippers ADD COLUMN verify_code TEXT;
+  ALTER TABLE clippers ADD COLUMN review_status TEXT;
+  `,
 ];

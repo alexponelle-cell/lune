@@ -1,4 +1,4 @@
-import type { FetchedAccount, PlatformFetcher } from './types.js';
+import type { FetchedAccount, FetchedProfile, PlatformFetcher } from './types.js';
 
 const API = 'https://www.googleapis.com/youtube/v3';
 
@@ -22,26 +22,40 @@ export class YouTubeFetcher implements PlatformFetcher {
     return (await res.json()) as T;
   }
 
-  async fetchAccount(account: { handle: string; externalId: string | null }): Promise<FetchedAccount> {
-    const lookup: Record<string, string> = account.externalId
-      ? { id: account.externalId }
-      : account.handle.startsWith('UC')
-        ? { id: account.handle }
-        : { forHandle: `@${account.handle}` };
+  private lookup(account: { handle: string; externalId: string | null }): Record<string, string> {
+    return account.externalId ? { id: account.externalId } : account.handle.startsWith('UC') ? { id: account.handle } : { forHandle: `@${account.handle}` };
+  }
 
+  private async channel(account: { handle: string; externalId: string | null }, part: string) {
     const channels = await this.get<{
-      items?: Array<{ id: string; snippet: { title: string }; contentDetails: { relatedPlaylists: { uploads: string } } }>;
-    }>('channels', { part: 'snippet,contentDetails', ...lookup });
+      items?: Array<{
+        id: string;
+        snippet: { title: string; description?: string };
+        contentDetails?: { relatedPlaylists: { uploads: string } };
+        statistics?: { subscriberCount?: string; hiddenSubscriberCount?: boolean };
+      }>;
+    }>('channels', { part, ...this.lookup(account) });
     const channel = channels.items?.[0];
     if (!channel) throw new Error(`Chaîne YouTube introuvable : ${account.handle}`);
+    return channel;
+  }
+
+  async fetchProfile(account: { handle: string; externalId: string | null }): Promise<FetchedProfile> {
+    const c = await this.channel(account, 'snippet,statistics');
+    return { externalId: c.id, bio: c.snippet.description ?? '', followers: c.statistics?.hiddenSubscriberCount ? undefined : Number(c.statistics?.subscriberCount ?? 0) };
+  }
+
+  async fetchAccount(account: { handle: string; externalId: string | null }): Promise<FetchedAccount> {
+    const channel = await this.channel(account, 'snippet,contentDetails,statistics');
+    const profile = { bio: channel.snippet.description ?? '', followers: channel.statistics?.hiddenSubscriberCount ? undefined : Number(channel.statistics?.subscriberCount ?? 0) };
 
     const playlist = await this.get<{ items?: Array<{ contentDetails: { videoId: string } }> }>('playlistItems', {
       part: 'contentDetails',
-      playlistId: channel.contentDetails.relatedPlaylists.uploads,
+      playlistId: channel.contentDetails!.relatedPlaylists.uploads,
       maxResults: String(Math.min(this.maxVideos, 50)),
     });
     const ids = (playlist.items ?? []).map((i) => i.contentDetails.videoId);
-    if (ids.length === 0) return { externalId: channel.id, displayName: channel.snippet.title, videos: [] };
+    if (ids.length === 0) return { externalId: channel.id, displayName: channel.snippet.title, videos: [], ...profile };
 
     const videos = await this.get<{
       items?: Array<{
@@ -54,6 +68,7 @@ export class YouTubeFetcher implements PlatformFetcher {
     return {
       externalId: channel.id,
       displayName: channel.snippet.title,
+      ...profile,
       videos: (videos.items ?? []).map((v) => ({
         platformVideoId: v.id,
         url: `https://www.youtube.com/shorts/${v.id}`,

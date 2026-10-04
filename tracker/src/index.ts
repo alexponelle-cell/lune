@@ -40,6 +40,8 @@ const agency = new AgencyService(repo, {
 const recruitment = new RecruitmentService(repo, new RecruitmentRepo(db), agency);
 const creator = creatorConfig(config.CREATOR);
 const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl, undefined, creator);
+// Lecture des bios à la demande (vérification des comptes par code)
+fans.fetchers = fetchers;
 fans.bootstrap();
 log.info(`programme fans : ${creator.programName} (${creator.id})`);
 const botHolder: { current?: Bot['bridge'] } = {};

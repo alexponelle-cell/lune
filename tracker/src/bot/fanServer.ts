@@ -103,6 +103,12 @@ export const ROLE_PENDING = '🎬 1er clip à poster';
 /** Toutes les vidéos de la formation cochées : débloque 📝│inscription. */
 export const ROLE_TRAINED = '🎓 Formation validée';
 export const TRAINING_BUTTON = 'fans:training';
+/** « ✅ Vérifier mes comptes » : lit la bio de chaque compte et cherche le code du fan. */
+export const VERIFY_BUTTON = 'fans:verify';
+export const verifyRow = () =>
+  new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(VERIFY_BUTTON).setStyle(ButtonStyle.Success).setLabel('Vérifier mes comptes').setEmoji('✅'));
+export const verifyText = (code: string) =>
+  `🔐 **Prouve que ces comptes sont à toi** : mets le code **${code}** dans la **bio** de chacun (TikTok, YouTube, Instagram), puis clique sur **✅ Vérifier mes comptes**. Tant que ce n’est pas fait, tes vues ne comptent pas. Tu pourras retirer le code ensuite.`;
 export const STEP_READ_BUTTON = 'fans:step:read';
 export const STEP_RULES_BUTTON = 'fans:step:rules';
 export const PRIVATE_CATEGORY = '🔒 ESPACES PRIVÉS';
@@ -563,7 +569,7 @@ export async function handleSetup(interaction: Interaction, fans: FanService, si
 }
 
 /** Après une inscription réussie : rôles, salon privé et trace dans le salon staff (si le serveur a été monté par /setup). */
-export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string) {
+export async function onFanRegistered(guild: Guild, member: GuildMember, accounts: string[], siteUrl?: string, verifyCode?: string) {
   try {
     // Accès à la communauté seulement après le 1er clip (rôle Clippeur donné par l'automatisation) ; déjà clippeur = inchangé
     const clipper = guild.roles.cache.find((r) => sameName(r.name, ROLE_CLIPPER));
@@ -588,6 +594,7 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
                   '',
                   `✅ Comptes suivis : ${accounts.join(', ')}`,
                   '📈 Tes vues sont comptées une fois par jour, à partir de maintenant.',
+                  ...(verifyCode ? ['', verifyText(verifyCode)] : []),
                   ...(already ? [] : ['', `🎬 **Dernière étape : poste ton 1er clip** sur un de ces comptes. Dès qu’il est détecté (relevé 1 fois par jour), tu débloques les annonces, #général et toute la communauté.`]),
                   siteUrl ? `🪙 Suis tes coins et échange-les sur le site : ${siteUrl}` : '🪙 Tape `/coins` pour voir tes coins.',
                   '',
@@ -595,6 +602,7 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
                 ].join('\n'),
               ),
           ],
+          components: verifyCode ? [verifyRow()] : [],
         });
       }
     }

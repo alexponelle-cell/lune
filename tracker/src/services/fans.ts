@@ -1,6 +1,7 @@
 import type { FanRepo, ItemInput, ShopOrder } from '../db/fans.js';
 import { isVideoFile, parseTrainingLinks, TRAINING_MODULES, youtubeEmbed } from './training.js';
-import type { Clipper, Repo } from '../db/repo.js';
+import type { Account, Clipper, Repo } from '../db/repo.js';
+import type { FetcherRegistry } from '../platforms/types.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
 import { beone } from '../creators/beone.js';
@@ -385,6 +386,7 @@ export class FanService {
     const result = { added: [] as AccountLink[], conflicts: [] as AccountLink[] };
     for (const link of links) {
       const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link });
+      if (r.created) this.repo.setAccountVerified(r.account.id, null);
       if (r.conflict) result.conflicts.push(link);
       else result.added.push(link);
     }
@@ -421,6 +423,7 @@ export class FanService {
         out.conflicts.push(link);
         continue;
       }
+      if (r.created) this.repo.setAccountVerified(r.account.id, null);
       for (const a of current) this.repo.deactivateAccount(a.id);
       out.linked.push(link);
     }
@@ -446,7 +449,82 @@ export class FanService {
     return { username: found.name, userId: found.id };
   }
 
+  // --- Anti-triche : comptes vérifiés par un code dans la bio, gros comptes contrôlés par le staff ---
+
+  /** Collecteurs (YouTube API, Apify) pour lire la bio à la demande ; branchés au démarrage. */
+  fetchers?: FetcherRegistry;
+  private lastVerify = new Map<number, number>();
+
+  /** Code perso du fan (ex. NEP-4K7Q), créé au premier besoin. */
+  verifyCode(clipperId: number): string {
+    const existing = this.fans.verifyCode(clipperId);
+    if (existing) return existing;
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const code = `NEP-${Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')}`;
+    this.fans.setVerifyCode(clipperId, code);
+    return code;
+  }
+
+  /** Comptes actifs du fan pas encore vérifiés. */
+  unverifiedAccounts(clipperId: number): Account[] {
+    return this.repo.listAccountsForClipper(clipperId).filter((a) => a.active && a.verifiedAt === null);
+  }
+
+  /**
+   * Lit la bio de chaque compte non vérifié et cherche le code du fan. Trouvé → compte vérifié (ses vues comptent).
+   * 1 essai par minute et par fan (chaque lecture TikTok / Instagram coûte un appel Apify).
+   */
+  async verifyAccounts(clipper: Clipper, now = Date.now()): Promise<Array<{ platform: string; handle: string; ok: boolean; error?: string }>> {
+    const last = this.lastVerify.get(clipper.id);
+    if (last !== undefined && now - last < 60_000) throw new Error(`Patiente ${Math.ceil((60_000 - (now - last)) / 1000)} s avant de revérifier.`);
+    this.lastVerify.set(clipper.id, now);
+    const code = this.verifyCode(clipper.id).toLowerCase();
+    const results = [];
+    for (const a of this.unverifiedAccounts(clipper.id)) {
+      const fetcher = this.fetchers?.[a.platform];
+      try {
+        if (!fetcher) throw new Error('vérification indisponible');
+        const p = fetcher.fetchProfile ? await fetcher.fetchProfile(a) : await fetcher.fetchAccount(a);
+        const ok = (p.bio ?? '').toLowerCase().includes(code);
+        if (ok) this.repo.setAccountVerified(a.id, now, p.followers);
+        results.push({ platform: a.platform, handle: a.handle, ok, error: ok ? undefined : 'code introuvable dans la bio' });
+      } catch (err) {
+        results.push({ platform: a.platform, handle: a.handle, ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return results;
+  }
+
+  /** Seuils du contrôle : au-delà, le fan passe « à vérifier » (achats bloqués jusqu'à validation du staff). */
+  static readonly REVIEW_FOLLOWERS = 50_000;
+  static readonly REVIEW_EARLY_VIEWS = 200_000;
+
+  /** Repère les fans suspects (gros compte, clip qui explose d'emblée) et les met « à vérifier ». Renvoie les nouveaux. */
+  flagSuspicious(): Array<{ id: number; reason: string; discordId: string; username: string }> {
+    const clientId = this.settings().clientId;
+    if (!clientId) return [];
+    const found = this.fans.suspiciousClippers(clientId, FanService.REVIEW_FOLLOWERS, FanService.REVIEW_EARLY_VIEWS);
+    for (const f of found) {
+      this.fans.setReviewStatus(f.id, 'pending');
+      this.repo.setSetting(`review-reason:${f.id}`, f.reason);
+    }
+    return found.map((f) => {
+      const c = this.repo.getClipper(f.id);
+      return { ...f, discordId: c?.discordId ?? '', username: c?.username ?? '?' };
+    });
+  }
+
+  review(clipperId: number): { status: 'pending' | 'approved' | null; reason: string | null } {
+    return { status: this.fans.reviewStatus(clipperId), reason: this.repo.getSetting<string | null>(`review-reason:${clipperId}`, null) };
+  }
+
+  /** Décision du staff : validé (plus jamais signalé) ou remis à zéro. */
+  setReview(clipperId: number, approved: boolean): void {
+    this.fans.setReviewStatus(clipperId, approved ? 'approved' : null);
+  }
+
   buy(clipper: Clipper, itemId: number, now = Date.now()): ShopOrder {
+    if (this.fans.reviewStatus(clipper.id) === 'pending') throw new Error('Ton compte est en cours de vérification par le staff : tes achats seront débloqués dès qu’il sera validé.');
     if (this.creator.rewardAccount.kind === 'email') {
       if (!this.fans.email(clipper.id)) throw new Error(`Renseigne d'abord ton ${this.creator.rewardAccount.label.charAt(0).toLowerCase()}${this.creator.rewardAccount.label.slice(1)}`);
     } else if (!this.fans.roblox(clipper.id).userId) throw new Error("Relie d'abord ton compte Roblox pour recevoir l'objet en jeu");
@@ -632,10 +710,14 @@ export class FanService {
         const v = views.get(c.id) ?? 0;
         const earned = this.points(v) + this.fans.bonus(c.id);
         const sp = spent.get(c.id) ?? 0;
-        const accounts = this.repo.listAccountsForClipper(c.id).map((a) => ({ platform: a.platform, handle: a.handle }));
-        return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.rewardAccount(c.id).value, accounts, views: v, earned, spent: sp, balance: earned - sp };
+        const accounts = this.repo
+          .listAccountsForClipper(c.id)
+          .filter((a) => a.active)
+          .map((a) => ({ platform: a.platform, handle: a.handle, verified: a.verifiedAt !== null, followers: a.followers }));
+        return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.rewardAccount(c.id).value, accounts, views: v, earned, spent: sp, balance: earned - sp, review: this.review(c.id) };
       })
-      .sort((a, b) => b.views - a.views);
+      // Fans « à vérifier » en premier, puis par vues
+      .sort((a, b) => Number(b.review.status === 'pending') - Number(a.review.status === 'pending') || b.views - a.views);
     const names = new Map(clippers.map((c) => [c.id, c.username]));
     const orders = this.fans.orders({ limit: 200 }).map((o) => ({
       ...o,

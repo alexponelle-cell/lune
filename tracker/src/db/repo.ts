@@ -60,6 +60,9 @@ export interface Account {
   lastCheckedAt: number | null;
   lastError: string | null;
   createdAt: number;
+  /** Propriété du compte prouvée (code dans la bio) ; null = pas encore vérifié (fans). */
+  verifiedAt: number | null;
+  followers: number | null;
 }
 
 export interface VideoInput {
@@ -110,6 +113,8 @@ const toAccount = (r: Row): Account => ({
   lastCheckedAt: r.last_checked_at,
   lastError: r.last_error,
   createdAt: r.created_at,
+  verifiedAt: r.verified_at ?? null,
+  followers: r.followers ?? null,
 });
 
 export function slugify(name: string): string {
@@ -247,10 +252,10 @@ export class Repo {
     }
     const r = this.db
       .prepare(
-        `INSERT INTO accounts (clipper_id, client_id, platform, handle, url, created_at)
-         VALUES (?, ?, ?, ?, ?, ?) RETURNING *`,
+        `INSERT INTO accounts (clipper_id, client_id, platform, handle, url, created_at, verified_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
       )
-      .get(input.clipperId, input.clientId, input.platform, input.handle, input.url, input.now ?? Date.now());
+      .get(input.clipperId, input.clientId, input.platform, input.handle, input.url, input.now ?? Date.now(), input.now ?? Date.now());
     return { account: toAccount(r as Row), created: true };
   }
 
@@ -285,17 +290,23 @@ export class Repo {
     return r ? toAccount(r as Row) : undefined;
   }
 
-  markAccountChecked(id: number, at: number, meta: { externalId?: string; displayName?: string; error?: string }): void {
+  markAccountChecked(id: number, at: number, meta: { externalId?: string; displayName?: string; error?: string; followers?: number }): void {
     this.db
       .prepare(
         `UPDATE accounts SET
            last_checked_at = ?,
            last_error = ?,
            external_id = COALESCE(?, external_id),
-           display_name = COALESCE(?, display_name)
+           display_name = COALESCE(?, display_name),
+           followers = COALESCE(?, followers)
          WHERE id = ?`,
       )
-      .run(at, meta.error ?? null, meta.externalId ?? null, meta.displayName ?? null, id);
+      .run(at, meta.error ?? null, meta.externalId ?? null, meta.displayName ?? null, meta.followers ?? null, id);
+  }
+
+  /** Vérification du compte (code trouvé dans la bio) ; null = à vérifier. */
+  setAccountVerified(id: number, at: number | null, followers?: number): void {
+    this.db.prepare('UPDATE accounts SET verified_at = ?, followers = COALESCE(?, followers) WHERE id = ?').run(at, followers ?? null, id);
   }
 
   // --- Vidéos & captures -----------------------------------------------------

@@ -35,7 +35,7 @@ export async function collectAll(
       }
       const at = now();
       const snap = repo.recordCollection(account.id, fetched.videos, at);
-      repo.markAccountChecked(account.id, at, { externalId: fetched.externalId, displayName: fetched.displayName });
+      repo.markAccountChecked(account.id, at, { externalId: fetched.externalId, displayName: fetched.displayName, followers: fetched.followers });
       log.debug(`collect ${account.platform}/${account.handle}: ${snap.totalViews} vues`);
       result.ok++;
     } catch (err) {

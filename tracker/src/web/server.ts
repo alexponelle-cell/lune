@@ -904,6 +904,12 @@ export function createApp(deps: WebDeps): Hono {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
     }
   });
+  // Fan « à vérifier » : validé par le staff (achats débloqués, plus jamais signalé)
+  app.post('/api/fans/:id/review', async (c) => {
+    const { approved } = z.object({ approved: z.boolean() }).parse(await c.req.json());
+    fans.setReview(Number(c.req.param('id')), approved);
+    return c.json({ ok: true });
+  });
   app.post('/api/fans/:id/bonus', async (c) => {
     const { amount } = z.object({ amount: z.number().int().min(-1_000_000).max(1_000_000) }).parse(await c.req.json());
     fans.fans.addBonus(Number(c.req.param('id')), amount);

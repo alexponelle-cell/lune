@@ -16,8 +16,8 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted } from './fanServer.js';
-import { announceNewVideos, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
+import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow, verifyText } from './fanServer.js';
+import { announceNewVideos, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -131,10 +131,35 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         const missing = PLATFORM_FIELDS.filter((f) => !fans.accountsOf(fan.id).some((a) => a.platform === f.id)).map((f) => f.label);
         if (missing.length) lines.push(`\n⚠️ **Il manque : ${missing.join(', ')}.** Les 3 comptes sont obligatoires : reclique sur **S’inscrire** pour compléter.`);
         if (res.linked.length && !missing.length && interaction.inCachedGuild()) {
-          await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl());
+          await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl(), fans.unverifiedAccounts(fan.id).length ? fans.verifyCode(fan.id) : undefined);
         }
         if (res.linked.length && !missing.length) lines.push('\n🎬 **Dernière étape : poste ton 1er clip.** Dès qu’il est détecté (1 relevé par jour), toute la communauté se débloque · `/site` pour la boutique');
-        await interaction.editReply(lines.join('\n'));
+        const toVerify = fans.unverifiedAccounts(fan.id);
+        if (toVerify.length) lines.push(`\n${verifyText(fans.verifyCode(fan.id))}`);
+        await interaction.editReply({ content: lines.join('\n').slice(0, 2000), components: toVerify.length ? [verifyRow()] : [] });
+      }
+      if (interaction.isButton() && interaction.customId === VERIFY_BUTTON) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
+        const fan = fans.ensureFan(interaction.user.id, name);
+        if (!fans.unverifiedAccounts(fan.id).length) return void (await interaction.editReply('✅ Tous tes comptes sont vérifiés : tes vues comptent. Tu peux retirer le code de ta bio.'));
+        let results;
+        try {
+          results = await fans.verifyAccounts(fan);
+        } catch (err) {
+          return void (await interaction.editReply(`⏳ ${err instanceof Error ? err.message : String(err)}`));
+        }
+        const left = results.filter((r) => !r.ok);
+        await interaction.editReply({
+          content: [
+            ...results.map((r) => (r.ok ? `✅ **${PF[r.platform as keyof typeof PF]}** @${r.handle} : vérifié` : `❌ **${PF[r.platform as keyof typeof PF]}** @${r.handle} : ${r.error}`)),
+            '',
+            left.length
+              ? `Mets **${fans.verifyCode(fan.id)}** dans la bio des comptes en ❌ (ça peut prendre 1 à 2 min à apparaître), puis reclique.`
+              : '🎉 Tous tes comptes sont vérifiés : tes vues comptent. Tu peux retirer le code de ta bio.',
+          ].join('\n'),
+          components: left.length ? [verifyRow()] : [],
+        });
       }
     } catch (err) {
       log.error('/inscription (fans)', err);
@@ -264,6 +289,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     void sendNotifications().catch(() => {});
     // Serveur monté par /setup (toutes les 15 min) : rôles de palier, classement du lundi, nouvelles vidéos
     const automations = async () => {
+      await reportSuspicious(c, opts.fans).catch((err) => log.error('fans à vérifier', err));
       await unlockFirstClips(c, opts.fans).catch((err) => log.error('1er clip', err));
       await syncTierRoles(c, opts.fans).catch((err) => log.error('rôles de palier', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
