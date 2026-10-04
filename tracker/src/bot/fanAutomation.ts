@@ -34,7 +34,7 @@ export async function reportAccountsToReview(client: Client<true>, fans: FanServ
     if (!log) continue;
     const lines = fresh.slice(0, 15).map((a) => `• <@${a.discordId}> · ${a.platform} ${a.url}`);
     await log
-      .send({ content: `🔎 **${fresh.length} compte(s) à vérifier** (contenu de ${fans.creator.creatorName} ?) :\n${lines.join('\n')}${fresh.length > 15 ? '\n…' : ''}\nValide-les dans Mars (Boutique fans → Comptes à vérifier).`, allowedMentions: { parse: [] } })
+      .send({ content: `🔎 **${fresh.length} gros compte(s) à vérifier** (contenu de ${fans.creator.creatorName} ?) :\n${lines.join('\n')}${fresh.length > 15 ? '\n…' : ''}\nValide-les dans Mars (Boutique fans → Comptes à vérifier).`, allowedMentions: { parse: [] } })
       .catch(() => {});
   }
   fans.setBotState('accounts-announced', [...told, ...fresh.map((a) => a.id)].slice(-2000));

@@ -132,12 +132,12 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         if (missing.length) lines.push(`\n⚠️ **Il manque : ${missing.join(', ')}.** Les 3 comptes sont obligatoires : reclique sur **S’inscrire** pour compléter.`);
         if (res.linked.length && !missing.length && interaction.inCachedGuild()) {
           await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl(), [
-            ...(fans.unverifiedAccounts(fan.id).length ? ['🔎 Tes comptes sont vérifiés par le staff sous 24 h : tes vues comptent dès la validation, rien n’est perdu.'] : []),
+            ...(fans.unverifiedAccounts(fan.id).length ? ['🔎 Tes comptes sont vérifiés sous 24 h : tes vues comptent dès la validation, rien n’est perdu.'] : []),
             ...(fans.settings().clipRule ? [`🏷️ **Mets #${fans.clipKeywords()[0] ?? 'createur'} dans la légende de chaque clip**, sinon il ne compte pas.`] : []),
           ]);
         }
         if (res.linked.length && !missing.length) lines.push('\n🎬 **Dernière étape : poste ton 1er clip.** Dès qu’il est détecté (1 relevé par jour), toute la communauté se débloque · `/site` pour la boutique');
-        if (fans.unverifiedAccounts(fan.id).length) lines.push('\n🔎 **Tes nouveaux comptes vont être vérifiés par le staff** (sous 24 h) : tes vues compteront dès la validation, rien n’est perdu.');
+        if (fans.unverifiedAccounts(fan.id).length) lines.push('\n🔎 **Tes nouveaux comptes vont être vérifiés** (sous 24 h) : tes vues compteront dès la validation, rien n’est perdu.');
         await interaction.editReply({ content: lines.join('\n').slice(0, 2000), components: [] });
       }
       if (interaction.isButton() && interaction.customId === VERIFY_BUTTON) {

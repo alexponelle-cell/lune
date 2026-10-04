@@ -564,10 +564,29 @@ export class FanService {
     return n;
   }
 
-  /** File du staff : nouveaux comptes à vérifier (lien du profil + derniers clips). */
+  /** Seuils du tri automatique : en dessous, le compte est validé tout seul (la règle de la légende reste le filet). */
+  static readonly AUTO_MAX_FOLLOWERS = 10_000;
+  static readonly AUTO_MAX_VIEWS = 100_000;
+
+  /** File du staff : seulement les comptes déjà relevés que le tri automatique n'a pas validés (gros comptes). */
   accountsToReview() {
     const clientId = this.settings().clientId;
-    return clientId ? this.fans.accountsToReview(clientId) : [];
+    return clientId ? this.fans.accountsToReview(clientId).filter((a) => a.checkedAt !== null) : [];
+  }
+
+  /**
+   * Tri automatique (gratuit) après le relevé : petit compte (< 10 000 abonnés, aucune vidéo à 100 000 vues)
+   * → validé sans le staff. Ses clips ne rapportent de toute façon que s'ils citent le créateur.
+   * Les gros comptes (compte volé, autre YouTubeur) restent dans la file du staff.
+   */
+  autoReviewAccounts(now = Date.now()): number {
+    let n = 0;
+    for (const a of this.accountsToReview()) {
+      if ((a.followers ?? 0) >= FanService.AUTO_MAX_FOLLOWERS || a.topViews >= FanService.AUTO_MAX_VIEWS) continue;
+      this.repo.setAccountVerified(a.id, now);
+      n++;
+    }
+    return n;
   }
 
   /** Décision du staff sur un compte : validé (ses vues comptent) ou refusé (retiré du suivi). */

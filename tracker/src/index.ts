@@ -141,7 +141,7 @@ const stopEmailDelivery = emailApi ? every('livraison e-mail', 1, () => deliverE
 // Règle anti-triche gratuite : le clip doit citer le créateur dans sa légende
 // Rattrapage unique : comptes déjà inscrits qui ont rapporté → repassent par la vérification du staff
 log.info(`comptes remis à vérifier : ${fans.requeueOldEarners()}`);
-const stopClipCheck = every('vérif des clips', 10, async () => fans.checkClips());
+const stopClipCheck = every('vérif des clips', 10, async () => ({ comptesValidés: fans.autoReviewAccounts(), ...fans.checkClips() }));
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
 // Comptes des fans : 1 collecte par jour (coût Apify), les clippers de l'agence au rythme normal

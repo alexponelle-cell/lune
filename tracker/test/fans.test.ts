@@ -16,6 +16,9 @@ import { deliverEmailOrders, EmailGrantClient, monthsOf } from '../src/services/
 
 /** Compte relié avant les clips du test (seuls les clips publiés après l'ajout du compte rapportent). */
 const backdate = (repo: Repo, at: number) => repo.db.prepare('UPDATE accounts SET created_at = ?, verified_at = ?').run(at, at);
+/** Simule le premier relevé des comptes (la file du staff n'affiche que les comptes déjà relevés). */
+const releve = (repo: Repo, followers?: number) =>
+  repo.db.prepare('UPDATE accounts SET last_checked_at = COALESCE(last_checked_at, ?), followers = COALESCE(?, followers)').run(Date.now(), followers ?? null);
 
 describe('programme fans (Neptune)', () => {
   let repo: Repo;
@@ -130,6 +133,8 @@ describe('programme fans (Neptune)', () => {
     const later = Date.now() + 1000;
     repo.recordCollection(tt!.id, [{ platformVideoId: 'c1', views: 4000, publishedAt: later, title: 'clip beone', url: 'https://tiktok.test/c1' }], later + 1);
     expect(fans.balance(fan.id).views).toBe(0);
+    expect(fans.accountsToReview()).toEqual([]); // pas encore relevés : rien à regarder
+    releve(repo);
     const queue = fans.accountsToReview();
     expect(queue.map((a) => a.handle)).toEqual(['nouveau.clips', 'nouveauyt']);
     expect(queue[0]!.clips[0]).toMatchObject({ title: 'clip beone', views: 4000 });
@@ -138,6 +143,22 @@ describe('programme fans (Neptune)', () => {
     expect(fans.balance(fan.id).views).toBe(4000); // rétroactif
     expect(fans.accountsToReview()).toEqual([]);
     expect(repo.listAccountsForClipper(fan.id).some((a) => a.id === yt!.id && a.active)).toBe(false); // refusé : plus suivi
+  });
+
+  it('tri automatique : petits comptes validés seuls, gros comptes (abonnés ou vues) laissés au staff', () => {
+    fans.saveSettings({ accountReview: true });
+    const small = fans.ensureFan('d9', 'Petit', now - 3 * HOUR);
+    fans.setAccounts(small, { tiktok: '@petit.clips', youtube: '@petityt' });
+    const big = fans.ensureFan('d10', 'Gros', now - 3 * HOUR);
+    fans.setAccounts(big, { tiktok: '@unchained', youtube: '@viral' });
+    expect(fans.autoReviewAccounts()).toBe(0); // pas encore relevés
+    const [, bigTt, bigYt] = [null, ...repo.listAccountsForClipper(big.id)];
+    releve(repo, 300);
+    repo.db.prepare('UPDATE accounts SET followers = 6360000 WHERE id = ?').run(bigTt!.id);
+    repo.recordCollection(bigYt!.id, [{ platformVideoId: 'v1', views: 250_000, publishedAt: now - HOUR, title: 'vidéo' }], now);
+    expect(fans.autoReviewAccounts()).toBe(2);
+    expect(fans.unverifiedAccounts(small.id)).toEqual([]);
+    expect(fans.accountsToReview().map((a) => a.handle).sort()).toEqual(['unchained', 'viral']);
   });
 
   it('rattrapage : les anciens comptes qui ont rapporté repassent une fois par la vérification du staff', () => {
@@ -149,6 +170,7 @@ describe('programme fans (Neptune)', () => {
     repo.recordCollection(acc.id, [{ platformVideoId: 'u1', views: 500_000, publishedAt: now - 2 * HOUR }], now - HOUR);
     fans.saveSettings({ accountReview: true });
     expect(fans.requeueOldEarners()).toBe(1); // seul le compte à 500 000 vues (≥ 20 000)
+    releve(repo);
     expect(fans.accountsToReview().map((a) => a.handle)).toEqual(['unchained']);
     expect(fans.balance(big.id).views).toBe(0);
     expect(fans.balance(fan.id).views).toBe(5000);
@@ -671,6 +693,7 @@ describe('parcours complet d’un nouveau clippeur SQUIDUU (réglages par défau
     expect(res.linked).toHaveLength(3);
     expect(fans.linkEmail(fan, 'paul@mail.com')).toBe('paul@mail.com');
     expect(fans.unverifiedAccounts(fan.id)).toHaveLength(3);
+    releve(repo);
     expect(fans.accountsToReview()).toHaveLength(3);
 
     // 3. Clips : un sans #squiduu, un avec ; relevé après l'inscription
