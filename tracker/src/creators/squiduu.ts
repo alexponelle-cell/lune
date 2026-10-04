@@ -30,7 +30,7 @@ export const squiduu: CreatorConfig = {
   },
   discord: {
     welcome: [
-      '👋 **Salut et bienvenue sur Squiduu Clipping !**',
+      '👋 **Salut et bienvenue sur SQUIDUU CLIPPING !**',
       '',
       'Ici, tu peux gagner **gratuitement des mois de Squiduuverse** grâce à tes clips de {creator} 🎮',
       '',
