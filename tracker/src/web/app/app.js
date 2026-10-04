@@ -1548,7 +1548,7 @@ async function pageBoutique() {
           ${d.creator?.theme !== 'playful' ? '' : `<label class="field"><span>Pseudo Roblox du créateur</span><input class="input" name="creatorRoblox" value="${esc(s.creatorRoblox ?? '')}" placeholder="BeOnePourcentt"><small>${d.avatars.urls.roblox ? '✅ Avatar récupéré' : `⚠️ ${esc(d.avatars.errors.roblox ?? 'non récupéré')}`}</small></label>`}
           <label class="field"><span>Image / vidéo de fond (lien)</span><input class="input" name="heroMediaUrl" value="${esc(s.heroMediaUrl)}" placeholder="https://… .jpg / .png / .mp4"><small>Remplace le fond jaune de l'accueil (optionnel)</small></label>
         </div>
-        <label class="field"><span>Vidéos de la formation (à cocher avant l'inscription)</span><textarea class="input" name="training" rows="5" placeholder="Trouver le bon moment | https://…&#10;Monter et sous-titrer | https://…">${esc(s.training ?? '')}</textarea><small>Une vidéo par ligne : « Titre | lien » (25 max). Le clippeur doit toutes les cocher dans 🎓│tutos pour débloquer l'inscription. Vide = pas de formation obligatoire.</small></label>
+        <label class="field"><span>Liens des vidéos de la formation</span><textarea class="input" name="training" rows="6" placeholder="206 | https://youtu.be/…&#10;201 | https://youtu.be/…&#10;202 | …">${esc(s.training ?? '')}</textarea><small>Une ligne par module : « numéro | lien » (206, 201, 202, 203, 205, 204). YouTube non répertorié = vidéo lue dans la page. Page : <a href="/formation" target="_blank" rel="noopener">/formation</a>. Tout coché → 📝│inscription débloqué.</small></label>
         <div><button class="btn green">Sauvegarder</button> <a class="btn" href="/fan" target="_blank" rel="noopener">Voir le site</a></div></form>
 
       ${(() => {

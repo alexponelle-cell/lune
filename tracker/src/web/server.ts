@@ -205,16 +205,18 @@ export function createApp(deps: WebDeps): Hono {
     return c.body(file.data, 200, { 'content-type': file.type, 'cache-control': 'public, max-age=600' });
   });
   const isHttps = (c: Context) => c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:');
-  const startSession = (c: Context, session: string) => {
+  const startSession = (c: Context, session: string, next?: string) => {
     setCookie(c, FAN_COOKIE, session, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/', maxAge: 30 * 86_400 });
-    return c.redirect('/fan');
+    return c.redirect(next === 'formation' ? '/formation' : '/fan');
   };
   const fanError = (c: Context, message: string) => c.redirect(`/fan?error=${encodeURIComponent(message)}`);
 
   // Lien /site (Discord) : usage unique, 10 min
   app.get('/fan/login', (c) => {
     const session = fans.login(c.req.query('t') ?? '');
-    return session ? startSession(c, session) : fanError(c, 'Ce lien a expiré, reconnecte-toi.');
+    const next = c.req.query('next');
+    if (!session && next === 'formation') return c.redirect('/formation?error=expired');
+    return session ? startSession(c, session, next) : fanError(c, 'Ce lien a expiré, reconnecte-toi.');
   });
 
   // « Se connecter avec Discord » (OAuth2, scope identify)
@@ -222,6 +224,7 @@ export function createApp(deps: WebDeps): Hono {
     const o = deps.discordOAuth;
     if (!o) return fanError(c, 'Connexion Discord pas encore configurée : utilise /site sur Discord.');
     const state = randomBytes(16).toString('base64url');
+    if (c.req.query('next') === 'formation') setCookie(c, 'fan_next', 'formation', { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/fan', maxAge: 600 });
     setCookie(c, OAUTH_STATE_COOKIE, state, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/fan', maxAge: 600 });
     const url = new URL('https://discord.com/oauth2/authorize');
     url.search = new URLSearchParams({ client_id: o.clientId, response_type: 'code', redirect_uri: o.redirectUri, scope: 'identify', state, prompt: 'none' }).toString();
@@ -235,7 +238,9 @@ export function createApp(deps: WebDeps): Hono {
     if (!o || !code || !state || c.req.query('state') !== state) return fanError(c, 'Connexion annulée ou expirée, réessaie.');
     try {
       const user = await discordIdentity(code, o);
-      return startSession(c, fans.loginDiscordUser(user.id, user.name, Date.now(), user.avatar));
+      const next = getCookie(c, 'fan_next');
+      deleteCookie(c, 'fan_next', { path: '/fan' });
+      return startSession(c, fans.loginDiscordUser(user.id, user.name, Date.now(), user.avatar), next);
     } catch (err) {
       return fanError(c, err instanceof Error ? err.message : String(err));
     }
@@ -248,6 +253,20 @@ export function createApp(deps: WebDeps): Hono {
   });
 
   app.get('/api/fan/public', (c) => c.json(fans.publicPage()));
+
+  // Formation (Neptune Academy) : modules à cocher ; tout coché → rôle Discord 🎓 Formation validée
+  app.get('/formation', (c) => c.html(asset('formation.html')));
+  app.get('/api/formation', (c) => {
+    const fan = fanOf(c);
+    const s = fans.settings();
+    if (!fan) return c.json({ loggedIn: false, oauth: !!deps.discordOAuth, programName: s.programName, discordInviteUrl: s.discordInviteUrl });
+    return c.json({ loggedIn: true, username: fan.username, programName: s.programName, discordInviteUrl: s.discordInviteUrl, ...fans.training(fan.id) });
+  });
+  app.post('/api/formation/:num', async (c) => {
+    const fan = requireFan(c);
+    const body = z.object({ done: z.boolean() }).parse(await c.req.json());
+    return c.json(fans.setTrainingStep(fan, c.req.param('num'), body.done));
+  });
   app.get('/api/fan/me', (c) => {
     const fan = fanOf(c);
     return fan ? c.json(fans.me(fan)) : c.json({ error: 'not_logged_in' }, 401);

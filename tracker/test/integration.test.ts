@@ -256,3 +256,31 @@ describe('vieilles vidéos découvertes en cours de suivi', () => {
     expect(snap.totalViews - 1_000).toBe(500 + 2_000);
   });
 });
+
+describe('formation (/formation)', () => {
+  it('page publique, progression liée à la session du fan, lien Discord qui ouvre la formation', async () => {
+    const { FanService } = await import('../src/services/fans.js');
+    const { FanRepo } = await import('../src/db/fans.js');
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/');
+    const app = createApp({ repo, agency, recruitment: recruitmentOf(repo, agency), bot: {}, fans, password: 'secret' });
+    const page = await app.request('/formation');
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('NEPTUNE <span>ACADEMY</span>');
+    expect(await (await app.request('/api/formation')).json()).toMatchObject({ loggedIn: false });
+
+    const fan = fans.ensureFan('d1', 'Paul');
+    const link = new URL(fans.trainingUrl(fan.id));
+    const login = await app.request(`${link.pathname}${link.search}`);
+    expect(login.status).toBe(302);
+    expect(login.headers.get('location')).toBe('/formation');
+    const cookie = login.headers.get('set-cookie')!.split(';')[0]!;
+    const me = await (await app.request('/api/formation', { headers: { cookie } })).json();
+    expect(me).toMatchObject({ loggedIn: true, completed: false });
+    expect(me.modules).toHaveLength(6);
+    const step = await app.request('/api/formation/206', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ done: true }) });
+    expect((await step.json()).modules.find((m: { num: string }) => m.num === '206').done).toBe(true);
+    expect((await app.request('/api/formation/206', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"done":true}' })).status).toBe(401);
+  });
+});

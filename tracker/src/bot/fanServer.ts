@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   type CategoryChannel,
+  type Client,
   ChannelType,
   EmbedBuilder,
   type Guild,
@@ -15,7 +16,6 @@ import {
   type Role,
   PermissionFlagsBits,
   SlashCommandBuilder,
-  StringSelectMenuBuilder,
   type TextChannel,
 } from 'discord.js';
 import { log } from '../log.js';
@@ -103,7 +103,6 @@ export const ROLE_PENDING = '🎬 1er clip à poster';
 /** Toutes les vidéos de la formation cochées : débloque 📝│inscription. */
 export const ROLE_TRAINED = '🎓 Formation validée';
 export const TRAINING_BUTTON = 'fans:training';
-export const TRAINING_SELECT = 'fans:training:check';
 export const STEP_READ_BUTTON = 'fans:step:read';
 export const STEP_RULES_BUTTON = 'fans:step:rules';
 export const PRIVATE_CATEGORY = '🔒 ESPACES PRIVÉS';
@@ -354,7 +353,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
                 '',
                 '**Ton parcours ici**',
                 '1️⃣ Accepte les règles (bouton dans 📜│règles)',
-                '2️⃣ Regarde **toutes les vidéos de la formation** et coche-les (bouton 📚 Ma formation dans 🎓│tutos)',
+                '2️⃣ Fais **la formation** : bouton 📚 Ma formation dans 🎓│tutos, regarde et coche chaque vidéo',
                 '3️⃣ Inscris-toi dans 📝│inscription avec **tes 3 comptes** (TikTok, YouTube, Instagram)',
                 '4️⃣ Poste **ton 1er clip** : dès qu’il est détecté, tu débloques les annonces et toute la communauté 🎉',
               ].join('\n'),
@@ -370,7 +369,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('🎓・Tutos')
             .setDescription(
-              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont sur **Neptune Academy** : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\n👉 ${TUTOS_URL}\n\n**Regarde toutes les vidéos de la formation**, puis clique sur **📚 Ma formation** et coche-les toutes : 📝│inscription se débloque.`,
+              `Toutes les méthodes pour faire des clips de ${c.creatorName} qui font des vues sont sur **Neptune Academy** : trouver le bon moment, monter, sous-titrer, poster au bon format.\n\n👉 ${TUTOS_URL}\n\n**Clique sur 📚 Ma formation** : regarde chaque vidéo et coche-la. Quand tout est coché, 📝│inscription se débloque.`,
             ),
         ],
         components: [
@@ -444,7 +443,7 @@ export async function handleStepButtons(interaction: Interaction) {
       content:
         step === 'read'
           ? `✅ C’est débloqué ! Lis ${ch('📜│règles') ?? '#règles'} et ${ch('🧭│déroulement') ?? '#déroulement'}, puis accepte les règles.`
-          : `🎉 Règles acceptées ! Va dans ${ch('🎓│tutos') ?? '#tutos'}, regarde la formation et coche toutes les vidéos (📚 Ma formation) : ça débloque l’inscription.`,
+          : `🎉 Règles acceptées ! Va dans ${ch('🎓│tutos') ?? '#tutos'} et clique sur **📚 Ma formation** : regarde et coche chaque vidéo, ça débloque l’inscription.`,
     });
   } catch (err) {
     log.warn(`parcours d’accueil : ${err instanceof Error ? err.message : String(err)}`);
@@ -452,55 +451,40 @@ export async function handleStepButtons(interaction: Interaction) {
   }
 }
 
-/** 📚 Ma formation : liste des vidéos + menu à cocher ; toutes cochées → rôle 🎓 Formation validée (débloque 📝│inscription). */
+/** 📚 Ma formation : lien perso vers /formation (connecté d'office). Formation déjà finie → rôle donné tout de suite. */
 export async function handleTraining(interaction: Interaction, fans: FanService) {
-  if (!interaction.inCachedGuild()) return;
-  const isButton = interaction.isButton() && interaction.customId === TRAINING_BUTTON;
-  const isSelect = interaction.isStringSelectMenu() && interaction.customId === TRAINING_SELECT;
-  if (!isButton && !isSelect) return;
-  const videos = fans.trainingVideos();
+  if (!interaction.isButton() || interaction.customId !== TRAINING_BUTTON || !interaction.inCachedGuild()) return;
   const ch = (name: string) => interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(name));
-  const done = `🎉 **Formation validée !** ${ch('📝│inscription') ?? '#inscription'} est débloqué : clique sur **S’inscrire** et relie tes 3 comptes.`;
-  const grant = async () => {
-    const role = interaction.guild.roles.cache.find((r) => sameName(r.name, ROLE_TRAINED));
-    if (!role) throw new Error('Rôle introuvable : un admin doit refaire /setup.');
-    if (!interaction.member.roles.cache.has(role.id)) await interaction.member.roles.add(role, 'Formation validée');
-  };
-  const menu = () =>
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(TRAINING_SELECT)
-        .setPlaceholder('Coche toutes les vidéos que tu as regardées')
-        .setMinValues(1)
-        .setMaxValues(videos.length)
-        .addOptions(videos.map((v, i) => ({ label: `${i + 1}. ${v.title}`.slice(0, 100), value: String(i) }))),
-    );
-  const list = videos.map((v, i) => `**${i + 1}.** [${v.title}](${v.url})`).join('\n');
   try {
-    if (isButton) {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      if (!videos.length) {
-        await grant();
-        return void (await interaction.editReply(done));
-      }
-      return void (await interaction.editReply({ content: `**📚 Ta formation (${videos.length} vidéos)**\nRegarde-les toutes, puis coche-les dans le menu.\n\n${list}`, components: [menu()] }));
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const fan = fans.ensureFan(interaction.user.id, interaction.member.displayName);
+    if (fans.trainingDone(fan.id)) {
+      await grantTrained(interaction.member);
+      return void (await interaction.editReply(`🎉 **Formation validée !** ${ch('📝│inscription') ?? '#inscription'} est débloqué : clique sur **S’inscrire** et relie tes 3 comptes.`));
     }
-    if (!interaction.isStringSelectMenu()) return;
-    const seen = new Set(interaction.values.map(Number));
-    const missing = videos.map((v, i) => ({ ...v, i })).filter((v) => !seen.has(v.i));
-    if (missing.length) {
-      return void (await interaction.update({
-        content: `⏳ **Il te manque ${missing.length} vidéo${missing.length > 1 ? 's' : ''}** : ${missing.map((v) => `**${v.i + 1}.** [${v.title}](${v.url})`).join(', ')}\nRegarde-les, puis recoche **toutes** les vidéos.\n\n${list}`,
-        components: [menu()],
-      }));
-    }
-    await interaction.deferUpdate();
-    await grant();
-    await interaction.editReply({ content: done, components: [] });
+    const url = fans.trainingUrl(fan.id);
+    await interaction.editReply({
+      content: `📚 **Ta formation** : regarde chaque vidéo et coche-la. Quand tout est coché, 📝│inscription se débloque tout seul.\n-# Lien perso valable 10 min, ne le partage pas.`,
+      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Ouvrir ma formation').setEmoji('🎓'))],
+    });
   } catch (err) {
     log.warn(`formation : ${err instanceof Error ? err.message : String(err)}`);
-    const msg = { content: 'Impossible pour l’instant, réessaie dans une minute.', components: [] };
-    await (interaction.deferred || interaction.replied ? interaction.editReply(msg) : interaction.reply({ ...msg, flags: MessageFlags.Ephemeral })).catch(() => {});
+    await interaction.editReply('Impossible pour l’instant, réessaie dans une minute.').catch(() => {});
+  }
+}
+
+async function grantTrained(member: GuildMember) {
+  const role = member.guild.roles.cache.find((r) => sameName(r.name, ROLE_TRAINED));
+  if (role && !member.roles.cache.has(role.id)) await member.roles.add(role, 'Formation validée');
+}
+
+/** Formation terminée sur le site : rôle 🎓 Formation validée sur les serveurs montés par /setup. */
+export async function onTrainingCompleted(client: Client<true>, fans: FanService, discordId: string) {
+  const ids = new Set(fans.botState<string[]>('setup-guilds', []));
+  for (const guild of client.guilds.cache.values()) {
+    if (!ids.has(guild.id)) continue;
+    const member = await guild.members.fetch(discordId).catch(() => null);
+    if (member) await grantTrained(member).catch((err) => log.warn(`formation (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`));
   }
 }
 

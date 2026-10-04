@@ -1,4 +1,5 @@
 import type { FanRepo, ItemInput, ShopOrder } from '../db/fans.js';
+import { parseTrainingLinks, TRAINING_MODULES, youtubeEmbed } from './training.js';
 import type { Clipper, Repo } from '../db/repo.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
@@ -145,18 +146,40 @@ export class FanService {
     return next;
   }
 
-  /** Vidéos de la formation (25 max : limite d'un menu Discord), lignes « Titre | lien » ou juste un lien. */
-  trainingVideos(): Array<{ title: string; url: string }> {
-    return this.settings()
-      .training.split('\n')
-      .map((line) => {
-        const parts = line.split('|').map((x) => x.trim());
-        const url = parts.find((x) => /^https?:\/\//i.test(x)) ?? '';
-        const title = parts.find((x) => x && x !== url) ?? '';
-        return { title: (title || url).slice(0, 100), url };
-      })
-      .filter((v) => v.url)
-      .slice(0, 25);
+  /** Appelé quand un fan termine la formation (le bot lui donne le rôle 🎓 Formation validée). */
+  onTrainingDone?: (discordId: string) => void | Promise<void>;
+
+  /** Modules de la formation avec leur lien (réglé dans Mars) et l'état coché du fan. */
+  training(clipperId: number) {
+    const links = parseTrainingLinks(this.settings().training);
+    const seen = new Set(this.repo.getSetting<string[]>(`training:${clipperId}`, []));
+    const modules = TRAINING_MODULES.map((m) => {
+      const url = links.get(m.num) ?? null;
+      return { ...m, url, embed: url ? youtubeEmbed(url) : null, done: seen.has(m.num) };
+    });
+    return { modules, completed: modules.every((m) => m.done) };
+  }
+
+  /** Coche / décoche un module. Tout coché pour la 1re fois → onTrainingDone. */
+  setTrainingStep(clipper: Clipper, num: string, done: boolean) {
+    if (!TRAINING_MODULES.some((m) => m.num === num)) throw new Error('Module inconnu');
+    const before = this.training(clipper.id).completed;
+    const seen = new Set(this.repo.getSetting<string[]>(`training:${clipper.id}`, []));
+    if (done) seen.add(num);
+    else seen.delete(num);
+    this.repo.setSetting(`training:${clipper.id}`, [...seen]);
+    const after = this.training(clipper.id);
+    if (after.completed && !before && !clipper.discordId.startsWith('manual:')) void Promise.resolve(this.onTrainingDone?.(clipper.discordId)).catch(() => {});
+    return after;
+  }
+
+  trainingDone(clipperId: number): boolean {
+    return this.training(clipperId).completed;
+  }
+
+  /** Lien perso (connexion 10 min) qui ouvre directement la formation. */
+  trainingUrl(clipperId: number, now = Date.now()): string {
+    return `${this.loginUrl(clipperId, now)}&next=formation`;
   }
 
   /** Crée le fan au premier /site (rattaché à l'agence du programme). */

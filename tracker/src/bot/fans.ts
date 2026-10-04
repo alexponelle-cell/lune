@@ -16,7 +16,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining } from './fanServer.js';
+import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted } from './fanServer.js';
 import { announceNewVideos, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
@@ -259,6 +259,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     };
     c.user.setActivity('🪙 /site pour la boutique', { type: ActivityType.Custom });
     log.info(`bot fans connecté en tant que ${c.user.tag}`);
+    opts.fans.onTrainingDone = (discordId) => onTrainingCompleted(c, opts.fans, discordId);
     timer = setInterval(() => void sendNotifications().catch((err) => log.error('messages privés fans', err)), 2 * 60_000);
     void sendNotifications().catch(() => {});
     // Serveur monté par /setup (toutes les 15 min) : rôles de palier, classement du lundi, nouvelles vidéos

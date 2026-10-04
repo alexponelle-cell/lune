@@ -40,12 +40,21 @@ describe('programme fans (Neptune)', () => {
     return fan;
   }
 
-  it('formation : liste « Titre | lien » lue depuis les réglages, #inscription réservé à la formation validée', async () => {
-    fans.saveSettings({ training: 'Trouver le moment | https://a.test/1\n\nhttps://a.test/2\nligne sans lien' });
-    expect(fans.trainingVideos()).toEqual([
-      { title: 'Trouver le moment', url: 'https://a.test/1' },
-      { title: 'https://a.test/2', url: 'https://a.test/2' },
-    ]);
+  it('formation : liens réglés dans Mars, tout coché → débloqué une seule fois', async () => {
+    fans.saveSettings({ training: '206 | https://youtu.be/abcdefghijk\n201 https://frame.io/x\nligne sans lien' });
+    const fan = fans.ensureFan('d9', 'Clip');
+    const t = fans.training(fan.id);
+    expect(t.modules.find((m) => m.num === '206')).toMatchObject({ url: 'https://youtu.be/abcdefghijk', embed: 'https://www.youtube-nocookie.com/embed/abcdefghijk?rel=0', done: false });
+    expect(t.modules.find((m) => m.num === '201')).toMatchObject({ url: 'https://frame.io/x', embed: null });
+    const done: string[] = [];
+    fans.onTrainingDone = (id) => void done.push(id);
+    for (const m of t.modules) fans.setTrainingStep(fan, m.num, true);
+    expect(fans.trainingDone(fan.id)).toBe(true);
+    fans.setTrainingStep(fan, '206', false);
+    fans.setTrainingStep(fan, '206', true);
+    expect(done).toEqual(['d9', 'd9']);
+    expect(() => fans.setTrainingStep(fan, '999', true)).toThrow();
+    expect(fans.trainingUrl(fan.id)).toMatch(/\/fan\/login\?t=.+&next=formation$/);
     const { SERVER_PLAN, ROLE_TRAINED, ROLE_CLIPPER, ROLE_PENDING } = await import('../src/bot/fanServer.js');
     const inscription = SERVER_PLAN.flatMap((g) => g.channels).find((c) => c.name.includes('inscription'))!;
     expect(inscription.access).toMatchObject({ who: 'role', role: ROLE_TRAINED, also: [ROLE_CLIPPER, ROLE_PENDING] });
