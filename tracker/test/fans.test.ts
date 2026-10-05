@@ -753,3 +753,88 @@ describe('économie Apify : rythme de relevé des comptes de fans', () => {
     expect(fanAccountDue({ platform: 'youtube', lastCheckedAt: now - D }, null, since, now)).toBe(true); // gratuit
   });
 });
+
+describe('TikTok connecté (API officielle gratuite)', () => {
+  /** Faux serveur TikTok : jetons, profil, vidéos (2 pages). */
+  function fakeTikTok(log: string[]) {
+    return (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      log.push(url.replace('https://open.tiktokapis.com/v2', ''));
+      const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (url.includes('/oauth/token/')) {
+        const p = new URLSearchParams(String(init?.body));
+        return ok({ open_id: 'op1', access_token: p.get('grant_type') === 'refresh_token' ? 'acc2' : 'acc1', refresh_token: 'ref1', expires_in: 86400, refresh_expires_in: 31536000 });
+      }
+      if (url.includes('/user/info/')) return ok({ data: { user: { open_id: 'op1', username: 'Paul.SQD', display_name: 'Paul', follower_count: 120 } }, error: { code: 'ok' } });
+      if (url.includes('/video/list/')) {
+        const cursor = JSON.parse(String(init?.body)).cursor;
+        return cursor
+          ? ok({ data: { videos: [{ id: 'v2', video_description: 'clip #squiduu', create_time: 1_700_000_100, view_count: 300, share_url: 'https://tiktok.test/v2' }], has_more: false }, error: { code: 'ok' } })
+          : ok({ data: { videos: [{ id: 'v1', video_description: 'clip #squiduu', create_time: 1_700_000_000, view_count: 5000, like_count: 10 }], cursor: 99, has_more: true }, error: { code: 'ok' } });
+      }
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+  }
+
+  it('connexion sur le site → compte relié et vérifié, vues lues sans Apify, jeton renouvelé', async () => {
+    const { TikTokOfficialFetcher, TikTokTokenStore } = await import('../src/platforms/tiktokOfficial.js');
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/');
+    const client = repo.upsertClient({ name: 'SQUIDUU', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
+    fans.saveSettings({ clientId: client.id, accountReview: true });
+    const store = new TikTokTokenStore(repo.db);
+    fans.tiktok = { connected: () => store.connected() };
+    const fan = fans.ensureFan('d1', 'Paul');
+    fans.setAccounts(fan, { tiktok: '@ancien.compte' });
+
+    const log: string[] = [];
+    const f = fakeTikTok(log);
+    const app = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, password: 'secret', bot: {},
+      tiktokOAuth: { creds: { clientKey: 'ck', clientSecret: 'cs' }, redirectUri: 'https://site.test/fan/tiktok/callback', store, fetchFn: f } });
+
+    // Lien perso depuis Discord → connexion → page d'autorisation TikTok
+    const login = await app.request(new URL(fans.tiktokConnectUrl(fan.id)).pathname + new URL(fans.tiktokConnectUrl(fan.id)).search);
+    expect(login.headers.get('location')).toBe('/fan/tiktok/connect');
+    const cookie = login.headers.get('set-cookie')!.split(';')[0]!;
+    const go = await app.request('/fan/tiktok/connect', { headers: { cookie } });
+    const auth = new URL(go.headers.get('location')!);
+    expect(auth.origin + auth.pathname).toBe('https://www.tiktok.com/v2/auth/authorize/');
+    expect(auth.searchParams.get('scope')).toContain('video.list');
+    const state = auth.searchParams.get('state')!;
+    const stateCookie = go.headers.get('set-cookie')!.split(';')[0]!;
+
+    // Mauvais state → refusé
+    expect((await app.request(`/fan/tiktok/callback?code=c&state=x`, { headers: { cookie: `${cookie}; ${stateCookie}` } })).headers.get('location')).toContain('error=');
+    const back = await app.request(`/fan/tiktok/callback?code=c&state=${state}`, { headers: { cookie: `${cookie}; ${stateCookie}` } });
+    expect(back.headers.get('location')).toBe('/fan?tiktok=ok');
+
+    const [tt] = repo.listAccountsForClipper(fan.id).filter((a) => a.platform === 'tiktok' && a.active);
+    expect(tt).toMatchObject({ handle: 'paul.sqd' });
+    expect(tt!.verifiedAt).not.toBeNull(); // la connexion prouve que le compte est à lui
+    expect(fans.me(fan).accounts.find((a) => a.platform === 'tiktok')).toMatchObject({ handle: 'paul.sqd', connected: true });
+
+    // Relevé : vidéos lues avec son jeton (2 pages), pas d'Apify
+    let now = Date.now();
+    const apify = { platform: 'tiktok' as const, fetchAccount: async () => { throw new Error('Apify ne doit pas être appelé'); } };
+    const fetcher = new TikTokOfficialFetcher(store, { clientKey: 'ck', clientSecret: 'cs' }, 40, apify, f, () => now);
+    const got = await fetcher.fetchAccount({ id: tt!.id, handle: tt!.handle, externalId: null });
+    expect(got.videos.map((v) => [v.platformVideoId, v.views, v.title])).toEqual([['v1', 5000, 'clip #squiduu'], ['v2', 300, 'clip #squiduu']]);
+    expect(got.followers).toBe(120);
+
+    // Jeton expiré → renouvelé automatiquement
+    now += 2 * 86_400_000;
+    log.length = 0;
+    await fetcher.fetchAccount({ id: tt!.id, handle: tt!.handle, externalId: null });
+    expect(log[0]).toBe('/oauth/token/');
+    expect(store.get(tt!.id)?.accessToken).toBe('acc2');
+
+    // Compte jamais connecté : Apify en secours, ou erreur claire sans secours
+    await expect(fetcher.fetchAccount({ id: 999, handle: 'x', externalId: null })).rejects.toThrow('Apify ne doit pas');
+    await expect(new TikTokOfficialFetcher(store, { clientKey: 'ck', clientSecret: 'cs' }, 40, undefined, f).fetchAccount({ id: 999, handle: 'x', externalId: null })).rejects.toThrow('Connecter mon TikTok');
+
+    // Pages légales publiques (exigées par TikTok)
+    expect((await app.request('/legal/privacy')).status).toBe(200);
+    expect((await app.request('/legal/terms')).status).toBe(200);
+  });
+});

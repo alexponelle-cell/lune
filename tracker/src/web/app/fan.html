@@ -354,6 +354,14 @@ async function api(path, opts = {}) {
 async function loadMe() { try { ME = await api('/api/fan/me'); } catch { ME = null; } }
 
 // ---------- Effets ----------
+// « Connecter mon TikTok » (API officielle gratuite) : affiché si l'app TikTok est configurée
+const tiktokBlock = () => {
+  if (!ME?.tiktokLogin) return '';
+  const tt = ME.accounts.find((a) => a.platform === 'tiktok' && a.connected);
+  return tt
+    ? `<p style="margin-top:12px">✅ <b>TikTok connecté</b> (@${esc(tt.handle)}) : tes vues TikTok sont comptées automatiquement.</p>`
+    : `<p style="margin-top:12px"><b>📱 Connecte ton TikTok</b> (1 clic, on ne publie rien) pour que tes vues TikTok soient comptées.</p><a class="btn yellow big" href="/fan/tiktok/connect">Connecter mon TikTok</a>`;
+};
 function toast(msg, kind = '') {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
   const t = document.createElement('div');
@@ -544,7 +552,7 @@ function pageClip() {
   const clips = ME.clips;
   return `<section>${head}${steps}
     <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${ME.accounts.length
-      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, chaque nuit à minuit.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
+      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, chaque nuit à minuit.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>${tiktokBlock()}`
       : `<h3>Relie tes comptes !</h3><p>Sur Discord, fais <b>/inscription</b> et remplis tes comptes TikTok, YouTube, Insta (et ton pseudo Roblox). C'est tout : chaque vue te rapporte ensuite des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Aller sur le Discord</a>` : ''}`}</div></div>
   </section>
   <section>
@@ -648,6 +656,7 @@ async function init() {
   route();
   const error = new URLSearchParams(location.search).get('error');
   if (error) { toast(error, 'err'); history.replaceState(null, '', location.pathname + location.hash); }
+  if (new URLSearchParams(location.search).get('tiktok') === 'ok') { toast('TikTok connecté ✅ Tes vues TikTok sont maintenant comptées.', 'ok'); history.replaceState(null, '', location.pathname + location.hash); }
   celebrate();
 }
 init().catch((err) => { $('#app').innerHTML = `<div class="card empty" style="margin-top:40px"><div class="e">😵</div>${esc(err.message)}</div>`; });

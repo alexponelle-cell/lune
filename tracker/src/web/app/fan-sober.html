@@ -373,6 +373,14 @@ async function api(path, opts = {}) {
 }
 async function loadMe() { try { ME = await api('/api/fan/me'); } catch { ME = null; } }
 
+// « Connecter mon TikTok » (API officielle gratuite) : affiché si l'app TikTok est configurée
+const tiktokBlock = () => {
+  if (!ME?.tiktokLogin) return '';
+  const tt = ME.accounts.find((a) => a.platform === 'tiktok' && a.connected);
+  return tt
+    ? `<p style="margin-top:12px">✅ <b>TikTok connecté</b> (@${esc(tt.handle)}) : tes vues TikTok sont comptées automatiquement.</p>`
+    : `<p style="margin-top:12px"><b>📱 Connecte ton TikTok</b> (1 clic, on ne publie rien) pour que tes vues TikTok soient comptées.</p><a class="btn primary" href="/fan/tiktok/connect">Connecter mon TikTok</a>`;
+};
 function toast(msg, kind = '') {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
   const t = document.createElement('div');
@@ -527,7 +535,7 @@ function pageClip() {
     ${PUB.discordInviteUrl ? `<a class="btn primary" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord ${ARROW}</a>` : ''}</div>`;
   if (!ME) return `<section style="margin-top:56px">${head}${how}${loginCard('Suis tes **clips**', 'Connecte-toi avec Discord pour voir tes clips, tes vues et tes coins.')}</section>`;
   return `<section style="margin-top:56px">${head}
-    ${ME.accounts.length ? `<div class="card panel rv" style="margin-bottom:14px"><h3>Comptes suivis</h3><p>Tes vues sont mises à jour chaque nuit à minuit.</p><div class="tags">${ME.accounts.map((a) => `<span class="tag">${PLATFORM[a.platform]} · @${esc(a.handle)}</span>`).join('')}</div></div>` : how}
+    ${ME.accounts.length ? `<div class="card panel rv" style="margin-bottom:14px"><h3>Comptes suivis</h3><p>Tes vues sont mises à jour chaque nuit à minuit.</p><div class="tags">${ME.accounts.map((a) => `<span class="tag">${PLATFORM[a.platform]} · @${esc(a.handle)}</span>`).join('')}</div>${tiktokBlock()}</div>` : how}
     <div class="head rv" style="margin-top:48px"><h2>Mes <span class="y">clips</span></h2><p>${fmt(ME.clipCount)} clip(s) détecté(s).</p></div>
     <div class="clips">${ME.clips.map((c) => `<a class="card clip rv" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
       <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : ''}<span class="pf">${PLATFORM[c.platform]}</span>${c.coins ? `<span class="gain">+${fmt(c.coins)} coins</span>` : ''}</div>
@@ -620,6 +628,7 @@ async function init() {
   route();
   const error = new URLSearchParams(location.search).get('error');
   if (error) { toast(error, 'err'); history.replaceState(null, '', location.pathname + location.hash); }
+  if (new URLSearchParams(location.search).get('tiktok') === 'ok') { toast('TikTok connecté ✅ Tes vues TikTok sont maintenant comptées.', 'ok'); history.replaceState(null, '', location.pathname + location.hash); }
   welcomeBack();
 }
 init().catch((err) => { $('#app').innerHTML = `<div class="card empty" style="margin-top:40px">${esc(err.message)}</div>`; });

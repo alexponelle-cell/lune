@@ -380,4 +380,17 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   ALTER TABLE shop_orders ADD COLUMN approved_at INTEGER;
   UPDATE shop_orders SET approved_at = created_at;
   `,
+
+  // v15 : TikTok connecté par le clippeur (API officielle gratuite) : jetons OAuth par compte
+  `
+  CREATE TABLE tiktok_tokens (
+    account_id         INTEGER PRIMARY KEY REFERENCES accounts(id),
+    open_id            TEXT NOT NULL,
+    access_token       TEXT NOT NULL,
+    refresh_token      TEXT NOT NULL,
+    expires_at         INTEGER NOT NULL,
+    refresh_expires_at INTEGER NOT NULL,
+    updated_at         INTEGER NOT NULL
+  );
+  `,
 ];

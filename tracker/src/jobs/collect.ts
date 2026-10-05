@@ -67,10 +67,11 @@ const DAY = 86_400_000;
  * sans aucune vidéo n'est relu qu'une fois par semaine, un compte sans nouvelle vidéo depuis 14 jours
  * tous les 3 jours. Les autres sont relus chaque nuit. Un compte jamais relu l'est tout de suite.
  */
-export function fanAccountDue(account: { platform: string; lastCheckedAt: number | null }, lastPublished: number | null | undefined, since: number, now: number): boolean {
+export function fanAccountDue(account: { platform: string; lastCheckedAt: number | null }, lastPublished: number | null | undefined, since: number, now: number, free = false): boolean {
   if (account.lastCheckedAt === null) return true;
   if (account.lastCheckedAt >= since) return false;
-  if (account.platform === 'youtube') return true;
+  // Gratuit (YouTube, TikTok connecté) : chaque nuit
+  if (free || account.platform === 'youtube') return true;
   if (lastPublished == null) return now - account.lastCheckedAt >= 7 * DAY - 3_600_000;
   if (now - lastPublished > 14 * DAY) return now - account.lastCheckedAt >= 3 * DAY - 3_600_000;
   return true;

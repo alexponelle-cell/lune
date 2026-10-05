@@ -204,6 +204,11 @@ export class FanService {
   }
 
   /** Lien perso (connexion 10 min) qui ouvre directement la formation. */
+  /** Lien perso (10 min) qui connecte le fan puis l'envoie sur « Connecter mon TikTok ». */
+  tiktokConnectUrl(clipperId: number, now = Date.now()): string {
+    return `${this.loginUrl(clipperId, now)}&next=tiktok`;
+  }
+
   trainingUrl(clipperId: number, now = Date.now()): string {
     return `${this.loginUrl(clipperId, now)}&next=formation`;
   }
@@ -398,7 +403,11 @@ export class FanService {
       username: clipper.username,
       roblox: this.fans.roblox(clipper.id),
       rewardAccount: this.rewardAccount(clipper.id),
-      accounts: this.repo.listAccountsForClipper(clipper.id).map((a) => ({ id: a.id, platform: a.platform, handle: a.handle, url: a.url })),
+      accounts: (() => {
+        const connected = this.tiktok?.connected() ?? new Set<number>();
+        return this.repo.listAccountsForClipper(clipper.id).map((a) => ({ id: a.id, platform: a.platform, handle: a.handle, url: a.url, connected: connected.has(a.id) }));
+      })(),
+      tiktokLogin: !!this.tiktok,
       ...this.balance(clipper.id, now),
       items: this.fans.items({ activeOnly: true }),
       orders: this.fans.orders({ clipperId: clipper.id, limit: 50 }),
@@ -510,6 +519,24 @@ export class FanService {
 
   /** Collecteurs (YouTube API, Apify) pour lire la bio à la demande ; branchés au démarrage. */
   fetchers?: FetcherRegistry;
+
+  /** Connexion TikTok officielle (gratuite), branchée au démarrage si l'app TikTok est configurée. */
+  tiktok?: { connected(): Set<number> };
+
+  /**
+   * Le clippeur vient de connecter son TikTok (OAuth) : ce compte devient son TikTok suivi, déjà vérifié
+   * (la connexion prouve qu'il est à lui). Renvoie l'ID du compte pour y ranger les jetons.
+   */
+  connectTikTok(clipper: Clipper, username: string, now = Date.now()): number {
+    const link = parseAccountInput('tiktok', username);
+    if (!link) throw new Error(`Pseudo TikTok invalide : ${username}`);
+    const current = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.platform === 'tiktok');
+    const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link, now });
+    if (r.conflict) throw new Error(`Le TikTok @${link.handle} est déjà relié à un autre clippeur : contacte le staff.`);
+    this.repo.setAccountVerified(r.account.id, now);
+    for (const a of current) if (a.id !== r.account.id) this.repo.deactivateAccount(a.id);
+    return r.account.id;
+  }
   private lastVerify = new Map<number, number>();
 
   /** Code perso du fan (ex. NEP-4K7Q), créé au premier besoin. */

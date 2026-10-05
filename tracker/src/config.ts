@@ -56,6 +56,15 @@ const schema = z.object({
   YOUTUBE_API_KEY: optionalString,
   APIFY_TOKEN: optionalString,
   VIDEOS_PER_ACCOUNT: z.coerce.number().int().positive().default(30),
+  /**
+   * API officielle TikTok (gratuite) : le clippeur connecte son TikTok sur le site (« Connecter mon TikTok »).
+   * App créée sur developers.tiktok.com (Login Kit, scopes user.info.basic, user.info.profile, user.info.stats, video.list),
+   * redirection <PUBLIC_URL>/fan/tiktok/callback.
+   */
+  TIKTOK_CLIENT_KEY: optionalString,
+  TIKTOK_CLIENT_SECRET: optionalString,
+  /** Comptes TikTok pas encore connectés : relus via Apify (payant) tant que c'est « 1 », ignorés sinon. */
+  TIKTOK_APIFY_FALLBACK: z.enum(['0', '1']).default('1'),
 
   COLLECT_INTERVAL_MINUTES: z.coerce.number().positive().default(60),
   RELANCE_CHECK_INTERVAL_MINUTES: z.coerce.number().positive().default(180),

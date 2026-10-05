@@ -134,8 +134,11 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
           await onFanRegistered(interaction.guild, interaction.member, res.linked.map((a) => `${PF[a.platform]} @${a.handle}`), fans.publicSiteUrl(), [
             ...(fans.unverifiedAccounts(fan.id).length ? ['🔎 Tes comptes sont vérifiés sous 24 h : tes vues comptent dès la validation, rien n’est perdu.'] : []),
             ...(fans.settings().clipRule ? [`🏷️ **Mets #${fans.clipKeywords()[0] ?? 'createur'} dans la légende de chaque clip**, sinon il ne compte pas.`] : []),
+            ...(fans.tiktok ? ['📱 **Connecte ton TikTok sur le site** (bouton « Connecter mon TikTok », `/site`) : c’est ce qui compte tes vues TikTok.'] : []),
           ]);
         }
+        if (fans.tiktok && fans.accountsOf(fan.id).some((a) => a.platform === 'tiktok') && !fans.me(fan).accounts.some((a) => a.platform === 'tiktok' && a.connected))
+          lines.push(`\n📱 **Connecte ton TikTok** (1 clic, on ne publie rien) pour que tes vues TikTok soient comptées : ${fans.tiktokConnectUrl(fan.id)}`);
         if (res.linked.length && !missing.length) lines.push('\n🎬 **Dernière étape : poste ton 1er clip.** Dès qu’il est détecté (1 relevé par jour), toute la communauté se débloque · `/site` pour la boutique');
         if (fans.unverifiedAccounts(fan.id).length) lines.push('\n🔎 **Tes nouveaux comptes vont être vérifiés** (sous 24 h) : tes vues compteront dès la validation, rien n’est perdu.');
         await interaction.editReply({ content: lines.join('\n').slice(0, 2000), components: [] });

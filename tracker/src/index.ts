@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { openDatabase } from './db/index.js';
 import { Repo } from './db/repo.js';
 import { collectAll, fanAccountDue, parisMidnight } from './jobs/collect.js';
+import { TikTokOfficialFetcher, TikTokTokenStore } from './platforms/tiktokOfficial.js';
 import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
@@ -33,6 +34,13 @@ const fetchers = createFetchers(config);
 // Fans : seulement les 10 vidéos les plus récentes par compte (Apify facture chaque vidéo lue)
 const fanFetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(10, config.VIDEOS_PER_ACCOUNT) });
 const dashboardUrl = config.PUBLIC_URL ?? `http://localhost:${config.WEB_PORT}`;
+// TikTok connecté par le clippeur (API officielle gratuite) ; les autres comptes TikTok restent sur Apify
+const tiktokCreds = config.TIKTOK_CLIENT_KEY && config.TIKTOK_CLIENT_SECRET ? { clientKey: config.TIKTOK_CLIENT_KEY, clientSecret: config.TIKTOK_CLIENT_SECRET } : undefined;
+const tiktokStore = new TikTokTokenStore(db);
+if (tiktokCreds && config.FETCHER_MODE === 'live') {
+  fetchers.tiktok = new TikTokOfficialFetcher(tiktokStore, tiktokCreds, config.VIDEOS_PER_ACCOUNT, fetchers.tiktok);
+  fanFetchers.tiktok = new TikTokOfficialFetcher(tiktokStore, tiktokCreds, 40, config.TIKTOK_APIFY_FALLBACK === '1' ? fanFetchers.tiktok : undefined);
+}
 
 const agency = new AgencyService(repo, {
   inactivityDays: config.INACTIVITY_DAYS,
@@ -44,6 +52,7 @@ const creator = creatorConfig(config.CREATOR);
 const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl, undefined, creator);
 // Lecture des bios à la demande (vérification des comptes par code)
 fans.fetchers = fetchers;
+if (tiktokCreds) fans.tiktok = { connected: () => tiktokStore.connected() };
 fans.bootstrap();
 log.info(`programme fans : ${creator.programName} (${creator.id})`);
 const botHolder: { current?: Bot['bridge'] } = {};
@@ -61,7 +70,8 @@ const refreshFans = () => {
   fanRefresh = { running: true, lastAt: Date.now() };
   const startedAt = Date.now();
   const last = repo.lastPublishedByAccount();
-  void collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), startedAt - 10 * 60_000, now))
+  const free = tiktokStore.connected();
+  void collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), startedAt - 10 * 60_000, now, free.has(account.id)))
     .then((r) => log.info(`relevé manuel des fans : ${r.ok} ok, ${r.failed} échecs`))
     .catch((err) => log.warn(`relevé manuel des fans a échoué: ${err instanceof Error ? err.message : String(err)}`))
     .finally(() => (fanRefresh.running = false));
@@ -71,6 +81,7 @@ const refreshFans = () => {
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
+    tiktokOAuth: tiktokCreds ? { creds: tiktokCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/tiktok/callback`, store: tiktokStore } : undefined,
     refreshFans,
     marsSites: (config.MARS_SITES ?? '')
       .split(',')
@@ -171,7 +182,8 @@ const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, async () 
   const agence = await collectAll(repo, fetchers, Date.now, (account) => fanClient !== null && account.clientId === fanClient);
   if (fanClient === null) return { agence };
   const last = repo.lastPublishedByAccount();
-  const fansResult = await collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), parisMidnight(now), now));
+  const free = tiktokStore.connected();
+  const fansResult = await collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), parisMidnight(now), now, free.has(account.id)));
   return { agence, fans: fansResult };
 });
 const notifier = bot?.notifier;
