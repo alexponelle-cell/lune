@@ -55,6 +55,7 @@ export const SHARED_CHANNELS = [
 const BTN_EDITOR = 'montage:editor';
 const BTN_HOC = 'montage:hoc';
 const SELECT_CREATORS = 'montage:creators';
+const BTN_CLEAN = 'montage:clean';
 
 export const setupMontageCommand = new SlashCommandBuilder()
   .setName('setup-montage')
@@ -334,6 +335,26 @@ export async function handleMontageInteraction(interaction: Interaction) {
   }
 }
 
+/** Bouton « 🧹 Supprimer tous les autres salons » (admins), sous la réponse de /setup-montage. */
+export async function handleMontageClean(interaction: Interaction) {
+  if (!interaction.isButton() || interaction.customId !== BTN_CLEAN || !interaction.inCachedGuild()) return;
+  if (!interaction.memberPermissions.has(V.Administrator)) {
+    return void (await interaction.reply({ content: 'Réservé aux admins du serveur.', flags: MessageFlags.Ephemeral }));
+  }
+  await interaction.update({ content: '🧹 Nettoyage en cours…', components: [] });
+  try {
+    const clean = await cleanMontageServer(interaction.guild);
+    await interaction
+      .editReply(
+        `🧹 ${clean.deleted} ancien(s) salon(s) supprimé(s).${clean.failed.length ? ` Discord refuse de supprimer : ${clean.failed.join(', ').slice(0, 300)} (salons obligatoires du mode Communauté : change-les dans Paramètres → Communauté, puis supprime-les à la main).` : ''}`,
+      )
+      .catch(() => {});
+  } catch (err) {
+    log.error('nettoyage serveur monteurs', err);
+    await interaction.editReply(`Oups : ${err instanceof Error ? err.message : String(err)}`.slice(0, 300)).catch(() => {});
+  }
+}
+
 /** /setup-montage (admins). */
 export async function handleSetupMontage(interaction: Interaction) {
   if (!interaction.isChatInputCommand() || interaction.commandName !== 'setup-montage' || !interaction.inCachedGuild()) return;
@@ -345,11 +366,17 @@ export async function handleSetupMontage(interaction: Interaction) {
     const created = await scaffoldMontageServer(interaction.guild);
     const clean = interaction.options.getBoolean('nettoyer') ? await cleanMontageServer(interaction.guild) : null;
     const lines = [
-      created.length ? `✅ Serveur prêt. Créé : ${created.join(', ').slice(0, 1200)}.` : '✅ Tout est déjà en place.',
+      created.length ? `✅ Serveur prêt. Créé : ${created.join(', ').slice(0, 1200)}.` : '✅ Structure du bot en place.',
       ...(clean ? [`🧹 ${clean.deleted} ancien(s) salon(s) supprimé(s).${clean.failed.length ? ` Discord refuse de supprimer : ${clean.failed.join(', ').slice(0, 300)} (salons obligatoires du mode Communauté : change-les dans Paramètres → Communauté, puis supprime-les à la main).` : ''}`] : []),
       'Mets le rôle du bot tout en haut (Paramètres → Rôles).',
     ];
-    await interaction.editReply(lines.join('\n').slice(0, 2000));
+    await interaction.editReply({
+      content: lines.join('\n').slice(0, 2000),
+      // Bouton de nettoyage (marche même si l'option « nettoyer » n'apparaît pas dans Discord)
+      components: clean
+        ? []
+        : [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(BTN_CLEAN).setStyle(ButtonStyle.Danger).setLabel('Supprimer tous les autres salons').setEmoji('🧹'))],
+    });
   } catch (err) {
     log.error('/setup-montage', err);
     await interaction.editReply(`Oups : ${err instanceof Error ? err.message : String(err)}. Le bot a-t-il la permission Administrateur ?`.slice(0, 300)).catch(() => {});
@@ -377,5 +404,6 @@ export function attachMontage(discord: Client, opts: { token: string; agencyGuil
   discord.on(Events.InteractionCreate, (i) => {
     void handleSetupMontage(i);
     void handleMontageInteraction(i);
+    void handleMontageClean(i);
   });
 }
