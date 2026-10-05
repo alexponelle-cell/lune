@@ -83,7 +83,8 @@ const refreshFans = () => {
   const last = repo.lastPublishedByAccount();
   const free = connectedAccounts();
   // Relevé manuel : seulement les comptes gratuits (YouTube, TikTok connecté) et ceux jamais relus, pour ne rien payer en plus
-  void collectAll(repo, fanFetchers, Date.now, (account) => account.clientId !== fanClient || (account.lastCheckedAt !== null && (paidAccount(account, free) || account.lastCheckedAt >= startedAt - 10 * 60_000)))
+  // (+ les comptes connectés officiellement, même hors agence : ils sont gratuits)
+  void collectAll(repo, fanFetchers, Date.now, (account) => (account.clientId !== fanClient && !free.has(account.id)) || (account.lastCheckedAt !== null && (paidAccount(account, free) || account.lastCheckedAt >= startedAt - 10 * 60_000)))
     .then((r) => log.info(`relevé manuel des fans : ${r.ok} ok, ${r.failed} échecs`))
     .catch((err) => log.warn(`relevé manuel des fans a échoué: ${err instanceof Error ? err.message : String(err)}`))
     .finally(() => (fanRefresh.running = false));
