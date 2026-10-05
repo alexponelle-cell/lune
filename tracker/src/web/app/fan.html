@@ -300,7 +300,7 @@
   <div id="me-slot"></div>
 </div></header>
 <main id="app"></main>
-<footer><span>© <span id="year"></span> BeOne Rewards · BeOnePourcent</span><span>Les vues sont mises à jour une fois par jour.</span></footer>
+<footer><span>© <span id="year"></span> BeOne Rewards · BeOnePourcent</span><span>Les vues sont mises à jour chaque nuit à minuit.</span></footer>
 <nav class="tabbar" id="tabbar"></nav>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
@@ -544,7 +544,7 @@ function pageClip() {
   const clips = ME.clips;
   return `<section>${head}${steps}
     <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${ME.accounts.length
-      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, une fois par jour.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
+      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, chaque nuit à minuit.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>`
       : `<h3>Relie tes comptes !</h3><p>Sur Discord, fais <b>/inscription</b> et remplis tes comptes TikTok, YouTube, Insta (et ton pseudo Roblox). C'est tout : chaque vue te rapporte ensuite des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Aller sur le Discord</a>` : ''}`}</div></div>
   </section>
   <section>

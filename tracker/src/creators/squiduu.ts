@@ -100,7 +100,7 @@ export const squiduu: CreatorConfig = {
     shopTitle: 'Récompenses',
     shopText: 'Échange tes coins dans la boutique.',
     clipTitle: 'Clipper',
-    clipText: 'Poste des clips de SQUIDUU sur TikTok, Instagram ou YouTube. Tes vues sont comptées une fois par jour.',
+    clipText: 'Poste des clips de SQUIDUU sur TikTok, Instagram ou YouTube. Tes vues sont comptées chaque nuit à minuit.',
     rankingText: 'Les clippeurs qui ont fait le plus de vues ces 7 derniers jours.',
     footer: 'SQUIDUU',
     deliveredDm: '✅ Ton échange **{item}** a été livré.',

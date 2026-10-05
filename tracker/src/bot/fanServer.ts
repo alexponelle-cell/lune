@@ -318,7 +318,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setDescription(
               c.discord
                 ? fill(c.discord.welcome)
-                : `${c.texts.heroText.replace(/\*\*/g, '')}\n\n${steps}\n\n🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus. Les vues sont comptées une fois par jour.`,
+                : `${c.texts.heroText.replace(/\*\*/g, '')}\n\n${steps}\n\n🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus. Les vues sont comptées chaque nuit à minuit.`,
             )
             .setThumbnail(`${siteUrl.replace(/\/fan$/, '')}/fan/assets/creator.png`),
         ],
@@ -357,7 +357,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
               [
                 steps,
                 '',
-                `🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus (YouTube + TikTok + Instagram). Les vues sont comptées une fois par jour, à partir de ton inscription.`,
+                `🪙 **${rate} coins pour 1 000 vues**, tous comptes confondus (YouTube + TikTok + Instagram). Les vues sont comptées chaque nuit à minuit, à partir de ton inscription.`,
                 c.reward ? `🎁 **${c.reward.name}** : ${c.reward.price.toLocaleString('fr-FR')} coins.` : '🎁 Les récompenses sont dans la boutique du site.',
                 '',
                 '**Ton parcours ici**',
@@ -595,9 +595,9 @@ export async function onFanRegistered(guild: Guild, member: GuildMember, account
                   'Bienvenue dans ton salon perso : seuls toi et le staff le voient.',
                   '',
                   `✅ Comptes suivis : ${accounts.join(', ')}`,
-                  '📈 Tes vues sont comptées une fois par jour, à partir de maintenant.',
+                  '📈 Tes vues sont comptées chaque nuit à minuit, à partir de maintenant.',
                   ...(extraLines.length ? ['', ...extraLines] : []),
-                  ...(already ? [] : ['', `🎬 **Dernière étape : poste ton 1er clip** sur un de ces comptes. Dès qu’il est détecté (relevé 1 fois par jour), tu débloques les annonces, #général et toute la communauté.`]),
+                  ...(already ? [] : ['', `🎬 **Dernière étape : poste ton 1er clip** sur un de ces comptes. Dès qu’il est détecté (relevé chaque nuit à minuit), tu débloques les annonces, #général et toute la communauté.`]),
                   siteUrl ? `🪙 Suis tes coins et échange-les sur le site : ${siteUrl}` : '🪙 Tape `/coins` pour voir tes coins.',
                   '',
                   'Une question sur tes clips ou ton montage ? Écris ici, le staff te répond.',

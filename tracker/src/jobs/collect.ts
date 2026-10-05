@@ -9,7 +9,7 @@ export interface CollectResult {
 
 /**
  * Récupère les stats de tous les comptes actifs et enregistre une capture pour chacun.
- * `skip` permet d'espacer certains comptes (ex. les fans : 1 fois par jour, pour limiter le coût d'Apify).
+ * `skip` permet d'espacer certains comptes (ex. les fans : 1 fois par nuit, après minuit, pour limiter le coût d'Apify).
  */
 export async function collectAll(
   repo: Repo,
@@ -46,4 +46,16 @@ export async function collectAll(
     }
   }
   return result;
+}
+
+/** Minuit (heure de Paris) du jour de `now` : les comptes des fans sont relevés une fois par nuit, juste après. */
+export function parisMidnight(now: number): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+      .formatToParts(now)
+      .map((p) => [p.type, Number(p.value)]),
+  ) as Record<string, number>;
+  const wall = Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!, parts.second!);
+  const offset = wall - Math.floor(now / 1000) * 1000;
+  return Date.UTC(parts.year!, parts.month! - 1, parts.day!) - offset;
 }

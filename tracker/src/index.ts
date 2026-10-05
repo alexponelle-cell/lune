@@ -3,7 +3,7 @@ import { registerCommands } from './bot/register.js';
 import { config } from './config.js';
 import { openDatabase } from './db/index.js';
 import { Repo } from './db/repo.js';
-import { collectAll } from './jobs/collect.js';
+import { collectAll, parisMidnight } from './jobs/collect.js';
 import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
@@ -144,12 +144,11 @@ log.info(`comptes remis à vérifier : ${fans.requeueOldEarners()}`);
 const stopClipCheck = every('vérif des clips', 10, async () => ({ comptesValidés: fans.autoReviewAccounts(), ...fans.checkClips() }));
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
-// Comptes des fans : 1 collecte par jour (coût Apify), les clippers de l'agence au rythme normal
-const FAN_COLLECT_EVERY = 23.5 * 3_600_000;
+// Comptes des fans : 1 collecte par nuit, juste après minuit (heure de Paris) ; les clippers de l'agence au rythme normal
 const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () =>
   collectAll(repo, fetchers, Date.now, (account, now) => {
     const fanClient = fans.settings().clientId;
-    return fanClient !== null && account.clientId === fanClient && account.lastCheckedAt !== null && now - account.lastCheckedAt < FAN_COLLECT_EVERY;
+    return fanClient !== null && account.clientId === fanClient && account.lastCheckedAt !== null && account.lastCheckedAt >= parisMidnight(now);
   }),
 );
 const notifier = bot?.notifier;

@@ -726,3 +726,12 @@ describe('parcours complet d’un nouveau clippeur SQUIDUU (réglages par défau
     expect(fans.balance(fan.id).balance).toBe(10_000);
   });
 });
+
+describe('relevé des fans à minuit (heure de Paris)', () => {
+  it('parisMidnight : minuit du jour à Paris, été comme hiver', async () => {
+    const { parisMidnight } = await import('../src/jobs/collect.js');
+    expect(new Date(parisMidnight(Date.parse('2026-10-05T14:30:00Z'))).toISOString()).toBe('2026-10-04T22:00:00.000Z'); // UTC+2
+    expect(new Date(parisMidnight(Date.parse('2026-12-05T23:30:00Z'))).toISOString()).toBe('2026-12-05T23:00:00.000Z'); // 00:30 à Paris, UTC+1
+    expect(new Date(parisMidnight(Date.parse('2026-12-05T22:59:00Z'))).toISOString()).toBe('2026-12-04T23:00:00.000Z');
+  });
+});
