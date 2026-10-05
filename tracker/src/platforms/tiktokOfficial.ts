@@ -49,7 +49,8 @@ const tokensFrom = (b: Record<string, any>, now: number): TikTokTokens => ({
 /** Lien « Connecter mon TikTok » (page d'autorisation de TikTok). */
 export function tiktokAuthorizeUrl(creds: TikTokCredentials, redirectUri: string, state: string): string {
   const url = new URL('https://www.tiktok.com/v2/auth/authorize/');
-  url.search = new URLSearchParams({ client_key: creds.clientKey, scope: TIKTOK_SCOPES, response_type: 'code', redirect_uri: redirectUri, state }).toString();
+  // disable_auto_auth : la page d'autorisation s'affiche toujours (on voit ce qu'on accepte, même en se reconnectant)
+  url.search = new URLSearchParams({ client_key: creds.clientKey, scope: TIKTOK_SCOPES, response_type: 'code', redirect_uri: redirectUri, state, disable_auto_auth: '1' }).toString();
   return url.toString();
 }
 
