@@ -3,7 +3,7 @@ import { registerCommands } from './bot/register.js';
 import { config } from './config.js';
 import { openDatabase } from './db/index.js';
 import { Repo } from './db/repo.js';
-import { collectAll, fanAccountDue, parisMidnight } from './jobs/collect.js';
+import { collectAll, fanAccountDue, paidAccount, parisMidnight } from './jobs/collect.js';
 import { TikTokOfficialFetcher, TikTokTokenStore } from './platforms/tiktokOfficial.js';
 import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
@@ -30,9 +30,9 @@ log.info(`démarrage (bot: ${config.DISCORD_TOKEN ? 'oui' : 'non'}, serveur: ${c
 const db = openDatabase(config.DATABASE_PATH);
 const repo = new Repo(db);
 const analytics = new Analytics(repo);
-const fetchers = createFetchers(config);
-// Fans : seulement les 10 vidéos les plus récentes par compte (Apify facture chaque vidéo lue)
-const fanFetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(10, config.VIDEOS_PER_ACCOUNT) });
+// Apify facture chaque vidéo lue : 10 vidéos par compte pour l'agence, 5 pour les fans
+const fetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(10, config.VIDEOS_PER_ACCOUNT) });
+const fanFetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(5, config.VIDEOS_PER_ACCOUNT) });
 const dashboardUrl = config.PUBLIC_URL ?? `http://localhost:${config.WEB_PORT}`;
 // TikTok connecté par le clippeur (API officielle gratuite) ; les autres comptes TikTok restent sur Apify
 const tiktokCreds = config.TIKTOK_CLIENT_KEY && config.TIKTOK_CLIENT_SECRET ? { clientKey: config.TIKTOK_CLIENT_KEY, clientSecret: config.TIKTOK_CLIENT_SECRET } : undefined;
@@ -71,11 +71,12 @@ const refreshFans = () => {
   const startedAt = Date.now();
   const last = repo.lastPublishedByAccount();
   const free = tiktokStore.connected();
-  void collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), startedAt - 10 * 60_000, now, free.has(account.id)))
+  // Relevé manuel : seulement les comptes gratuits (YouTube, TikTok connecté) et ceux jamais relus, pour ne rien payer en plus
+  void collectAll(repo, fanFetchers, Date.now, (account) => account.clientId !== fanClient || (account.lastCheckedAt !== null && (paidAccount(account, free) || account.lastCheckedAt >= startedAt - 10 * 60_000)))
     .then((r) => log.info(`relevé manuel des fans : ${r.ok} ok, ${r.failed} échecs`))
     .catch((err) => log.warn(`relevé manuel des fans a échoué: ${err instanceof Error ? err.message : String(err)}`))
     .finally(() => (fanRefresh.running = false));
-  return { started: true, message: 'Relevé lancé : les vues et les coins se mettent à jour dans les prochaines minutes.' };
+  return { started: true, message: 'Relevé lancé (YouTube et TikTok connectés, gratuits) : les vues et les coins se mettent à jour dans les prochaines minutes. Instagram et TikTok non connectés suivent leur rythme normal pour limiter les coûts.' };
 };
 
 const stopWeb = startWeb(
@@ -179,10 +180,14 @@ const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('n
 // Comptes des fans : 1 collecte par nuit, juste après minuit (heure de Paris) ; les clippers de l'agence au rythme normal
 const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, async () => {
   const fanClient = fans.settings().clientId;
-  const agence = await collectAll(repo, fetchers, Date.now, (account) => fanClient !== null && account.clientId === fanClient);
+  const connected = tiktokStore.connected();
+  // Agence : YouTube et TikTok connecté au rythme normal, comptes Apify (payants) 1 fois par jour
+  const agence = await collectAll(repo, fetchers, Date.now, (account, now) =>
+    (fanClient !== null && account.clientId === fanClient) || (paidAccount(account, connected) && account.lastCheckedAt !== null && now - account.lastCheckedAt < 23 * 3_600_000),
+  );
   if (fanClient === null) return { agence };
   const last = repo.lastPublishedByAccount();
-  const free = tiktokStore.connected();
+  const free = connected;
   const fansResult = await collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), parisMidnight(now), now, free.has(account.id)));
   return { agence, fans: fansResult };
 });

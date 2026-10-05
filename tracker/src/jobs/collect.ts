@@ -63,16 +63,20 @@ export function parisMidnight(now: number): number {
 const DAY = 86_400_000;
 
 /**
- * Économie Apify (TikTok / Instagram sont payants à l'usage ; YouTube est gratuit) : un compte de fan
- * sans aucune vidéo n'est relu qu'une fois par semaine, un compte sans nouvelle vidéo depuis 14 jours
- * tous les 3 jours. Les autres sont relus chaque nuit. Un compte jamais relu l'est tout de suite.
+ * Économie Apify (TikTok pas connecté et Instagram sont payants à l'usage ; YouTube et TikTok connecté sont gratuits).
+ * Compte de fan payant : relu toutes les 2 nuits ; sans nouvelle vidéo depuis 14 jours, 1 fois par semaine ;
+ * sans aucune vidéo, toutes les 2 semaines. Gratuit : chaque nuit. Jamais relu : tout de suite.
  */
 export function fanAccountDue(account: { platform: string; lastCheckedAt: number | null }, lastPublished: number | null | undefined, since: number, now: number, free = false): boolean {
   if (account.lastCheckedAt === null) return true;
   if (account.lastCheckedAt >= since) return false;
-  // Gratuit (YouTube, TikTok connecté) : chaque nuit
   if (free || account.platform === 'youtube') return true;
-  if (lastPublished == null) return now - account.lastCheckedAt >= 7 * DAY - 3_600_000;
-  if (now - lastPublished > 14 * DAY) return now - account.lastCheckedAt >= 3 * DAY - 3_600_000;
-  return true;
+  const age = now - account.lastCheckedAt + 3_600_000; // 1 h de marge (le relevé ne tombe pas pile à la même heure)
+  if (lastPublished == null) return age >= 14 * DAY;
+  if (now - lastPublished > 14 * DAY) return age >= 7 * DAY;
+  return age >= 2 * DAY;
 }
+
+/** Compte relu via Apify (payant) ? YouTube et TikTok connecté sont gratuits. */
+export const paidAccount = (account: { id: number; platform: string }, connected: Set<number>) =>
+  account.platform === 'instagram' || (account.platform === 'tiktok' && !connected.has(account.id));

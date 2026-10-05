@@ -737,7 +737,7 @@ describe('relevé des fans à minuit (heure de Paris)', () => {
 });
 
 describe('économie Apify : rythme de relevé des comptes de fans', () => {
-  it('jamais relu → tout de suite ; vide → 1 fois/semaine ; inactif 14 j → tous les 3 jours ; YouTube chaque nuit', async () => {
+  it('jamais relu → tout de suite ; payant : toutes les 2 nuits, inactif 1 fois/semaine, vide toutes les 2 semaines ; gratuit chaque nuit', async () => {
     const { fanAccountDue } = await import('../src/jobs/collect.js');
     const D = 86_400_000;
     const now = Date.parse('2026-10-10T01:00:00Z');
@@ -745,12 +745,14 @@ describe('économie Apify : rythme de relevé des comptes de fans', () => {
     const tt = (checkedDaysAgo: number | null) => ({ platform: 'tiktok', lastCheckedAt: checkedDaysAgo === null ? null : now - checkedDaysAgo * D });
     expect(fanAccountDue(tt(null), null, since, now)).toBe(true);
     expect(fanAccountDue(tt(0.01), now - D, since, now)).toBe(false); // déjà relu cette nuit
-    expect(fanAccountDue(tt(1), now - D, since, now)).toBe(true); // actif
-    expect(fanAccountDue(tt(1), null, since, now)).toBe(false); // vide, relu hier
-    expect(fanAccountDue(tt(7), null, since, now)).toBe(true); // vide, relu il y a 7 jours
-    expect(fanAccountDue(tt(1), now - 20 * D, since, now)).toBe(false); // inactif
-    expect(fanAccountDue(tt(3), now - 20 * D, since, now)).toBe(true);
-    expect(fanAccountDue({ platform: 'youtube', lastCheckedAt: now - D }, null, since, now)).toBe(true); // gratuit
+    expect(fanAccountDue(tt(1), now - D, since, now)).toBe(false); // actif, relu hier : une nuit sur deux
+    expect(fanAccountDue(tt(2), now - D, since, now)).toBe(true);
+    expect(fanAccountDue(tt(7), null, since, now)).toBe(false); // vide
+    expect(fanAccountDue(tt(14), null, since, now)).toBe(true);
+    expect(fanAccountDue(tt(3), now - 20 * D, since, now)).toBe(false); // inactif
+    expect(fanAccountDue(tt(7), now - 20 * D, since, now)).toBe(true);
+    expect(fanAccountDue(tt(1), null, since, now, true)).toBe(true); // TikTok connecté : gratuit
+    expect(fanAccountDue({ platform: 'youtube', lastCheckedAt: now - D }, null, since, now)).toBe(true);
   });
 });
 
