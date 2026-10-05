@@ -78,6 +78,8 @@ export interface WebDeps {
   /** « Se connecter avec Discord » sur la boutique fans. */
   discordOAuth?: { clientId: string; clientSecret: string; redirectUri: string };
   /** « Connecter mon TikTok » (API officielle gratuite) : app TikTok + stockage des jetons. */
+  /** Fichier de vérification du site demandé par TikTok (nom + contenu), servi à la racine. */
+  siteVerification?: { file: string; content: string };
   tiktokOAuth?: { creds: TikTokCredentials; redirectUri: string; store: TikTokTokenStore; fetchFn?: typeof fetch };
   /** « Connecter mon Instagram » (API Instagram officielle gratuite, compte pro / créateur). */
   instagramOAuth?: { creds: InstagramCredentials; redirectUri: string; store: InstagramTokenStore; fetchFn?: typeof fetch };
@@ -301,6 +303,12 @@ export function createApp(deps: WebDeps): Hono {
         return fanError(c, platform === 'instagram' && /business|professional|creator|pro\b/i.test(message) ? 'Passe ton Instagram en compte créateur (Paramètres → Type de compte → Passer à un compte professionnel → Créateur, gratuit), puis réessaie.' : message);
       }
     });
+  }
+
+  // Vérification du site par TikTok : fichier servi à la racine (ex. /tiktokAbC123.txt)
+  if (deps.siteVerification) {
+    const v = deps.siteVerification;
+    app.get(`/${v.file.replace(/^\/+/, '')}`, (c) => c.text(v.content));
   }
 
   // Pages légales (exigées par TikTok pour valider l'app)

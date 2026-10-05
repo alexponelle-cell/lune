@@ -93,6 +93,7 @@ const refreshFans = () => {
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
+    siteVerification: config.TIKTOK_VERIFY_FILE && config.TIKTOK_VERIFY_CONTENT ? { file: config.TIKTOK_VERIFY_FILE, content: config.TIKTOK_VERIFY_CONTENT } : undefined,
     tiktokOAuth: tiktokCreds ? { creds: tiktokCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/tiktok/callback`, store: tiktokStore } : undefined,
     instagramOAuth: instagramCreds ? { creds: instagramCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/instagram/callback`, store: instagramStore } : undefined,
     refreshFans,

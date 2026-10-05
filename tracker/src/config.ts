@@ -66,6 +66,12 @@ const schema = z.object({
   /** Comptes TikTok pas encore connectés : relus via Apify (payant) tant que c'est « 1 », ignorés sinon. */
   TIKTOK_APIFY_FALLBACK: z.enum(['0', '1']).default('1'),
   /**
+   * Vérification du site par TikTok (« Verify URL properties » → URL prefix) : TikTok donne un fichier
+   * (ex. tiktokAbC123.txt) et son contenu ; le site le sert à la racine. Pas secret.
+   */
+  TIKTOK_VERIFY_FILE: optionalString,
+  TIKTOK_VERIFY_CONTENT: optionalString,
+  /**
    * API Instagram officielle (gratuite) : app Meta (developers.facebook.com), produit « Instagram » →
    * « API setup with Instagram login », redirection <PUBLIC_URL>/fan/instagram/callback.
    */
