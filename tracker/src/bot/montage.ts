@@ -53,6 +53,7 @@ export const setupMontageCommand = new SlashCommandBuilder()
   .setName('setup-montage')
   .setDescription('Monte le serveur des monteurs (rôles, sections par créateur, salons privés)')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addBooleanOption((o) => o.setName('nettoyer').setDescription('⚠️ Supprime TOUS les autres salons et catégories du serveur (garde seulement ceux du bot)'))
   .toJSON();
 
 const V = PermissionFlagsBits;
@@ -189,6 +190,34 @@ export async function scaffoldMontageServer(guild: Guild): Promise<string[]> {
   ];
 }
 
+/**
+ * Nettoyage (option « nettoyer » de /setup-montage) : supprime tous les salons et catégories qui ne font pas
+ * partie du serveur monteurs (accueil, sections créateurs, salons privés, staff). Renvoie le nombre supprimé
+ * et les salons que Discord refuse de supprimer (ex. salons obligatoires d'un serveur communauté).
+ */
+export async function cleanMontageServer(guild: Guild): Promise<{ deleted: number; failed: string[] }> {
+  await guild.channels.fetch();
+  const ours = (name: string) => name === '📌 ACCUEIL' || name === '🛡️ STAFF' || name.startsWith(PRIVATE_CATEGORY) || MONTAGE_CREATORS.some((c) => name === categoryName(c));
+  const keptCats = new Set(guild.channels.cache.filter((c) => c.type === ChannelType.GuildCategory && ours(c.name)).map((c) => c.id));
+  const expected = new Set([WELCOME, LOGS, ...CREATOR_CHANNELS.map((c) => c.name)].map(bare));
+  const keep = (c: { id: string; type: ChannelType; name: string; parentId?: string | null; topic?: string | null }) =>
+    keptCats.has(c.id) || (c.type === ChannelType.GuildText && !!c.parentId && keptCats.has(c.parentId) && (expected.has(bare(c.name)) || /\[\d+\]/.test(c.topic ?? '')));
+  const out = { deleted: 0, failed: [] as string[] };
+  // Les salons d'abord, les catégories ensuite (une catégorie se supprime vide)
+  const doomed = [...guild.channels.cache.values()]
+    .filter((c) => !keep({ id: c.id, type: c.type, name: c.name, parentId: 'parentId' in c ? c.parentId : null, topic: 'topic' in c ? (c.topic as string | null) : null }))
+    .sort((a, b) => Number(a.type === ChannelType.GuildCategory) - Number(b.type === ChannelType.GuildCategory));
+  for (const c of doomed) {
+    try {
+      await c.delete('Nettoyage du serveur monteurs (/setup-montage nettoyer)');
+      out.deleted++;
+    } catch {
+      out.failed.push(c.name);
+    }
+  }
+  return out;
+}
+
 /** Salon privé du membre : lui + Head of Content + staff. Réutilisé s'il existe déjà. */
 async function privateChannelFor(guild: Guild, member: GuildMember): Promise<TextChannel> {
   const existing = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${member.id}]`)) as TextChannel | undefined;
@@ -294,7 +323,13 @@ export async function handleSetupMontage(interaction: Interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
     const created = await scaffoldMontageServer(interaction.guild);
-    await interaction.editReply(created.length ? `✅ Serveur prêt. Créé : ${created.join(', ').slice(0, 1700)}.\nMets le rôle du bot tout en haut (Paramètres → Rôles).` : '✅ Tout est déjà en place.');
+    const clean = interaction.options.getBoolean('nettoyer') ? await cleanMontageServer(interaction.guild) : null;
+    const lines = [
+      created.length ? `✅ Serveur prêt. Créé : ${created.join(', ').slice(0, 1200)}.` : '✅ Tout est déjà en place.',
+      ...(clean ? [`🧹 ${clean.deleted} ancien(s) salon(s) supprimé(s).${clean.failed.length ? ` Discord refuse de supprimer : ${clean.failed.join(', ').slice(0, 300)} (salons obligatoires du mode Communauté : change-les dans Paramètres → Communauté, puis supprime-les à la main).` : ''}`] : []),
+      'Mets le rôle du bot tout en haut (Paramètres → Rôles).',
+    ];
+    await interaction.editReply(lines.join('\n').slice(0, 2000));
   } catch (err) {
     log.error('/setup-montage', err);
     await interaction.editReply(`Oups : ${err instanceof Error ? err.message : String(err)}. Le bot a-t-il la permission Administrateur ?`.slice(0, 300)).catch(() => {});

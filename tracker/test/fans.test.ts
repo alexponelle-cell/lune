@@ -664,6 +664,29 @@ describe('serveur des monteurs (/setup-montage)', () => {
     expect(m.creatorRole('Elie')).toBe('✂️ Team Elie');
     expect(m.setupMontageCommand.name).toBe('setup-montage');
     expect(m.setupMontageCommand.default_member_permissions).toBe('8');
+    expect(m.setupMontageCommand.options?.map((o) => o.name)).toEqual(['nettoyer']);
+  });
+
+  it('nettoyer : supprime les anciens salons et catégories, garde accueil, sections, salons privés et staff', async () => {
+    const m = await import('../src/bot/montage.js');
+    const { ChannelType, Collection } = await import('discord.js');
+    const deleted: string[] = [];
+    const ch = (id: string, name: string, type: number, parentId: string | null = null, topic: string | null = null, refuse = false) =>
+      [id, { id, name, type, parentId, topic, delete: async () => { if (refuse) throw new Error('refusé'); deleted.push(name); } }] as const;
+    const T = ChannelType.GuildText, C = ChannelType.GuildCategory;
+    const channels = new Collection<string, any>([
+      ch('1', '📌 ACCUEIL', C), ch('2', '👋│bienvenue', T, '1'),
+      ch('3', '🎬 ELIE', C), ch('4', '📣│annonces', T, '3'), ch('5', '💬│général', T, '3'), ch('6', 'random', T, '3'),
+      ch('7', '🔒 SALONS PRIVÉS', C), ch('8', '🔒│paul', T, '7', 'Salon privé de Paul [123]'),
+      ch('9', '🛡️ STAFF', C), ch('10', '🧾│logs', T, '9'),
+      ch('11', 'Salons textuels', C), ch('12', 'général', T, '11'), ch('13', 'Général', ChannelType.GuildVoice, '11'),
+      ch('14', 'règles', T, null, null, true),
+    ]);
+    const guild = { channels: { cache: channels, fetch: async () => channels } } as any;
+    const r = await m.cleanMontageServer(guild);
+    expect([...deleted].sort()).toEqual(['Général', 'Salons textuels', 'général', 'random'].sort());
+    expect(deleted.indexOf('Salons textuels')).toBe(deleted.length - 1); // la catégorie après ses salons
+    expect(r).toEqual({ deleted: 4, failed: ['règles'] });
   });
 });
 
