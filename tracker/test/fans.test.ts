@@ -866,6 +866,10 @@ describe('TikTok connecté (API officielle gratuite)', () => {
     const verified = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, password: 'secret', bot: {}, siteVerification: { file: 'tiktokAbC123.txt', content: 'tiktok-developers-site-verification=XYZ' } });
     expect(await (await verified.request('/tiktokAbC123.txt')).text()).toBe('tiktok-developers-site-verification=XYZ');
 
+    const { tiktokSiteVerification } = await import('../src/platforms/tiktokOfficial.js');
+    expect(tiktokSiteVerification(undefined, 'tiktok-developers-site-verification=gtRi1Z')).toEqual({ file: 'tiktokgtRi1Z.txt', content: 'tiktok-developers-site-verification=gtRi1Z' });
+    expect(tiktokSiteVerification(undefined, undefined)).toBeUndefined();
+
     // Pages légales publiques (exigées par TikTok)
     expect((await app.request('/legal/privacy')).status).toBe(200);
     expect((await app.request('/legal/terms')).status).toBe(200);

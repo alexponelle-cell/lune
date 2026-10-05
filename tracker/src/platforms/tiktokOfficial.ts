@@ -142,3 +142,14 @@ export class TikTokOfficialFetcher implements PlatformFetcher {
     return { displayName: user?.displayName, followers: user?.followers, videos };
   }
 }
+
+/**
+ * Fichier de vérification du site (« URL prefix ») : le contenu suffit, le nom s'en déduit
+ * (« tiktok-developers-site-verification=ABC » → /tiktokABC.txt). Accepte le contenu dans l'une ou l'autre variable.
+ */
+export function tiktokSiteVerification(...values: Array<string | undefined>): { file: string; content: string } | undefined {
+  const content = values.map((v) => v?.trim()).find((v) => v && /^tiktok-developers-site-verification=\S+$/.test(v));
+  if (content) return { file: `tiktok${content.split('=')[1]}.txt`, content };
+  const [content2, file] = values.map((v) => v?.trim());
+  return content2 && file ? { file, content: content2 } : undefined;
+}

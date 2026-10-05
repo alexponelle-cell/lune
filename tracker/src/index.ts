@@ -5,7 +5,7 @@ import { openDatabase } from './db/index.js';
 import { Repo } from './db/repo.js';
 import { collectAll, fanAccountDue, paidAccount, parisMidnight } from './jobs/collect.js';
 import { InstagramOfficialFetcher, InstagramTokenStore } from './platforms/instagramOfficial.js';
-import { TikTokOfficialFetcher, TikTokTokenStore } from './platforms/tiktokOfficial.js';
+import { TikTokOfficialFetcher, TikTokTokenStore, tiktokSiteVerification } from './platforms/tiktokOfficial.js';
 import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
@@ -93,7 +93,7 @@ const refreshFans = () => {
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
-    siteVerification: config.TIKTOK_VERIFY_FILE && config.TIKTOK_VERIFY_CONTENT ? { file: config.TIKTOK_VERIFY_FILE, content: config.TIKTOK_VERIFY_CONTENT } : undefined,
+    siteVerification: tiktokSiteVerification(config.TIKTOK_VERIFY_CONTENT, config.TIKTOK_VERIFY_FILE),
     tiktokOAuth: tiktokCreds ? { creds: tiktokCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/tiktok/callback`, store: tiktokStore } : undefined,
     instagramOAuth: instagramCreds ? { creds: instagramCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/instagram/callback`, store: instagramStore } : undefined,
     refreshFans,

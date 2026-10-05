@@ -70,7 +70,7 @@ const schema = z.object({
    * (ex. tiktokAbC123.txt) et son contenu ; le site le sert à la racine. Pas secret.
    */
   TIKTOK_VERIFY_FILE: optionalString,
-  TIKTOK_VERIFY_CONTENT: optionalString,
+  TIKTOK_VERIFY_CONTENT: optionalString, // le contenu suffit : le nom du fichier s'en déduit
   /**
    * API Instagram officielle (gratuite) : app Meta (developers.facebook.com), produit « Instagram » →
    * « API setup with Instagram login », redirection <PUBLIC_URL>/fan/instagram/callback.
