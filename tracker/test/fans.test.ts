@@ -652,15 +652,15 @@ describe('automatisations du serveur', () => {
 });
 
 describe('serveur des monteurs (/setup-montage)', () => {
-  it('4 créateurs, 4 salons par section (annonces en lecture seule), commande réservée aux admins', async () => {
+  it('4 créateurs, 3 salons par section (annonces et ressource en lecture seule), ressources communes, commande réservée aux admins', async () => {
     const m = await import('../src/bot/montage.js');
     expect(m.MONTAGE_CREATORS).toEqual(['Elie', 'Science', 'Sabrina', 'Adrien']);
     expect(m.CREATOR_CHANNELS.map((c) => [c.name, c.write])).toEqual([
-      ['📣│annonces', false],
-      ['💬│général', true],
-      ['📝│feedback', true],
-      ['🚀│à-publier', true],
+      ['📣annonces', false],
+      ['👱ressource', false],
+      ['💬général', true],
     ]);
+    expect([m.SHARED_CATEGORY, ...m.SHARED_CHANNELS.map((c) => c.name)]).toEqual(['📦 ressources', '📈sop-notion', '🎬sop-monteur', '🎧musiques-sfx']);
     expect(m.creatorRole('Elie')).toBe('✂️ Team Elie');
     expect(m.setupMontageCommand.name).toBe('setup-montage');
     expect(m.setupMontageCommand.default_member_permissions).toBe('8');
@@ -676,7 +676,8 @@ describe('serveur des monteurs (/setup-montage)', () => {
     const T = ChannelType.GuildText, C = ChannelType.GuildCategory;
     const channels = new Collection<string, any>([
       ch('1', '📌 ACCUEIL', C), ch('2', '👋│bienvenue', T, '1'),
-      ch('3', '🎬 ELIE', C), ch('4', '📣│annonces', T, '3'), ch('5', '💬│général', T, '3'), ch('6', 'random', T, '3'),
+      ch('3', '👱Elie', C), ch('4', '📣annonces', T, '3'), ch('5', '💬général', T, '3'), ch('6', 'random', T, '3'),
+      ch('15', '📦 ressources', C), ch('16', '📈sop-notion', T, '15'), ch('17', '🎧musiques-sfx', T, '15'),
       ch('7', '🔒 SALONS PRIVÉS', C), ch('8', '🔒│paul', T, '7', 'Salon privé de Paul [123]'),
       ch('9', '🛡️ STAFF', C), ch('10', '🧾│logs', T, '9'),
       ch('11', 'Salons textuels', C), ch('12', 'général', T, '11'), ch('13', 'Général', ChannelType.GuildVoice, '11'),

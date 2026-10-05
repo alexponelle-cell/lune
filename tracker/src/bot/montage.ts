@@ -37,12 +37,19 @@ export const creatorRole = (name: string) => `✂️ Team ${name}`;
 const WELCOME = '👋│bienvenue';
 const LOGS = '🧾│logs';
 const PRIVATE_CATEGORY = '🔒 SALONS PRIVÉS';
-/** Salons de chaque section créateur (annonces : lecture seule pour les monteurs). */
+/** Salons de chaque section créateur (annonces et ressource : lecture seule pour les monteurs). */
 export const CREATOR_CHANNELS = [
-  { name: '📣│annonces', write: false, topic: 'Les annonces de l’équipe' },
-  { name: '💬│général', write: true, topic: 'Discussion de l’équipe' },
-  { name: '📝│feedback', write: true, topic: 'Retours sur les montages' },
-  { name: '🚀│à-publier', write: true, topic: 'Montages terminés, prêts à être publiés' },
+  { name: '📣annonces', write: false, topic: 'Les annonces de l’équipe' },
+  { name: '👱ressource', write: false, topic: 'Ressources du créateur (rushs, chartes, exemples)' },
+  { name: '💬général', write: true, topic: 'Discussion de l’équipe' },
+];
+
+/** Ressources communes à tous les monteurs (lecture seule, le staff et le Head of Content postent). */
+export const SHARED_CATEGORY = '📦 ressources';
+export const SHARED_CHANNELS = [
+  { name: '📈sop-notion', topic: 'Les SOP Notion' },
+  { name: '🎬sop-monteur', topic: 'Les SOP du monteur' },
+  { name: '🎧musiques-sfx', topic: 'Musiques et effets sonores' },
 ];
 
 const BTN_EDITOR = 'montage:editor';
@@ -65,7 +72,7 @@ const bare = (name: string) => name.replace(/^[^\p{L}\p{N}]+/u, '').replace(/[^\
 export const isMontageGuild = (guild: Guild) => !!roleNamed(guild, ROLE_EDITOR);
 
 /** Catégorie de la section d'un créateur. */
-const categoryName = (creator: string) => `🎬 ${creator.toUpperCase()}`;
+const categoryName = (creator: string) => `👱${creator}`;
 
 async function ensureRole(guild: Guild, name: string, color: number, hoist: boolean) {
   return roleNamed(guild, name) ?? guild.roles.create({ name, colors: { primaryColor: color }, hoist, reason: 'Serveur monteurs' });
@@ -84,8 +91,10 @@ function sectionOverwrites(guild: Guild, team: string, write: boolean): Overwrit
 }
 
 async function ensureCategory(guild: Guild, name: string, overwrites: OverwriteResolvable[]): Promise<CategoryChannel> {
-  const found = guild.channels.cache.find((c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === name);
+  // Même nom aux emojis près (« 🎬 ELIE » → « 👱Elie ») : la catégorie existante est reprise et renommée
+  const found = guild.channels.cache.find((c): c is CategoryChannel => c.type === ChannelType.GuildCategory && bare(c.name) === bare(name));
   if (found) {
+    if (found.name !== name) await found.setName(name).catch(() => {});
     await found.permissionOverwrites.set(overwrites).catch(() => {});
     return found;
   }
@@ -95,7 +104,10 @@ async function ensureCategory(guild: Guild, name: string, overwrites: OverwriteR
 async function ensureText(guild: Guild, parent: CategoryChannel, name: string, overwrites: OverwriteResolvable[], topic?: string): Promise<TextChannel> {
   let ch = guild.channels.cache.find((c) => c.type === ChannelType.GuildText && c.parentId === parent.id && bare(c.name) === bare(name)) as TextChannel | undefined;
   if (!ch) ch = await guild.channels.create({ name, type: ChannelType.GuildText, parent: parent.id, topic, permissionOverwrites: overwrites });
-  else await ch.permissionOverwrites.set(overwrites).catch(() => {});
+  else {
+    if (ch.name !== name) await ch.setName(name).catch(() => {});
+    await ch.permissionOverwrites.set(overwrites).catch(() => {});
+  }
   return ch;
 }
 
@@ -108,7 +120,7 @@ const welcomeMessage = () => ({
         [
           'Choisis ton rôle pour accéder à ton espace :',
           '',
-          '🎬 **Monteur** : tu choisis le ou les créateurs pour qui tu montes. Tu accèdes à leurs sections (annonces, général, feedback, à publier) et à ton salon privé.',
+          '🎬 **Monteur** : tu choisis le ou les créateurs pour qui tu montes. Tu accèdes à leurs sections (annonces, ressource, général), aux ressources communes (SOP, musiques) et à ton salon privé.',
           '🧠 **Head of Content** : tu supervises toutes les sections et tous les salons privés.',
           '',
           '-# Tu peux recliquer à tout moment pour changer tes créateurs.',
@@ -151,6 +163,13 @@ export async function scaffoldMontageServer(guild: Guild): Promise<string[]> {
   const mine = recent?.filter((m) => m.author.id === me).last();
   if (mine) await mine.edit(welcomeMessage()).catch(() => {});
   else await welcome.send(welcomeMessage());
+
+  // Ressources communes : tous les monteurs lisent, le staff et le Head of Content postent
+  const shared = await ensureCategory(guild, SHARED_CATEGORY, sectionOverwrites(guild, ROLE_EDITOR, false));
+  for (const [i, ch] of SHARED_CHANNELS.entries()) {
+    const t = await ensureText(guild, shared, ch.name, sectionOverwrites(guild, ROLE_EDITOR, false), ch.topic);
+    await t.setPosition(i).catch(() => {});
+  }
 
   // Une section par créateur
   for (const c of MONTAGE_CREATORS) {
@@ -197,9 +216,10 @@ export async function scaffoldMontageServer(guild: Guild): Promise<string[]> {
  */
 export async function cleanMontageServer(guild: Guild): Promise<{ deleted: number; failed: string[] }> {
   await guild.channels.fetch();
-  const ours = (name: string) => name === '📌 ACCUEIL' || name === '🛡️ STAFF' || name.startsWith(PRIVATE_CATEGORY) || MONTAGE_CREATORS.some((c) => name === categoryName(c));
+  const ours = (name: string) =>
+    name.startsWith(PRIVATE_CATEGORY) || ['📌 ACCUEIL', '🛡️ STAFF', SHARED_CATEGORY, ...MONTAGE_CREATORS.map(categoryName)].some((n) => bare(n) === bare(name));
   const keptCats = new Set(guild.channels.cache.filter((c) => c.type === ChannelType.GuildCategory && ours(c.name)).map((c) => c.id));
-  const expected = new Set([WELCOME, LOGS, ...CREATOR_CHANNELS.map((c) => c.name)].map(bare));
+  const expected = new Set([WELCOME, LOGS, ...CREATOR_CHANNELS.map((c) => c.name), ...SHARED_CHANNELS.map((c) => c.name)].map(bare));
   const keep = (c: { id: string; type: ChannelType; name: string; parentId?: string | null; topic?: string | null }) =>
     keptCats.has(c.id) || (c.type === ChannelType.GuildText && !!c.parentId && keptCats.has(c.parentId) && (expected.has(bare(c.name)) || /\[\d+\]/.test(c.topic ?? '')));
   const out = { deleted: 0, failed: [] as string[] };
@@ -306,7 +326,7 @@ export async function handleMontageInteraction(interaction: Interaction) {
     const priv = await privateChannelFor(guild, member);
     const names = MONTAGE_CREATORS.filter((c) => picked.has(c));
     await logStaff(guild, `🎬 <@${member.id}> monte pour : **${names.join(', ')}**`);
-    await interaction.editReply(`✅ **C’est ouvert !** Tu as accès aux sections ${names.map((n) => `**${n}**`).join(', ')} (annonces, général, feedback, à publier) et à ton salon privé ${priv}.`);
+    await interaction.editReply(`✅ **C’est ouvert !** Tu as accès aux sections ${names.map((n) => `**${n}**`).join(', ')} (annonces, ressource, général), aux ressources communes (📦 SOP, musiques) et à ton salon privé ${priv}.`);
   } catch (err) {
     log.warn(`serveur monteurs : ${err instanceof Error ? err.message : String(err)}`);
     const msg = 'Impossible pour l’instant : le rôle du bot doit être tout en haut (Paramètres → Rôles). Réessaie dans une minute.';
