@@ -77,6 +77,6 @@ export function fanAccountDue(account: { platform: string; lastCheckedAt: number
   return age >= 2 * DAY;
 }
 
-/** Compte relu via Apify (payant) ? YouTube et TikTok connecté sont gratuits. */
+/** Compte relu via Apify (payant) ? YouTube et les comptes TikTok / Instagram connectés sont gratuits. */
 export const paidAccount = (account: { id: number; platform: string }, connected: Set<number>) =>
-  account.platform === 'instagram' || (account.platform === 'tiktok' && !connected.has(account.id));
+  (account.platform === 'instagram' || account.platform === 'tiktok') && !connected.has(account.id);

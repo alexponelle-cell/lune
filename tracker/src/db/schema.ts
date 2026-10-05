@@ -393,4 +393,17 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
     updated_at         INTEGER NOT NULL
   );
   `,
+
+  // v16 : Instagram connecté par le clippeur (API Instagram officielle, compte pro/créateur) : jeton par compte
+  `
+  CREATE TABLE instagram_tokens (
+    account_id         INTEGER PRIMARY KEY REFERENCES accounts(id),
+    open_id            TEXT NOT NULL,
+    access_token       TEXT NOT NULL,
+    refresh_token      TEXT NOT NULL,
+    expires_at         INTEGER NOT NULL,
+    refresh_expires_at INTEGER NOT NULL,
+    updated_at         INTEGER NOT NULL
+  );
+  `,
 ];

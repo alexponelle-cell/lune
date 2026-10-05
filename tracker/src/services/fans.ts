@@ -204,9 +204,17 @@ export class FanService {
   }
 
   /** Lien perso (connexion 10 min) qui ouvre directement la formation. */
-  /** Lien perso (10 min) qui connecte le fan puis l'envoie sur « Connecter mon TikTok ». */
-  tiktokConnectUrl(clipperId: number, now = Date.now()): string {
-    return `${this.loginUrl(clipperId, now)}&next=tiktok`;
+  /** Lien perso (10 min) qui connecte le fan puis l'envoie sur ses boutons « Connecter mon TikTok / Instagram ». */
+  connectUrl(clipperId: number, now = Date.now()): string {
+    return `${this.loginUrl(clipperId, now)}&next=connect`;
+  }
+
+  /** Plateformes que le fan doit encore connecter (comptes reliés, connexion officielle disponible, pas encore faite). */
+  toConnect(clipperId: number): Platform[] {
+    if (!this.officialLogin) return [];
+    const connected = this.officialLogin.connected();
+    const accounts = this.repo.listAccountsForClipper(clipperId);
+    return this.officialLogin.platforms.filter((p) => accounts.some((a) => a.platform === p) && !accounts.some((a) => a.platform === p && connected.has(a.id)));
   }
 
   trainingUrl(clipperId: number, now = Date.now()): string {
@@ -404,10 +412,10 @@ export class FanService {
       roblox: this.fans.roblox(clipper.id),
       rewardAccount: this.rewardAccount(clipper.id),
       accounts: (() => {
-        const connected = this.tiktok?.connected() ?? new Set<number>();
+        const connected = this.officialLogin?.connected() ?? new Set<number>();
         return this.repo.listAccountsForClipper(clipper.id).map((a) => ({ id: a.id, platform: a.platform, handle: a.handle, url: a.url, connected: connected.has(a.id) }));
       })(),
-      tiktokLogin: !!this.tiktok,
+      officialLogin: this.officialLogin?.platforms ?? [],
       ...this.balance(clipper.id, now),
       items: this.fans.items({ activeOnly: true }),
       orders: this.fans.orders({ clipperId: clipper.id, limit: 50 }),
@@ -520,19 +528,19 @@ export class FanService {
   /** Collecteurs (YouTube API, Apify) pour lire la bio à la demande ; branchés au démarrage. */
   fetchers?: FetcherRegistry;
 
-  /** Connexion TikTok officielle (gratuite), branchée au démarrage si l'app TikTok est configurée. */
-  tiktok?: { connected(): Set<number> };
+  /** Connexions officielles gratuites (TikTok, Instagram), branchées au démarrage si les apps sont configurées. */
+  officialLogin?: { platforms: Platform[]; connected(): Set<number> };
 
   /**
-   * Le clippeur vient de connecter son TikTok (OAuth) : ce compte devient son TikTok suivi, déjà vérifié
-   * (la connexion prouve qu'il est à lui). Renvoie l'ID du compte pour y ranger les jetons.
+   * Le clippeur vient de connecter son compte (OAuth TikTok / Instagram) : ce compte devient celui suivi pour
+   * cette plateforme, déjà vérifié (la connexion prouve qu'il est à lui). Renvoie l'ID du compte (jetons).
    */
-  connectTikTok(clipper: Clipper, username: string, now = Date.now()): number {
-    const link = parseAccountInput('tiktok', username);
-    if (!link) throw new Error(`Pseudo TikTok invalide : ${username}`);
-    const current = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.platform === 'tiktok');
+  connectOfficial(clipper: Clipper, platform: 'tiktok' | 'instagram', username: string, now = Date.now()): number {
+    const link = parseAccountInput(platform, username);
+    if (!link) throw new Error(`Pseudo ${platform === 'tiktok' ? 'TikTok' : 'Instagram'} invalide : ${username}`);
+    const current = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.platform === platform);
     const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link, now });
-    if (r.conflict) throw new Error(`Le TikTok @${link.handle} est déjà relié à un autre clippeur : contacte le staff.`);
+    if (r.conflict) throw new Error(`Le compte @${link.handle} est déjà relié à un autre clippeur : contacte le staff.`);
     this.repo.setAccountVerified(r.account.id, now);
     for (const a of current) if (a.id !== r.account.id) this.repo.deactivateAccount(a.id);
     return r.account.id;
@@ -833,6 +841,7 @@ export class FanService {
     const views = this.viewsByClipper(now);
     const spent = this.fans.spentByClipper();
     const refused = s.clientId ? this.fans.refusedClips(s.clientId) : new Map();
+    const officialConnected = this.officialLogin?.connected() ?? new Set<number>();
     const clippers = s.clientId ? this.repo.listClippers({ clientId: s.clientId, includeInactive: true }) : [];
     const fans = clippers
       .map((c) => {
@@ -842,7 +851,7 @@ export class FanService {
         const accounts = this.repo
           .listAccountsForClipper(c.id)
           .filter((a) => a.active)
-          .map((a) => ({ platform: a.platform, handle: a.handle, verified: a.verifiedAt !== null, followers: a.followers }));
+          .map((a) => ({ platform: a.platform, handle: a.handle, verified: a.verifiedAt !== null, followers: a.followers, connected: officialConnected.has(a.id) }));
         return { id: c.id, username: c.username, joinedAt: c.createdAt, avatar: this.fans.avatar(c.id), roblox: this.rewardAccount(c.id).value, accounts, views: v, earned, spent: sp, balance: earned - sp, review: this.review(c.id), refused: refused.get(c.id) ?? [] };
       })
       // Fans « à vérifier » en premier, puis par vues

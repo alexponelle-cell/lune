@@ -13,6 +13,7 @@ import { dayKey } from '../domain/time.js';
 import type { AgencyService } from '../services/agency.js';
 import { FanRepo } from '../db/fans.js';
 import { FanService } from '../services/fans.js';
+import { type InstagramCredentials, type InstagramTokenStore, instagramAuthorizeUrl, instagramExchangeCode, instagramUser } from '../platforms/instagramOfficial.js';
 import { type TikTokCredentials, type TikTokTokenStore, tiktokAuthorizeUrl, tiktokExchangeCode, tiktokUser } from '../platforms/tiktokOfficial.js';
 import { legalPage, PRIVACY_HTML, TERMS_HTML } from './legal.js';
 import type { GameClient } from '../services/game.js';
@@ -78,6 +79,8 @@ export interface WebDeps {
   discordOAuth?: { clientId: string; clientSecret: string; redirectUri: string };
   /** « Connecter mon TikTok » (API officielle gratuite) : app TikTok + stockage des jetons. */
   tiktokOAuth?: { creds: TikTokCredentials; redirectUri: string; store: TikTokTokenStore; fetchFn?: typeof fetch };
+  /** « Connecter mon Instagram » (API Instagram officielle gratuite, compte pro / créateur). */
+  instagramOAuth?: { creds: InstagramCredentials; redirectUri: string; store: InstagramTokenStore; fetchFn?: typeof fetch };
   /** Rempli quand le bot est connecté (sinon les actions Discord sont indisponibles). */
   bot: { current?: BotBridge };
 }
@@ -213,7 +216,7 @@ export function createApp(deps: WebDeps): Hono {
   const isHttps = (c: Context) => c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:');
   const startSession = (c: Context, session: string, next?: string) => {
     setCookie(c, FAN_COOKIE, session, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/', maxAge: 30 * 86_400 });
-    return c.redirect(next === 'formation' ? '/formation' : next === 'tiktok' && deps.tiktokOAuth ? '/fan/tiktok/connect' : '/fan');
+    return c.redirect(next === 'formation' ? '/formation' : next === 'connect' ? '/fan#clipper' : '/fan');
   };
   const fanError = (c: Context, message: string) => c.redirect(`/fan?error=${encodeURIComponent(message)}`);
 
@@ -251,33 +254,54 @@ export function createApp(deps: WebDeps): Hono {
       return fanError(c, err instanceof Error ? err.message : String(err));
     }
   });
-  // « Connecter mon TikTok » : le fan autorise la lecture de ses vidéos (gratuit, prouve que le compte est à lui)
-  app.get('/fan/tiktok/connect', (c) => {
-    const t = deps.tiktokOAuth;
-    if (!t) return fanError(c, 'Connexion TikTok pas encore disponible.');
-    if (!fanOf(c)) return fanError(c, 'Connecte-toi d’abord (bouton du site ou /site sur Discord), puis reclique sur « Connecter mon TikTok ».');
-    const state = randomBytes(16).toString('base64url');
-    setCookie(c, 'tt_state', state, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/fan', maxAge: 600 });
-    return c.redirect(tiktokAuthorizeUrl(t.creds, t.redirectUri, state));
-  });
-  app.get('/fan/tiktok/callback', async (c) => {
-    const t = deps.tiktokOAuth;
-    const state = getCookie(c, 'tt_state');
-    deleteCookie(c, 'tt_state', { path: '/fan' });
-    const code = c.req.query('code');
-    const fan = fanOf(c);
-    if (!t || !code || !state || c.req.query('state') !== state) return fanError(c, 'Connexion TikTok annulée ou expirée, réessaie.');
-    if (!fan) return fanError(c, 'Session expirée : reconnecte-toi puis reclique sur « Connecter mon TikTok ».');
-    try {
-      const tokens = await tiktokExchangeCode(t.creds, code, t.redirectUri, t.fetchFn);
-      const user = await tiktokUser(tokens.accessToken, t.fetchFn);
-      const accountId = fans.connectTikTok(fan, user.username);
-      t.store.save(accountId, tokens);
-      return c.redirect('/fan?tiktok=ok');
-    } catch (err) {
-      return fanError(c, err instanceof Error ? err.message : String(err));
-    }
-  });
+  // « Connecter mon TikTok / Instagram » : le fan autorise la lecture de ses vidéos (gratuit, prouve que le compte est à lui)
+  const officialLogins = {
+    tiktok: deps.tiktokOAuth && {
+      authorize: (state: string) => tiktokAuthorizeUrl(deps.tiktokOAuth!.creds, deps.tiktokOAuth!.redirectUri, state),
+      finish: async (code: string) => {
+        const t = deps.tiktokOAuth!;
+        const tokens = await tiktokExchangeCode(t.creds, code, t.redirectUri, t.fetchFn);
+        return { tokens, username: (await tiktokUser(tokens.accessToken, t.fetchFn)).username, store: t.store };
+      },
+    },
+    instagram: deps.instagramOAuth && {
+      authorize: (state: string) => instagramAuthorizeUrl(deps.instagramOAuth!.creds, deps.instagramOAuth!.redirectUri, state),
+      finish: async (code: string) => {
+        const t = deps.instagramOAuth!;
+        const tokens = await instagramExchangeCode(t.creds, code, t.redirectUri, t.fetchFn);
+        return { tokens, username: (await instagramUser(tokens.accessToken, t.fetchFn)).username, store: t.store };
+      },
+    },
+  };
+  for (const platform of ['tiktok', 'instagram'] as const) {
+    const name = platform === 'tiktok' ? 'TikTok' : 'Instagram';
+    app.get(`/fan/${platform}/connect`, (c) => {
+      const o = officialLogins[platform];
+      if (!o) return fanError(c, `Connexion ${name} pas encore disponible.`);
+      if (!fanOf(c)) return fanError(c, `Connecte-toi d’abord (bouton du site ou /site sur Discord), puis reclique sur « Connecter mon ${name} ».`);
+      const state = randomBytes(16).toString('base64url');
+      setCookie(c, `${platform}_state`, state, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/fan', maxAge: 600 });
+      return c.redirect(o.authorize(state));
+    });
+    app.get(`/fan/${platform}/callback`, async (c) => {
+      const o = officialLogins[platform];
+      const state = getCookie(c, `${platform}_state`);
+      deleteCookie(c, `${platform}_state`, { path: '/fan' });
+      const code = c.req.query('code');
+      const fan = fanOf(c);
+      if (!o || !code || !state || c.req.query('state') !== state) return fanError(c, `Connexion ${name} annulée ou expirée, réessaie.`);
+      if (!fan) return fanError(c, `Session expirée : reconnecte-toi puis reclique sur « Connecter mon ${name} ».`);
+      try {
+        const { tokens, username, store } = await o.finish(code);
+        store.save(fans.connectOfficial(fan, platform, username), tokens);
+        return c.redirect(`/fan?connected=${platform}#clipper`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        // Compte Instagram perso : l'API ne marche qu'avec un compte pro / créateur
+        return fanError(c, platform === 'instagram' && /business|professional|creator|pro\b/i.test(message) ? 'Passe ton Instagram en compte créateur (Paramètres → Type de compte → Passer à un compte professionnel → Créateur, gratuit), puis réessaie.' : message);
+      }
+    });
+  }
 
   // Pages légales (exigées par TikTok pour valider l'app)
   app.get('/legal/privacy', (c) => c.html(legalPage('Politique de confidentialité', PRIVACY_HTML)));

@@ -15,14 +15,14 @@ export const PRIVACY_HTML = `
 <h2>Données collectées</h2>
 <p>Ton identifiant et ton pseudo Discord (connexion), les pseudos de tes comptes TikTok, YouTube et Instagram que tu ajoutes,
 l'e-mail ou le pseudo de jeu que tu donnes pour recevoir tes récompenses.</p>
-<p>Si tu connectes ton TikTok : ton pseudo, ton nom affiché, ton nombre d'abonnés, et la liste de tes vidéos publiques
+<p>Si tu connectes ton TikTok ou ton Instagram : ton pseudo, ton nom affiché, ton nombre d'abonnés, et la liste de tes vidéos publiques
 (description, date, nombre de vues, de likes et de commentaires). Rien n'est publié sur ton compte.</p>
 <h2>Utilisation</h2>
 <p>Ces données servent uniquement à compter les vues de tes clips, calculer tes coins, afficher le classement et livrer tes récompenses.
 Elles ne sont ni vendues ni partagées, sauf l'e-mail ou le pseudo de jeu transmis au créateur pour livrer ta récompense.</p>
 <h2>Durée et suppression</h2>
-<p>Les données sont gardées tant que tu participes au programme. Tu peux déconnecter ton TikTok à tout moment dans les réglages
-de TikTok (Gérer les applications), et demander la suppression de toutes tes données au staff sur le serveur Discord.</p>`;
+<p>Les données sont gardées tant que tu participes au programme. Tu peux déconnecter ton TikTok ou ton Instagram à tout moment dans leurs réglages
+(applications connectées), et demander la suppression de toutes tes données au staff sur le serveur Discord.</p>`;
 
 export const TERMS_HTML = `
 <p>En participant au programme de clipping, tu acceptes ces conditions.</p>

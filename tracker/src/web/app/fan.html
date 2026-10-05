@@ -354,14 +354,15 @@ async function api(path, opts = {}) {
 async function loadMe() { try { ME = await api('/api/fan/me'); } catch { ME = null; } }
 
 // ---------- Effets ----------
-// « Connecter mon TikTok » (API officielle gratuite) : affiché si l'app TikTok est configurée
-const tiktokBlock = () => {
-  if (!ME?.tiktokLogin) return '';
-  const tt = ME.accounts.find((a) => a.platform === 'tiktok' && a.connected);
-  return tt
-    ? `<p style="margin-top:12px">✅ <b>TikTok connecté</b> (@${esc(tt.handle)}) : tes vues TikTok sont comptées automatiquement.</p>`
-    : `<p style="margin-top:12px"><b>📱 Connecte ton TikTok</b> (1 clic, on ne publie rien) pour que tes vues TikTok soient comptées.</p><a class="btn yellow big" href="/fan/tiktok/connect">Connecter mon TikTok</a>`;
-};
+// « Connecter mon TikTok / Instagram » (API officielles gratuites) : prouve que le compte est au fan et compte ses vues
+const OFFICIAL_HELP = { instagram: 'Ton Insta doit être en <b>compte créateur</b> (Paramètres → Type de compte → Passer à un compte professionnel → Créateur, gratuit).' };
+const tiktokBlock = () => (ME?.officialLogin ?? []).map((p) => {
+  const name = p === 'tiktok' ? 'TikTok' : 'Instagram';
+  const acc = ME.accounts.find((a) => a.platform === p && a.connected);
+  return acc
+    ? `<p style="margin-top:12px">✅ <b>${name} connecté</b> (@${esc(acc.handle)}) : tes vues ${name} sont comptées automatiquement.</p>`
+    : `<p style="margin-top:12px"><b>📱 Connecte ton ${name}</b> (1 clic, on ne publie rien) : ça prouve qu'il est à toi et c'est ce qui compte tes vues ${name}.${OFFICIAL_HELP[p] ? `<br><small>${OFFICIAL_HELP[p]}</small>` : ''}</p><a class="btn yellow big" href="/fan/${p}/connect">Connecter mon ${name}</a>`;
+}).join('');
 function toast(msg, kind = '') {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
   const t = document.createElement('div');
@@ -656,7 +657,8 @@ async function init() {
   route();
   const error = new URLSearchParams(location.search).get('error');
   if (error) { toast(error, 'err'); history.replaceState(null, '', location.pathname + location.hash); }
-  if (new URLSearchParams(location.search).get('tiktok') === 'ok') { toast('TikTok connecté ✅ Tes vues TikTok sont maintenant comptées.', 'ok'); history.replaceState(null, '', location.pathname + location.hash); }
+  const connected = new URLSearchParams(location.search).get('connected');
+  if (connected) { toast(`${connected === 'tiktok' ? 'TikTok' : 'Instagram'} connecté ✅ Tes vues sont maintenant comptées.`, 'ok'); history.replaceState(null, '', location.pathname + location.hash); }
   celebrate();
 }
 init().catch((err) => { $('#app').innerHTML = `<div class="card empty" style="margin-top:40px"><div class="e">😵</div>${esc(err.message)}</div>`; });

@@ -65,6 +65,14 @@ const schema = z.object({
   TIKTOK_CLIENT_SECRET: optionalString,
   /** Comptes TikTok pas encore connectés : relus via Apify (payant) tant que c'est « 1 », ignorés sinon. */
   TIKTOK_APIFY_FALLBACK: z.enum(['0', '1']).default('1'),
+  /**
+   * API Instagram officielle (gratuite) : app Meta (developers.facebook.com), produit « Instagram » →
+   * « API setup with Instagram login », redirection <PUBLIC_URL>/fan/instagram/callback.
+   */
+  INSTAGRAM_APP_ID: optionalString,
+  INSTAGRAM_APP_SECRET: optionalString,
+  /** Comptes Instagram pas encore connectés : relus via Apify (payant) tant que c'est « 1 », ignorés sinon. */
+  INSTAGRAM_APIFY_FALLBACK: z.enum(['0', '1']).default('1'),
 
   COLLECT_INTERVAL_MINUTES: z.coerce.number().positive().default(60),
   RELANCE_CHECK_INTERVAL_MINUTES: z.coerce.number().positive().default(180),

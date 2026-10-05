@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { openDatabase } from './db/index.js';
 import { Repo } from './db/repo.js';
 import { collectAll, fanAccountDue, paidAccount, parisMidnight } from './jobs/collect.js';
+import { InstagramOfficialFetcher, InstagramTokenStore } from './platforms/instagramOfficial.js';
 import { TikTokOfficialFetcher, TikTokTokenStore } from './platforms/tiktokOfficial.js';
 import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
@@ -41,6 +42,15 @@ if (tiktokCreds && config.FETCHER_MODE === 'live') {
   fetchers.tiktok = new TikTokOfficialFetcher(tiktokStore, tiktokCreds, config.VIDEOS_PER_ACCOUNT, fetchers.tiktok);
   fanFetchers.tiktok = new TikTokOfficialFetcher(tiktokStore, tiktokCreds, 40, config.TIKTOK_APIFY_FALLBACK === '1' ? fanFetchers.tiktok : undefined);
 }
+// Instagram connecté par le clippeur (API officielle gratuite, compte pro / créateur) ; les autres restent sur Apify
+const instagramCreds = config.INSTAGRAM_APP_ID && config.INSTAGRAM_APP_SECRET ? { appId: config.INSTAGRAM_APP_ID, appSecret: config.INSTAGRAM_APP_SECRET } : undefined;
+const instagramStore = new InstagramTokenStore(db);
+if (instagramCreds && config.FETCHER_MODE === 'live') {
+  fetchers.instagram = new InstagramOfficialFetcher(instagramStore, config.VIDEOS_PER_ACCOUNT, fetchers.instagram);
+  fanFetchers.instagram = new InstagramOfficialFetcher(instagramStore, 15, config.INSTAGRAM_APIFY_FALLBACK === '1' ? fanFetchers.instagram : undefined);
+}
+/** Comptes connectés officiellement (TikTok + Instagram) : relus gratuitement. */
+const connectedAccounts = () => new Set([...tiktokStore.connected(), ...instagramStore.connected()]);
 
 const agency = new AgencyService(repo, {
   inactivityDays: config.INACTIVITY_DAYS,
@@ -52,7 +62,8 @@ const creator = creatorConfig(config.CREATOR);
 const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl, undefined, creator);
 // Lecture des bios à la demande (vérification des comptes par code)
 fans.fetchers = fetchers;
-if (tiktokCreds) fans.tiktok = { connected: () => tiktokStore.connected() };
+const officialPlatforms = [...(tiktokCreds ? (['tiktok'] as const) : []), ...(instagramCreds ? (['instagram'] as const) : [])];
+if (officialPlatforms.length) fans.officialLogin = { platforms: officialPlatforms, connected: connectedAccounts };
 fans.bootstrap();
 log.info(`programme fans : ${creator.programName} (${creator.id})`);
 const botHolder: { current?: Bot['bridge'] } = {};
@@ -70,7 +81,7 @@ const refreshFans = () => {
   fanRefresh = { running: true, lastAt: Date.now() };
   const startedAt = Date.now();
   const last = repo.lastPublishedByAccount();
-  const free = tiktokStore.connected();
+  const free = connectedAccounts();
   // Relevé manuel : seulement les comptes gratuits (YouTube, TikTok connecté) et ceux jamais relus, pour ne rien payer en plus
   void collectAll(repo, fanFetchers, Date.now, (account) => account.clientId !== fanClient || (account.lastCheckedAt !== null && (paidAccount(account, free) || account.lastCheckedAt >= startedAt - 10 * 60_000)))
     .then((r) => log.info(`relevé manuel des fans : ${r.ok} ok, ${r.failed} échecs`))
@@ -83,6 +94,7 @@ const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
     tiktokOAuth: tiktokCreds ? { creds: tiktokCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/tiktok/callback`, store: tiktokStore } : undefined,
+    instagramOAuth: instagramCreds ? { creds: instagramCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/instagram/callback`, store: instagramStore } : undefined,
     refreshFans,
     marsSites: (config.MARS_SITES ?? '')
       .split(',')
@@ -180,7 +192,7 @@ const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('n
 // Comptes des fans : 1 collecte par nuit, juste après minuit (heure de Paris) ; les clippers de l'agence au rythme normal
 const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, async () => {
   const fanClient = fans.settings().clientId;
-  const connected = tiktokStore.connected();
+  const connected = connectedAccounts();
   // Agence : YouTube et TikTok connecté au rythme normal, comptes Apify (payants) 1 fois par jour
   const agence = await collectAll(repo, fetchers, Date.now, (account, now) =>
     (fanClient !== null && account.clientId === fanClient) || (paidAccount(account, connected) && account.lastCheckedAt !== null && now - account.lastCheckedAt < 23 * 3_600_000),

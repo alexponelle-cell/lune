@@ -786,7 +786,7 @@ describe('TikTok connecté (API officielle gratuite)', () => {
     const client = repo.upsertClient({ name: 'SQUIDUU', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
     fans.saveSettings({ clientId: client.id, accountReview: true });
     const store = new TikTokTokenStore(repo.db);
-    fans.tiktok = { connected: () => store.connected() };
+    fans.officialLogin = { platforms: ['tiktok'], connected: () => store.connected() };
     const fan = fans.ensureFan('d1', 'Paul');
     fans.setAccounts(fan, { tiktok: '@ancien.compte' });
 
@@ -796,8 +796,10 @@ describe('TikTok connecté (API officielle gratuite)', () => {
       tiktokOAuth: { creds: { clientKey: 'ck', clientSecret: 'cs' }, redirectUri: 'https://site.test/fan/tiktok/callback', store, fetchFn: f } });
 
     // Lien perso depuis Discord → connexion → page d'autorisation TikTok
-    const login = await app.request(new URL(fans.tiktokConnectUrl(fan.id)).pathname + new URL(fans.tiktokConnectUrl(fan.id)).search);
-    expect(login.headers.get('location')).toBe('/fan/tiktok/connect');
+    expect(fans.toConnect(fan.id)).toEqual(['tiktok']);
+    const link = new URL(fans.connectUrl(fan.id));
+    const login = await app.request(link.pathname + link.search);
+    expect(login.headers.get('location')).toBe('/fan#clipper');
     const cookie = login.headers.get('set-cookie')!.split(';')[0]!;
     const go = await app.request('/fan/tiktok/connect', { headers: { cookie } });
     const auth = new URL(go.headers.get('location')!);
@@ -809,7 +811,8 @@ describe('TikTok connecté (API officielle gratuite)', () => {
     // Mauvais state → refusé
     expect((await app.request(`/fan/tiktok/callback?code=c&state=x`, { headers: { cookie: `${cookie}; ${stateCookie}` } })).headers.get('location')).toContain('error=');
     const back = await app.request(`/fan/tiktok/callback?code=c&state=${state}`, { headers: { cookie: `${cookie}; ${stateCookie}` } });
-    expect(back.headers.get('location')).toBe('/fan?tiktok=ok');
+    expect(back.headers.get('location')).toBe('/fan?connected=tiktok#clipper');
+    expect(fans.toConnect(fan.id)).toEqual([]);
 
     const [tt] = repo.listAccountsForClipper(fan.id).filter((a) => a.platform === 'tiktok' && a.active);
     expect(tt).toMatchObject({ handle: 'paul.sqd' });
@@ -838,5 +841,73 @@ describe('TikTok connecté (API officielle gratuite)', () => {
     // Pages légales publiques (exigées par TikTok)
     expect((await app.request('/legal/privacy')).status).toBe(200);
     expect((await app.request('/legal/terms')).status).toBe(200);
+  });
+});
+
+describe('Instagram connecté (API officielle gratuite)', () => {
+  it('connexion → compte vérifié, reels lus avec leurs vues (photos ignorées), jeton prolongé, compte perso = message clair', async () => {
+    const { InstagramOfficialFetcher, InstagramTokenStore } = await import('../src/platforms/instagramOfficial.js');
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/');
+    const client = repo.upsertClient({ name: 'Loann', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
+    fans.saveSettings({ clientId: client.id, accountReview: true });
+    const store = new InstagramTokenStore(repo.db);
+    fans.officialLogin = { platforms: ['instagram'], connected: () => store.connected() };
+    const fan = fans.ensureFan('d2', 'Zoé');
+    fans.setAccounts(fan, { instagram: '@zoe.clips' });
+
+    let personal = false;
+    const log: string[] = [];
+    const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+    const f = (async (input: string | URL | Request) => {
+      const url = String(input);
+      log.push(url.split('?')[0]!);
+      if (url.startsWith('https://api.instagram.com/oauth/access_token')) return ok({ data: [{ access_token: 'short', user_id: 77, permissions: 'instagram_business_basic' }] });
+      if (url.startsWith('https://graph.instagram.com/access_token')) return ok({ access_token: 'long1', expires_in: 5_184_000 });
+      if (url.startsWith('https://graph.instagram.com/refresh_access_token')) return ok({ access_token: 'long2', expires_in: 5_184_000 });
+      if (url.includes('/me?')) return personal ? new Response(JSON.stringify({ error: { message: 'Not a business or creator account' } }), { status: 400 }) : ok({ user_id: '77', username: 'zoe.clips', followers_count: 900 });
+      if (url.includes('/me/media')) return ok({ data: [
+        { id: 'r1', media_type: 'VIDEO', media_product_type: 'REELS', caption: 'clip #loann', permalink: 'https://instagram.test/r1', timestamp: '2026-10-05T10:00:00+0000', like_count: 12 },
+        { id: 'p1', media_type: 'IMAGE', caption: 'photo' },
+      ] });
+      if (url.includes('/r1/insights')) return url.includes('metric=views') ? ok({ data: [{ name: 'views', values: [{ value: 8200 }] }] }) : ok({ data: [] });
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+
+    const app = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, password: 'secret', bot: {},
+      instagramOAuth: { creds: { appId: 'app', appSecret: 'sec' }, redirectUri: 'https://site.test/fan/instagram/callback', store, fetchFn: f } });
+    const link = new URL(fans.connectUrl(fan.id));
+    const cookie = (await app.request(link.pathname + link.search)).headers.get('set-cookie')!.split(';')[0]!;
+    const connect = async () => {
+      const go = await app.request('/fan/instagram/connect', { headers: { cookie } });
+      const auth = new URL(go.headers.get('location')!);
+      expect(auth.origin + auth.pathname).toBe('https://www.instagram.com/oauth/authorize');
+      const st = go.headers.get('set-cookie')!.split(';')[0]!;
+      return app.request(`/fan/instagram/callback?code=c&state=${auth.searchParams.get('state')}`, { headers: { cookie: `${cookie}; ${st}` } });
+    };
+
+    // Compte perso : message pour passer en créateur
+    personal = true;
+    expect(decodeURIComponent((await connect()).headers.get('location')!)).toContain('compte créateur');
+    personal = false;
+    expect((await connect()).headers.get('location')).toBe('/fan?connected=instagram#clipper');
+
+    const ig = repo.listAccountsForClipper(fan.id).find((a) => a.platform === 'instagram' && a.active)!;
+    expect(ig.handle).toBe('zoe.clips');
+    expect(ig.verifiedAt).not.toBeNull();
+    expect(store.get(ig.id)).toMatchObject({ openId: '77', accessToken: 'long1' });
+
+    let now = Date.now();
+    const fetcher = new InstagramOfficialFetcher(store, 15, undefined, f, () => now);
+    const got = await fetcher.fetchAccount({ id: ig.id, handle: ig.handle, externalId: null });
+    expect(got.videos).toEqual([expect.objectContaining({ platformVideoId: 'r1', views: 8200, title: 'clip #loann', likes: 12 })]);
+    expect(got.followers).toBe(900);
+
+    // 55 jours plus tard : jeton prolongé tout seul
+    now += 55 * 86_400_000;
+    await fetcher.fetchAccount({ id: ig.id, handle: ig.handle, externalId: null });
+    expect(store.get(ig.id)?.accessToken).toBe('long2');
+    await expect(fetcher.fetchAccount({ id: 999, handle: 'x', externalId: null })).rejects.toThrow('Connecter mon Instagram');
   });
 });
