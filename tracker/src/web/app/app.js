@@ -1533,7 +1533,7 @@ async function pageBoutique() {
   const n = (x) => Number(x).toLocaleString('fr-FR');
   const nep = d.neptune;
   main().innerHTML = `<div class="page-head"><div><h1>Boutique fans</h1><p>Les fans clippent, gagnent des coins avec leurs vues et les échangent contre des objets en jeu</p></div>
-    <div class="actions"><a class="btn" href="/fan" target="_blank" rel="noopener">Voir l'espace fan</a></div></div>
+    <div class="actions"><button class="btn dark" data-fan-refresh>${icon('refresh')} Relever les vues maintenant</button><a class="btn" href="/fan" target="_blank" rel="noopener">Voir l'espace fan</a></div></div>
     <div class="stack">
       <form class="card card-pad stack" id="fan-settings"><div><h2 style="margin:0;font-size:15px">Réglages</h2>
         <p class="faint" style="margin:2px 0 0;font-size:12px">Bot des fans : <b>${d.fansBot ? (nep.state === 'ready' ? `${esc(nep.tag)} connecté ✅${nep.error ? ` · ⚠️ ${esc(nep.error)}` : ''}` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'connexion…') : 'non configuré'}</b> · Neptune : <b>${d.neptuneKey ? 'relié' : 'non relié'}</b> · ${d.emailApi ? 'Livraison e-mail : <b>automatique ✅</b>' : `API du jeu : <b>${!d.gameApi ? 'non configurée' : d.gameCheck?.ok ? `connectée ✅ (${d.gameCheck.remaining}/${d.gameCheck.limit} dons dispo sur ${Math.round(d.gameCheck.windowSeconds / 60)} min)` : `<span style="color:var(--orange)">⚠️ ${esc(d.gameCheck?.error ?? 'injoignable')}</span>`}</b>`} · Messages privés (7 j) : <b>${d.notifications.sent} envoyés</b>${d.notifications.failed ? `, ${d.notifications.failed} impossibles (DM fermés)` : ''}${d.notifications.pending ? `, ${d.notifications.pending} en attente` : ''}</p></div>
@@ -1593,6 +1593,15 @@ async function pageBoutique() {
     </div>`;
   const root = main();
   bindRows(root);
+  $('[data-fan-refresh]', root).addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      const r = await api('/api/fans/refresh', { method: 'POST', body: {} });
+      toast(r.message, !r.started);
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
   $('#fan-settings', root).addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);

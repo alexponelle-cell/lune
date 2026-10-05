@@ -66,6 +66,8 @@ export interface WebDeps {
   robloxApiKey?: string;
   /** Clé partagée avec le bot Neptune (Python). */
   neptuneApiKey?: string;
+  /** Relève tout de suite les comptes des fans (bouton « Relever les vues maintenant » de Mars). */
+  refreshFans?: () => { started: boolean; message: string };
   /** Le bot des fans (BeOne Rewards) envoie lui-même les messages privés : Neptune n'en reçoit plus. */
   fansBotSends?: boolean;
   /** Clé YouTube Data API (photo HD du créateur). */
@@ -926,6 +928,11 @@ export function createApp(deps: WebDeps): Hono {
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
     }
+  });
+  // Relevé manuel des vues des fans (en plus du relevé de minuit)
+  app.post('/api/fans/refresh', (c) => {
+    if (!deps.refreshFans) return c.json({ error: 'Relevé indisponible' }, 400);
+    return c.json(deps.refreshFans());
   });
   // Fan « à vérifier » : validé par le staff (achats débloqués, plus jamais signalé)
   app.post('/api/fans/:id/review', async (c) => {

@@ -48,9 +48,27 @@ const botHolder: { current?: Bot['bridge'] } = {};
 // API du jeu Roblox (serveur du dev du jeu) : catalogue + livraison des achats
 const game = config.GAME_API_URL && config.GAME_API_TOKEN ? new GameClient(config.GAME_API_URL, config.GAME_API_TOKEN) : undefined;
 
+// Relevé manuel des fans depuis Mars (1 fois par heure max : chaque relevé coûte des appels Apify)
+let fanRefresh: { running: boolean; lastAt: number } = { running: false, lastAt: 0 };
+const refreshFans = () => {
+  const fanClient = fans.settings().clientId;
+  if (fanClient === null) return { started: false, message: 'Aucune agence de fans réglée.' };
+  if (fanRefresh.running) return { started: false, message: 'Un relevé est déjà en cours, patiente quelques minutes.' };
+  const wait = fanRefresh.lastAt + 3_600_000 - Date.now();
+  if (wait > 0) return { started: false, message: `Dernier relevé il y a moins d'une heure : réessaie dans ${Math.ceil(wait / 60_000)} min.` };
+  fanRefresh = { running: true, lastAt: Date.now() };
+  const startedAt = Date.now();
+  void collectAll(repo, fetchers, Date.now, (account) => account.clientId !== fanClient || (account.lastCheckedAt ?? 0) >= startedAt - 10 * 60_000)
+    .then((r) => log.info(`relevé manuel des fans : ${r.ok} ok, ${r.failed} échecs`))
+    .catch((err) => log.warn(`relevé manuel des fans a échoué: ${err instanceof Error ? err.message : String(err)}`))
+    .finally(() => (fanRefresh.running = false));
+  return { started: true, message: 'Relevé lancé : les vues et les coins se mettent à jour dans les prochaines minutes.' };
+};
+
 const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
+    refreshFans,
     marsSites: (config.MARS_SITES ?? '')
       .split(',')
       .map((x) => x.split('='))
