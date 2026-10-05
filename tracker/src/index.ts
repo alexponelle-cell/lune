@@ -3,7 +3,7 @@ import { registerCommands } from './bot/register.js';
 import { config } from './config.js';
 import { openDatabase } from './db/index.js';
 import { Repo } from './db/repo.js';
-import { collectAll, parisMidnight } from './jobs/collect.js';
+import { collectAll, fanAccountDue, parisMidnight } from './jobs/collect.js';
 import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
@@ -30,6 +30,8 @@ const db = openDatabase(config.DATABASE_PATH);
 const repo = new Repo(db);
 const analytics = new Analytics(repo);
 const fetchers = createFetchers(config);
+// Fans : seulement les 10 vidéos les plus récentes par compte (Apify facture chaque vidéo lue)
+const fanFetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(10, config.VIDEOS_PER_ACCOUNT) });
 const dashboardUrl = config.PUBLIC_URL ?? `http://localhost:${config.WEB_PORT}`;
 
 const agency = new AgencyService(repo, {
@@ -58,7 +60,8 @@ const refreshFans = () => {
   if (wait > 0) return { started: false, message: `Dernier relevé il y a moins d'une heure : réessaie dans ${Math.ceil(wait / 60_000)} min.` };
   fanRefresh = { running: true, lastAt: Date.now() };
   const startedAt = Date.now();
-  void collectAll(repo, fetchers, Date.now, (account) => account.clientId !== fanClient || (account.lastCheckedAt ?? 0) >= startedAt - 10 * 60_000)
+  const last = repo.lastPublishedByAccount();
+  void collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), startedAt - 10 * 60_000, now))
     .then((r) => log.info(`relevé manuel des fans : ${r.ok} ok, ${r.failed} échecs`))
     .catch((err) => log.warn(`relevé manuel des fans a échoué: ${err instanceof Error ? err.message : String(err)}`))
     .finally(() => (fanRefresh.running = false));
@@ -163,12 +166,14 @@ const stopClipCheck = every('vérif des clips', 10, async () => ({ comptesValid�
 const stopFanNotify = config.FANS_BOT_TOKEN || config.NEPTUNE_API_KEY ? every('notifications fans', 30, async () => ({ préparées: fans.generateNotifications() })) : () => {};
 
 // Comptes des fans : 1 collecte par nuit, juste après minuit (heure de Paris) ; les clippers de l'agence au rythme normal
-const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, () =>
-  collectAll(repo, fetchers, Date.now, (account, now) => {
-    const fanClient = fans.settings().clientId;
-    return fanClient !== null && account.clientId === fanClient && account.lastCheckedAt !== null && account.lastCheckedAt >= parisMidnight(now);
-  }),
-);
+const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, async () => {
+  const fanClient = fans.settings().clientId;
+  const agence = await collectAll(repo, fetchers, Date.now, (account) => fanClient !== null && account.clientId === fanClient);
+  if (fanClient === null) return { agence };
+  const last = repo.lastPublishedByAccount();
+  const fansResult = await collectAll(repo, fanFetchers, Date.now, (account, now) => account.clientId !== fanClient || !fanAccountDue(account, last.get(account.id), parisMidnight(now), now));
+  return { agence, fans: fansResult };
+});
 const notifier = bot?.notifier;
 const stopRelance = notifier
   ? every('relances', config.RELANCE_CHECK_INTERVAL_MINUTES, async () => ({

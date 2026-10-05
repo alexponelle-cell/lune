@@ -263,6 +263,12 @@ export class Repo {
     this.db.prepare('UPDATE accounts SET active = 0 WHERE id = ?').run(id);
   }
 
+  /** Date de publication de la vidéo la plus récente relevée sur chaque compte (null : aucune vidéo). */
+  lastPublishedByAccount(): Map<number, number | null> {
+    const rows = this.db.prepare('SELECT a.id, MAX(COALESCE(v.published_at, v.first_seen_at)) AS last FROM accounts a LEFT JOIN videos v ON v.account_id = a.id WHERE a.active = 1 GROUP BY a.id').all() as Array<{ id: number; last: number | null }>;
+    return new Map(rows.map((r) => [r.id, r.last]));
+  }
+
   listActiveAccounts(): Account[] {
     return this.db
       .prepare('SELECT * FROM accounts WHERE active = 1 ORDER BY last_checked_at IS NOT NULL, last_checked_at')

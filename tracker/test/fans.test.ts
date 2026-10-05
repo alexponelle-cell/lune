@@ -735,3 +735,21 @@ describe('relevé des fans à minuit (heure de Paris)', () => {
     expect(new Date(parisMidnight(Date.parse('2026-12-05T22:59:00Z'))).toISOString()).toBe('2026-12-04T23:00:00.000Z');
   });
 });
+
+describe('économie Apify : rythme de relevé des comptes de fans', () => {
+  it('jamais relu → tout de suite ; vide → 1 fois/semaine ; inactif 14 j → tous les 3 jours ; YouTube chaque nuit', async () => {
+    const { fanAccountDue } = await import('../src/jobs/collect.js');
+    const D = 86_400_000;
+    const now = Date.parse('2026-10-10T01:00:00Z');
+    const since = now - 2 * 3_600_000; // minuit
+    const tt = (checkedDaysAgo: number | null) => ({ platform: 'tiktok', lastCheckedAt: checkedDaysAgo === null ? null : now - checkedDaysAgo * D });
+    expect(fanAccountDue(tt(null), null, since, now)).toBe(true);
+    expect(fanAccountDue(tt(0.01), now - D, since, now)).toBe(false); // déjà relu cette nuit
+    expect(fanAccountDue(tt(1), now - D, since, now)).toBe(true); // actif
+    expect(fanAccountDue(tt(1), null, since, now)).toBe(false); // vide, relu hier
+    expect(fanAccountDue(tt(7), null, since, now)).toBe(true); // vide, relu il y a 7 jours
+    expect(fanAccountDue(tt(1), now - 20 * D, since, now)).toBe(false); // inactif
+    expect(fanAccountDue(tt(3), now - 20 * D, since, now)).toBe(true);
+    expect(fanAccountDue({ platform: 'youtube', lastCheckedAt: now - D }, null, since, now)).toBe(true); // gratuit
+  });
+});
