@@ -406,4 +406,32 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
     updated_at         INTEGER NOT NULL
   );
   `,
+
+  // v17 : supprimer un clippeur (ou son compte) supprime aussi ses jetons TikTok / Instagram
+  `
+  CREATE TABLE tiktok_tokens_new (
+    account_id         INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    open_id            TEXT NOT NULL,
+    access_token       TEXT NOT NULL,
+    refresh_token      TEXT NOT NULL,
+    expires_at         INTEGER NOT NULL,
+    refresh_expires_at INTEGER NOT NULL,
+    updated_at         INTEGER NOT NULL
+  );
+  INSERT INTO tiktok_tokens_new SELECT * FROM tiktok_tokens;
+  DROP TABLE tiktok_tokens;
+  ALTER TABLE tiktok_tokens_new RENAME TO tiktok_tokens;
+  CREATE TABLE instagram_tokens_new (
+    account_id         INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    open_id            TEXT NOT NULL,
+    access_token       TEXT NOT NULL,
+    refresh_token      TEXT NOT NULL,
+    expires_at         INTEGER NOT NULL,
+    refresh_expires_at INTEGER NOT NULL,
+    updated_at         INTEGER NOT NULL
+  );
+  INSERT INTO instagram_tokens_new SELECT * FROM instagram_tokens;
+  DROP TABLE instagram_tokens;
+  ALTER TABLE instagram_tokens_new RENAME TO instagram_tokens;
+  `,
 ];

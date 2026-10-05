@@ -860,6 +860,9 @@ describe('TikTok connecté (API officielle gratuite)', () => {
 
     // Compte jamais connecté : Apify en secours, ou erreur claire sans secours
     await expect(fetcher.fetchAccount({ id: 999, handle: 'x', externalId: null })).rejects.toThrow('Apify ne doit pas');
+    // Supprimer le clippeur dans Management supprime aussi ses jetons
+    repo.deleteClipper(fan.id);
+    expect(store.get(tt!.id)).toBeUndefined();
     await expect(new TikTokOfficialFetcher(store, { clientKey: 'ck', clientSecret: 'cs' }, 40, undefined, f).fetchAccount({ id: 999, handle: 'x', externalId: null })).rejects.toThrow('Connecter mon TikTok');
 
     // Fichier de vérification du site (TikTok), public
