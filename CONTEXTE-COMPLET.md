@@ -117,7 +117,7 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
   - `npm start` ;
   - `npm test` ;
   - `npm run register-commands`.
-- **Vérifier avant chaque push** : `cd tracker && npx tsc --noEmit && npx vitest run` (**90 tests**, 7 fichiers dans `test/`).
+- **Vérifier avant chaque push** : `cd tracker && npx tsc --noEmit && npx vitest run` (94 tests, 8 fichiers dans `test/`).
 
 ### Dossiers
 
@@ -409,7 +409,7 @@ Commun aux deux :
 2. **Validation TikTok** à surveiller. Ensuite : clés Production, Redirect URIs, coupure d'Apify.
 3. **Maquette Nighting** : attendre son prompt et ses captures.
 4. **Josplay** : définir la récompense et la rémunération des clippeurs. Remplir la boutique de la maquette.
-5. **IA « clipper »** (FAQ gratuite par défaut) : récupérer les contenus de Lucas (tutos, conférences, ateliers).
+5. **IA « clipper »** : la FAQ auto gratuite du salon ❓│aide est faite (`domain/faq.ts`). Prochaine étape : y ajouter les contenus de Lucas (tutos, conférences, ateliers).
 6. Améliorer le système avec la data de Lucas.
 7. Loann : test d'inscription complet.
 8. Idée en attente : voir qui n'est pas en ligne sur Discord, dans tous les salons

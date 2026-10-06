@@ -5,6 +5,7 @@ import type { FetcherRegistry } from '../platforms/types.js';
 import { citesCreator, clipKeywords } from './clipCheck.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
+import { type CoinsState, type FaqInfo, fanAccountError } from '../domain/faq.js';
 import { beone } from '../creators/beone.js';
 import type { CreatorConfig } from '../creators/types.js';
 
@@ -426,6 +427,45 @@ export class FanService {
       ...this.balance(clipper.id, now),
       items: this.fans.items({ activeOnly: true }),
       orders: this.fans.orders({ clipperId: clipper.id, limit: 50 }),
+    };
+  }
+
+  /** Infos du programme pour la FAQ automatique du salon ❓│aide. */
+  faqInfo(siteUrl: string): FaqInfo {
+    const s = this.settings();
+    const shop = this.fans.items({ activeOnly: true });
+    const main = (this.creator.reward && shop.find((i) => i.ref === this.creator.reward!.ref)) ?? shop[0];
+    return {
+      creatorName: this.creator.creatorName,
+      tag: `#${this.clipKeywords()[0] ?? 'createur'}`,
+      pointsPer1000: s.pointsPer1000,
+      reward: main ? { name: main.name, price: main.price } : null,
+      siteUrl,
+      officialLogin: this.officialLogin?.platforms ?? [],
+    };
+  }
+
+  /** « Pourquoi j'ai 0 coins ? » : état des comptes et des clips du fan. */
+  coinsState(clipper: Clipper, now = Date.now()): CoinsState {
+    const ruleSince = this.clipRuleSince();
+    const connected = this.officialLogin?.connected() ?? new Set<number>();
+    const clips = this.fans.clips(clipper.id, 200, ruleSince);
+    const b = this.balance(clipper.id, now);
+    return {
+      accounts: this.repo.listAccountsForClipper(clipper.id).filter((a) => a.active).map((a) => ({
+        platform: a.platform,
+        handle: a.handle,
+        verified: a.verifiedAt !== null || connected.has(a.id),
+        checked: a.lastCheckedAt !== null,
+        error: a.lastError ? fanAccountError(a.lastError) : null,
+      })),
+      clips: clips.length,
+      counted: clips.filter((c) => c.counted).length,
+      refusedTag: this.settings().clipRule && ruleSince ? this.repo.refusedClipCount(clipper.id, ruleSince) : 0,
+      balance: b.balance,
+      views: b.views,
+      tag: `#${this.clipKeywords()[0] ?? 'createur'}`,
+      pointsPer1000: this.settings().pointsPer1000,
     };
   }
 
