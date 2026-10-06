@@ -8,10 +8,10 @@
 <link rel="icon" href="/fan/assets/creator.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=__FONTQ__:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=__FONTQ__&display=swap" rel="stylesheet">
 <style>
   /* Gabarit « sober » : couleurs, police et textes viennent de la config du créateur (injectées par le serveur). */
-  :root { /*__VARS__*/ --font: '__FONT__'; --r: 16px; --r-sm: 12px; --r-lg: 24px; --green: #22C55E; --violet: #A855F7; }
+  :root { --font: '__FONT__'; --r: 16px; --r-sm: 12px; --r-lg: 24px; --green: #22C55E; --violet: #A855F7; /*__VARS__*/ }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 500 16px/1.6 var(--font), system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
@@ -91,7 +91,7 @@
   .cloud { position: relative; height: 300px; max-width: 760px; margin: 0 auto; }
   .cloud .chip { font-size: 18px; }
   .cloud .chip.big { font-size: 26px; padding: 10px 22px; }
-  .spark { background: linear-gradient(135deg, #C026D3, var(--violet)); color: #fff; padding: 12px 22px; border-radius: 14px; font-weight: 800; font-size: clamp(17px, 2.4vw, 22px); text-align: center; box-shadow: 0 0 40px rgba(192,38,211,.45); position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); white-space: nowrap; z-index: 2; }
+  .spark { background: linear-gradient(135deg, var(--spark1, #C026D3), var(--violet)); color: #fff; padding: 12px 22px; border-radius: 14px; font-weight: 800; font-size: clamp(17px, 2.4vw, 22px); text-align: center; box-shadow: 0 0 40px color-mix(in srgb, var(--spark1, #C026D3) 45%, transparent); position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); white-space: nowrap; z-index: 2; }
   .spark::before, .spark::after { content: '✦'; position: absolute; color: #fff; font-size: 18px; animation: twinkle 1.6s ease-in-out infinite; }
   .spark::before { top: -12px; left: -8px; } .spark::after { bottom: -12px; right: -8px; animation-delay: -.8s; }
   @keyframes twinkle { 50% { opacity: .2; transform: scale(.6) rotate(45deg); } }
@@ -100,9 +100,9 @@
   .tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   .tool { padding: 24px; transition: transform .3s, border-color .3s; }
   .tool:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--text) 25%, var(--line)); }
-  .tool.hl { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet) inset, 0 0 30px rgba(168,85,247,.15); }
+  .tool.hl { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet) inset, 0 0 30px color-mix(in srgb, var(--violet) 15%, transparent); }
   .tool .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); margin-bottom: 18px; }
-  .tool.hl .ic { background: rgba(168,85,247,.16); color: var(--violet); }
+  .tool.hl .ic { background: color-mix(in srgb, var(--violet) 16%, transparent); color: var(--violet); }
   .tool .ic svg { width: 22px; height: 22px; }
   .tool b { display: block; font-weight: 800; font-size: 18px; margin-bottom: 6px; }
   .tool small { color: var(--muted); font-size: 14px; font-weight: 500; }
@@ -366,6 +366,8 @@ function avatar(name, url) {
 
 // ---------- Données ----------
 async function api(path, opts = {}) {
+  // Maquette prospect : données d'exemple, personne de connecté
+  if (window.__DEMO__) { if (path === '/api/fan/public') return window.__DEMO__; throw Object.assign(new Error('Maquette : connexion désactivée'), { status: 401 }); }
   const res = await fetch(path, { method: opts.method ?? 'GET', headers: opts.body ? { 'content-type': 'application/json' } : {}, body: opts.body ? JSON.stringify(opts.body) : undefined });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error ?? `Erreur ${res.status}`), { status: res.status });

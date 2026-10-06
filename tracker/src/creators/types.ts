@@ -20,8 +20,8 @@ export interface CreatorConfig {
   style?: 'sticker';
   /** Visuels livrés avec le code (src/web/app/fan/) : bannière du hero et image de la récompense. */
   images?: { banner?: string; reward?: string };
-  /** accent2 / accent3 : couleurs des dégradés du thème « pop ». */
-  colors: { bg: string; card: string; border: string; text: string; muted: string; accent: string; accentInk: string; accent2?: string; accent3?: string };
+  /** accent2 / accent3 : couleurs des dégradés du thème « pop ». highlight : couleur de mise en avant (violet par défaut). */
+  colors: { bg: string; card: string; border: string; text: string; muted: string; accent: string; accentInk: string; accent2?: string; accent3?: string; highlight?: string };
   /** Police Google Fonts du site (gabarit « sober »). */
   font?: string;
   /** Texte du logo (à côté de la photo), ex. « squiduu. ». */

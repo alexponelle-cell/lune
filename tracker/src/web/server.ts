@@ -16,6 +16,7 @@ import { FanService } from '../services/fans.js';
 import { type InstagramCredentials, type InstagramTokenStore, instagramAuthorizeUrl, instagramExchangeCode, instagramUser } from '../platforms/instagramOfficial.js';
 import { type TikTokCredentials, type TikTokTokenStore, tiktokAuthorizeUrl, tiktokExchangeCode, tiktokUser } from '../platforms/tiktokOfficial.js';
 import { legalPage, PRIVACY_HTML, TERMS_HTML } from './legal.js';
+import { demoPage, soberPage } from './sober.js';
 import type { GameClient } from '../services/game.js';
 import type { RecruitmentService } from '../services/recruitment.js';
 import { status } from '../status.js';
@@ -161,20 +162,7 @@ export function createApp(deps: WebDeps): Hono {
   app.get('/fan', (c) => {
     const cr = fans.creator;
     if (cr.theme === 'playful') return c.html(ASSETS.fan);
-    // Couleurs et titre injectés côté serveur : pas de flash avant le chargement des données
-    const k = cr.colors;
-    const vars = `--bg:${k.bg};--card:${k.card};--line:${k.border};--text:${k.text};--muted:${k.muted};--accent:${k.accent};--accent-ink:${k.accentInk};--accent2:${k.accent2 ?? k.accent};--accent3:${k.accent3 ?? k.accent};`;
-    const e = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
-    const font = (cr.font ?? 'Outfit').replace(/[^A-Za-z0-9 ]/g, '');
-    return c.html(
-      ASSETS.fanSober
-        .replaceAll('__TITLE__', e(fans.settings().programName))
-        .replace('/*__VARS__*/', vars)
-        .replace('__BG__', k.bg)
-        .replace('__FONTQ__', font.replace(/ /g, '+'))
-        .replace('__FONT__', font)
-        .replace('<body>', cr.theme === 'pop' ? `<body class="pop${cr.style === 'sticker' ? ' sticker' : ''}">` : '<body>'),
-    );
+    return c.html(soberPage(ASSETS.fanSober, cr, fans.settings().programName));
   });
   // Visuels de la boutique (avatars, bannière du créateur)
   app.get('/fan/assets/:name', async (c) => {
@@ -311,11 +299,10 @@ export function createApp(deps: WebDeps): Hono {
     app.get(`/${v.file.replace(/^\/+/, '')}`, (c) => c.text(v.content));
   }
 
-  // Maquettes de sites pour les calls prospects (statiques, publiques) : /demo/cubi-game
-  const DEMOS: Record<string, string> = { 'cubi-game': 'cubi.html', croshoot: 'croshoot.html', josplay: 'josplay.html' };
+  // Maquettes pour les calls prospects : le vrai site fans à la charte du prospect, données d'exemple, sans connexion
   app.get('/demo/:slug', (c) => {
-    const file = DEMOS[c.req.param('slug')];
-    return file ? c.html(asset(`demo/${file}`)) : c.notFound();
+    const html = demoPage(ASSETS.fanSober, c.req.param('slug'), (f) => `/demo/assets/${f}`);
+    return html ? c.html(html) : c.notFound();
   });
   app.get('/demo/assets/:name', (c) => {
     const name = c.req.param('name');
