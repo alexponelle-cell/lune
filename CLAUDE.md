@@ -3,6 +3,8 @@
 Ce fichier est chargé automatiquement par chaque session Claude Code sur ce repo. Il résume le projet, la façon
 de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose d'important change.
 
+**Tout le détail (personnes, business, architecture, variables, historique, à faire) :** @CONTEXTE-COMPLET.md
+
 ## Avec qui tu parles
 
 - **Alex** (francophone, non technique, **mineur**) dirige l'agence de clipping **Neptune** avec **Lucas** et un 3ᵉ associé.
