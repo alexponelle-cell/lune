@@ -540,7 +540,7 @@ function pageClip() {
     <div class="head rv" style="margin-top:48px"><h2>Mes <span class="y">clips</span></h2><p>${fmt(ME.clipCount)} clip(s) détecté(s).</p></div>
     <div class="clips">${ME.clips.map((c) => `<a class="card clip rv" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
       <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : ''}<span class="pf">${PLATFORM[c.platform]}</span>${c.coins ? `<span class="gain">+${fmt(c.coins)} coins</span>` : ''}</div>
-      <div class="meta"><b>${esc(c.title || 'Clip')}</b><small>${compact(c.views)} vues</small></div></a>`).join('')
+      <div class="meta"><b>${esc(c.title || 'Clip')}</b><small>${compact(c.views)} vues${c.counted ? '' : ' · ne rapporte pas'}</small></div></a>`).join('')
       || '<div class="card empty" style="grid-column:1/-1">Aucun clip détecté pour l\'instant. Ils apparaissent ici après la prochaine mise à jour des vues.</div>'}</div>
   </section>`;
 }

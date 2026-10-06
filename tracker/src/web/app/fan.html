@@ -559,8 +559,8 @@ function pageClip() {
   <section>
     <div class="head-row reveal"><div><span class="eyebrow">📈 Tes clips</span><h2>Mes clips</h2></div><div class="coin-pill">${coin('coin')}${fmt(ME.clipCount)}<small>CLIPS</small></div></div>
     <div class="clips">${clips.map((c) => `<a class="card clip wiggle reveal" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
-      <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : '🎬'}<span class="pf">${PLATFORM[c.platform]}</span><span class="earn">+${fmt(c.coins)} ${coin('coin')}</span></div>
-      <div class="meta"><b>${esc(c.title || 'Mon clip')}</b><small>👀 ${compact(c.views)} vues</small></div></a>`).join('')
+      <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : '🎬'}<span class="pf">${PLATFORM[c.platform]}</span>${c.counted ? `<span class="earn">+${fmt(c.coins)} ${coin('coin')}</span>` : ''}</div>
+      <div class="meta"><b>${esc(c.title || 'Mon clip')}</b><small>👀 ${compact(c.views)} vues${c.counted ? '' : ' · ne rapporte pas'}</small></div></a>`).join('')
       || '<div class="card empty reveal" style="grid-column:1/-1"><div class="e">📭</div>Pas encore de clip détecté. Tes clips apparaissent ici dès que tes comptes sont suivis.</div>'}</div>
   </section>`;
 }

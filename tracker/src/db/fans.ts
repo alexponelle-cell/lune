@@ -245,16 +245,22 @@ export class FanRepo {
   }
 
   /** Clips détectés sur les comptes du fan, avec les vues gagnées depuis le début du suivi. */
-  clips(clipperId: number, limit = 40): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null }> {
+  /**
+   * Clips du fan (récents d'abord). `counted` : le clip rapporte des coins (mêmes règles que freshClipViews :
+   * compte vérifié, publié après l'ajout du compte, légende qui cite le créateur depuis la règle).
+   */
+  clips(clipperId: number, limit = 40, ruleSince: number | null = null): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null; counted: boolean }> {
     return (
       this.db
         .prepare(
-          `SELECT a.platform, v.url, v.title, v.thumbnail_url, v.views, MAX(v.views - v.baseline_views, 0) AS gained, COALESCE(v.published_at, v.first_seen_at) AS at
+          `SELECT a.platform, v.url, v.title, v.thumbnail_url, v.views, MAX(v.views - v.baseline_views, 0) AS gained, COALESCE(v.published_at, v.first_seen_at) AS at,
+                  (a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND v.published_at >= a.created_at
+                    AND (@since IS NULL OR v.published_at < @since OR v.clip_check = 'ok')) AS counted
            FROM videos v JOIN accounts a ON a.id = v.account_id
-           WHERE a.clipper_id = ? AND a.active = 1 ORDER BY at DESC LIMIT ?`,
+           WHERE a.clipper_id = @clipperId AND a.active = 1 ORDER BY at DESC LIMIT @limit`,
         )
-        .all(clipperId, limit) as Row[]
-    ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at }));
+        .all({ clipperId, limit, since: ruleSince }) as Row[]
+    ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at, counted: !!r.counted }));
   }
 
   /**
