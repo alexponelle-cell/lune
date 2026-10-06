@@ -574,8 +574,8 @@ async function pageAgence() {
           <div class="k-foot"><span>${k.views.clippers} clippers</span>${deltaPill(k.views.deltaPercent)}</div></div>
         <div class="card kpi"><div class="k-label">Posts publiés</div><div class="k-value num">${k.posts.value}</div>
           <div class="k-foot"><span>obj. ${k.posts.objectivePerDay}/j</span>${deltaPill(k.posts.deltaPercent)}</div></div>
-        <div class="card kpi"><div class="k-label">CA généré</div><div class="k-value num">${euro(k.revenue.value)}</div>
-          <div class="k-foot"><span>marge ${euro(k.revenue.margin)}</span></div></div>
+        <div class="card kpi"><div class="k-label">Clippeurs actifs</div><div class="k-value num">${actives}</div>
+          <div class="k-foot"><span>sur ${d.leaderboard.length} · au moins 1 post</span></div></div>
         <div class="card kpi"><div class="k-label">À verser aux clippers</div><div class="k-value num">${euro(k.payout.value)}</div>
           <div class="k-foot"><span>${esc(periodLabel())}</span></div></div>
       </div>
@@ -778,6 +778,19 @@ async function pageClassement() {
   bindRows($('#board', root));
 }
 
+/** Coaching 30 jours : points forts / à travailler, pour préparer les feedbacks (vocal ou écrit). */
+function coachingCard(c) {
+  if (!c) return '';
+  const PL = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+  const clip = (v, label) => (v ? `<div class="alert ${label === 'Meilleur clip' ? 'good' : 'warn'}"><span class="dot"></span><div><b>${label} · ${fmtK(v.views)} vues (${PL[v.platform] ?? v.platform})</b><small>${v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc((v.title || 'voir le clip').slice(0, 90))} ↗</a>` : esc(v.title || '')}</small></div></div>` : '');
+  const mini = (rows, name) => rows.length ? `<div class="faint" style="font-size:12px;margin-top:6px">${rows.map((r) => `${name(r)} : <b>${fmtK(r.avg)}</b> moy. (${r.clips})`).join(' · ')}</div>` : '';
+  return `<div class="card"><div class="card-head"><div><h2>🎯 Coaching · 30 derniers jours</h2><p>${c.clips} clip(s) · médiane ${fmtK(c.median)} vues · équipe ${fmtK(c.teamMedian)}</p></div></div>
+    <div class="alerts" style="max-height:none">${
+      c.points.map((p) => `<div class="alert ${p.level}"><span class="dot"></span><div><b>${p.level === 'good' ? '💪 ' : '🔧 '}${esc(p.title)}</b><small>${esc(p.text)}</small></div></div>`).join('') || '<div class="empty">Pas assez de clips pour analyser.</div>'
+    }${clip(c.best, 'Meilleur clip')}${clip(c.worst, 'Clip le plus faible')}</div>
+    <div style="padding:0 16px 14px">${mini(c.platforms, (r) => PL[r.platform] ?? r.platform)}${mini(c.slots, (r) => r.slot)}</div></div>`;
+}
+
 async function pageClipper(id) {
   loading();
   const d = await api(`/api/clippers/${id}?${qs({}, false)}`);
@@ -843,6 +856,7 @@ async function pageClipper(id) {
             ? d.insights.map((i) => `<div class="alert ${i.level === 'alert' ? '' : i.level}"><span class="dot"></span><div><b>${esc(i.title)}${i.level === 'alert' ? '<span class="tag">ALERT</span>' : ''}</b><small>${esc(i.text)}</small></div></div>`).join('')
             : '<div class="empty">Rien à signaler.</div>'
         }</div></div>
+      ${coachingCard(d.coaching)}
       <div class="card"><div class="card-head"><h2>${icon('shield').replace('<svg', '<svg width="16" style="vertical-align:-3px"')} Discipline & strikes</h2>
         <div class="actions">${d.strikes.length ? `<span class="pill ko">${d.strikes.length} strike(s)</span>` : '<span class="pill ok">Aucun strike</span>'}
         <button class="btn sm" data-add-strike>${icon('plus')} Ajouter un strike</button></div></div>
@@ -1324,7 +1338,7 @@ async function pageParametres() {
   });
   const clientForm = (c = {}) => `<label class="field"><span>Nom</span><input class="input" name="name" required value="${esc(c.name ?? '')}"></label>
     <label class="field"><span>ID du salon COMPTES</span><input class="input num" name="discordChannelId" value="${esc(c.discordChannelId ?? '')}" placeholder="Clic droit sur le salon → Copier l'identifiant"></label>
-    <label class="field"><span>Forfait mensuel (€)</span><input class="input num" type="number" min="0" step="1" name="monthlyFee" value="${c.monthlyFee ?? 0}"><small>Sert au « CA généré » de la Vue Agence</small></label>`;
+    <label class="field"><span>Forfait mensuel (€)</span><input class="input num" type="number" min="0" step="1" name="monthlyFee" value="${c.monthlyFee ?? 0}"><small>Pour ta compta (n'apparaît plus dans la Vue Agence)</small></label>`;
   const payload = (fd) => ({ name: fd.get('name'), discordChannelId: fd.get('discordChannelId') || null, monthlyFee: Number(fd.get('monthlyFee') || 0) });
   $('[data-add-client]', root).addEventListener('click', () =>
     modal('Nouvelle agence', clientForm(), { confirm: 'Créer', onConfirm: async (fd) => { await api('/api/clients', { method: 'POST', body: payload(fd) }); pageParametres(); } }),

@@ -946,3 +946,28 @@ describe('Instagram connecté (API officielle gratuite)', () => {
     await expect(fetcher.fetchAccount({ id: 999, handle: 'x', externalId: null })).rejects.toThrow('Connecter mon Instagram');
   });
 });
+
+describe('coaching des clippeurs (points forts / à travailler)', () => {
+  it('compare à l’équipe, repère la meilleure plateforme, la régularité, les clips refusés et les comptes en erreur', async () => {
+    const { coaching, median } = await import('../src/domain/coaching.js');
+    const now = Date.parse('2026-10-06T20:00:00Z');
+    const H = 3_600_000;
+    const v = (id: number, platform: 'tiktok' | 'youtube' | 'instagram', views: number, hoursAgo: number) => ({
+      id, accountId: 1, clipperId: 1, platform, platformVideoId: String(id), url: `https://x.test/${id}`, title: `clip ${id}`, thumbnailUrl: null, publishedAt: now - hoursAgo * H, views, likes: null, comments: null,
+    });
+    const mine = [v(1, 'tiktok', 5000, 2), v(2, 'tiktok', 4000, 26), v(3, 'youtube', 300, 50), v(4, 'youtube', 200, 74)];
+    const team = [...mine, ...Array.from({ length: 10 }, (_, i) => v(100 + i, 'tiktok', 1000, 10 + i))];
+    expect(median([1, 3, 2])).toBe(2);
+    const c = coaching(mine, team, { postsPerDay: 2, now, refusedClips: 2, tag: '#beone', accountErrors: ['@x (instagram) : introuvable'] });
+    const titles = c.points.map((p) => p.title);
+    expect(titles).toContain('TikTok marche le mieux');
+    expect(titles).toContain('Pas assez régulier');
+    expect(titles).toContain('Clips sans le #tag');
+    expect(titles).toContain('Compte non relevé');
+    expect(titles).toContain('Plateforme pas exploitée'); // pas d'Insta
+    expect(c.points[0]!.level).toBe('warn'); // à travailler d'abord
+    expect(c.best).toMatchObject({ views: 5000 });
+    expect(c.worst).toMatchObject({ views: 200 });
+    expect(coaching([], team, { postsPerDay: 2, now }).points[0]!.title).toBe('Aucun clip sur 30 jours');
+  });
+});

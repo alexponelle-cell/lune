@@ -522,6 +522,13 @@ export class Repo {
       .all(from, to, ...(clipperIds ?? [])) as VideoRow[];
   }
 
+  /** Clips refusés (légende sans le créateur) publiés depuis `from`. */
+  refusedClipCount(clipperId: number, from: number): number {
+    return (this.db
+      .prepare("SELECT COUNT(*) AS n FROM videos v JOIN accounts a ON a.id = v.account_id WHERE a.clipper_id = ? AND a.active = 1 AND v.clip_check = 'refused' AND v.published_at >= ?")
+      .get(clipperId, from) as { n: number }).n;
+  }
+
   /** Meilleures vidéos (vues actuelles) d'une plateforme, publiées dans [from, to[. */
   bestVideos(platform: Platform, from: number, to: number, limit = 10, clipperIds?: readonly number[]): VideoRow[] {
     if (clipperIds && clipperIds.length === 0) return [];

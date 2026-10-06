@@ -7,6 +7,7 @@ import {
   type RewardConfig,
   type RewardScope,
 } from '../domain/remuneration.js';
+import { coaching } from '../domain/coaching.js';
 import { computeScore, type ScoreBreakdown } from '../domain/score.js';
 import { DAY, type Snapshot, viewsGained } from '../domain/stats.js';
 import { dayKey, dayStarts, startOfDay, startOfWeek } from '../domain/time.js';
@@ -340,9 +341,22 @@ export class AgencyService {
       days: range.days,
       score: stats.score,
       insights: this.insights(stats, todayPosts, settings, range),
+      coaching: this.coachingFor(clipper, accounts, now),
       strikes: this.repo.strikes(clipperId),
       summary: { score: allStats.score.total, posts: allStats.posts, views: allStats.views, strikes: allStats.strikes },
     };
+  }
+
+  /** Points forts / à travailler sur 30 jours (comparé aux clippeurs du même client). */
+  private coachingFor(clipper: Clipper, accounts: Account[], now: number) {
+    const from = now - 30 * DAY;
+    const teamIds = clipper.clientId ? this.repo.listClippers({ clientId: clipper.clientId, includeInactive: true }).map((c) => c.id) : undefined;
+    return coaching(this.repo.videosPublished(from, now, [clipper.id]), this.repo.videosPublished(from, now, teamIds), {
+      postsPerDay: this.settings().postsPerDay,
+      now,
+      refusedClips: this.repo.refusedClipCount(clipper.id, from),
+      accountErrors: accounts.filter((a) => a.active && a.lastError).map((a) => `@${a.handle} (${a.platform}) : ${a.lastError}`),
+    });
   }
 
   private insights(s: ClipperStats, todayPosts: number, settings: AgencySettings, range: Range) {
