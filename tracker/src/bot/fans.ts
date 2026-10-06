@@ -18,7 +18,7 @@ import {
 } from 'discord.js';
 import { log } from '../log.js';
 import { coinsDiagnosis, faqAnswer, matchFaq } from '../domain/faq.js';
-import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
+import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
 import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
@@ -259,7 +259,7 @@ export function isHelpChannel(name: string): boolean {
 }
 
 /**
- * Salon ❓│aide : le bot répond tout seul aux questions fréquentes (gratuit, par mots-clés),
+ * Salon ❓│aide et salons privés : le bot répond tout seul aux questions fréquentes (gratuit, par mots-clés),
  * avec le diagnostic du compte pour « pourquoi j'ai 0 coins ». Sinon il se tait et le staff répond.
  */
 export function attachHelpChannel(discord: DiscordClient, fans: FanService, siteUrl: string): void {
@@ -267,7 +267,10 @@ export function attachHelpChannel(discord: DiscordClient, fans: FanService, site
   discord.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !message.inGuild()) return;
     const channel = message.channel;
-    if (!('name' in channel) || !isHelpChannel(channel.name)) return;
+    if (!('name' in channel)) return;
+    // Salon ❓│aide, ou salon privé du clippeur (catégorie 🔒 ESPACES PRIVÉS)
+    const inPrivate = !!channel.parent?.name.startsWith(PRIVATE_CATEGORY);
+    if (!isHelpChannel(channel.name) && !inPrivate) return;
     // Le staff discute librement ; une réponse auto par personne et par minute au plus
     if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) return;
     const intent = matchFaq(message.content);

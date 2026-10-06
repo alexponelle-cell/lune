@@ -56,7 +56,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   et si sa légende cite le créateur (mot-clé, ex. #squiduu). Les petits comptes (< 10 k abonnés, aucune vidéo ≥ 100 k vues)
   sont validés automatiquement ; les gros vont dans « Comptes à vérifier » sur Mars.
 - Coaching des clippeurs (points forts / à travailler) : `src/domain/coaching.ts`.
-- **FAQ auto du salon ❓│aide** (gratuite, par mots-clés) : `src/domain/faq.ts` + `attachHelpChannel` (`bot/fans.ts`). « Pourquoi 0 coins » = diagnostic du compte du fan. Le staff (Gérer les messages) n'est jamais repris.
+- **FAQ auto du salon ❓│aide et des salons privés** (gratuite, par mots-clés) : `src/domain/faq.ts` + `attachHelpChannel` (`bot/fans.ts`). « Pourquoi 0 coins » = diagnostic du compte du fan. Le staff (Gérer les messages) n'est jamais repris.
 - Pages légales : `/legal/privacy`, `/legal/terms` (demandées par TikTok / Meta).
 - Vérifier visuellement une page : Playwright avec Chromium dans `/opt/pw-browsers/chromium` (`NODE_PATH=$(npm root -g)`).
 - Le réseau sortant de l'agent bloque souvent Apify, Railway, croshop.fr, etc. : demander des captures à Alex plutôt que de deviner.
