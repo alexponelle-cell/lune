@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Josplay · Clippeurs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Maquette (call prospect) : bleu identitaire #7BC7EA + blanc, pastel + cartoon + bold, zones de contenu vides */
+  :root { --blue: #7BC7EA; --deep: #2F84AD; --white: #FFFFFF; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--white); color: var(--deep); font: 500 17px/1.5 'Fredoka', system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+  .bold { font-family: 'Fredoka', system-ui, sans-serif; font-weight: 700; letter-spacing: -.01em; }
+  /* Titres blancs au contour bleu (affiche cartoon) */
+  .outline { color: var(--white); -webkit-text-stroke: 6px var(--blue); paint-order: stroke fill; text-shadow: 0 6px 0 var(--blue); }
+  .outline.on-blue { -webkit-text-stroke-color: var(--white); color: var(--blue); text-shadow: 0 6px 0 var(--white); }
+  .box { border: 4px solid var(--blue); border-radius: 28px; background: var(--white); box-shadow: 0 8px 0 var(--blue); }
+  .slot { display: inline-block; height: 12px; border-radius: 6px; background: var(--blue); opacity: .35; vertical-align: middle; }
+  .blue .slot { background: var(--white); opacity: .6; }
+
+  /* Ciel : nuages ronds blancs + étoiles (bannières Josplay) */
+  .sky { background: var(--blue); position: relative; overflow: hidden; }
+  .cloud { position: absolute; background: var(--white); border-radius: 999px; }
+  .cloud::before, .cloud::after { content: ''; position: absolute; background: var(--white); border-radius: 50%; }
+  .cloud::before { width: 55%; aspect-ratio: 1; left: 12%; bottom: 30%; }
+  .cloud::after { width: 40%; aspect-ratio: 1; right: 14%; bottom: 35%; }
+  .star { position: absolute; width: 26px; aspect-ratio: 1; background: var(--white); clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); }
+
+  header { position: sticky; top: 0; z-index: 5; background: var(--white); border-bottom: 4px solid var(--blue); }
+  header .wrap { display: flex; align-items: center; gap: 24px; height: 76px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: 26px; color: var(--blue); }
+  .brand img { width: 46px; height: 46px; border-radius: 50%; border: 4px solid var(--blue); }
+  nav { display: flex; gap: 6px; margin-left: auto; }
+  nav a { padding: 8px 16px; border-radius: 999px; font-weight: 600; }
+  nav a.on { background: var(--blue); color: var(--white); }
+  .coins { display: inline-flex; align-items: center; gap: 8px; border: 4px solid var(--blue); border-radius: 999px; padding: 5px 14px 5px 6px; background: var(--white); }
+  .coin { width: 22px; height: 22px; border-radius: 50%; background: var(--blue); box-shadow: inset 0 0 0 4px var(--white), 0 0 0 3px var(--blue); flex: none; }
+
+  /* Hero */
+  .hero .wrap { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding-top: 80px; padding-bottom: 120px; position: relative; z-index: 1; }
+  .pill { display: inline-block; background: var(--white); color: var(--blue); border-radius: 999px; padding: 8px 18px; font-weight: 700; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
+  h1 { font-size: clamp(72px, 11vw, 140px); line-height: .9; margin: 22px 0 34px; }
+  .btns { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 15px 26px; border-radius: 999px; font: 700 19px/1 'Fredoka', sans-serif; cursor: default; border: 4px solid var(--white); }
+  .btn.solid { background: var(--white); color: var(--blue); box-shadow: 0 6px 0 rgba(255,255,255,.55); }
+  .btn.ghost { color: var(--white); }
+  .btn.b { border-color: var(--blue); background: var(--blue); color: var(--white); box-shadow: 0 5px 0 var(--deep); padding: 11px 18px; font-size: 16px; }
+  .btn.bo { border-color: var(--blue); color: var(--blue); padding: 11px 18px; font-size: 16px; }
+  .mascot { justify-self: center; position: relative; width: min(380px, 80%); aspect-ratio: 1; }
+  .mascot img { width: 100%; border-radius: 50%; border: 8px solid var(--white); box-shadow: 0 14px 0 rgba(255,255,255,.5); }
+  .bubble { position: absolute; top: -6%; right: -10%; background: var(--white); color: var(--blue); border-radius: 26px; padding: 12px 18px; font: 700 26px/1 'Fredoka'; }
+  .bubble::after { content: ''; position: absolute; left: 22%; bottom: -14px; border: 10px solid transparent; border-top: 14px solid var(--white); border-bottom: 0; }
+  .wave { position: absolute; left: 0; right: 0; bottom: -1px; height: 70px; background: radial-gradient(circle at 50px -10px, transparent 60px, var(--white) 61px) 0 0 / 100px 70px repeat-x; }
+
+  section { padding: 88px 0; }
+  .head { display: flex; align-items: center; gap: 18px; margin-bottom: 40px; }
+  .num { width: 58px; height: 58px; border-radius: 50%; background: var(--blue); color: var(--white); display: grid; place-items: center; font: 700 28px/1 'Fredoka'; flex: none; }
+  .blue .num { background: var(--white); color: var(--blue); }
+  h2 { font-size: clamp(40px, 5.5vw, 64px); line-height: 1; }
+
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  .step { padding: 26px 24px 30px; min-height: 220px; display: flex; flex-direction: column; gap: 14px; }
+  .step .n { width: 50px; height: 50px; border-radius: 50%; background: var(--blue); color: var(--white); display: grid; place-items: center; font: 700 24px/1 'Fredoka'; }
+  .step b { font: 700 24px/1.1 'Fredoka'; color: var(--blue); }
+
+  .blue { background: var(--blue); }
+  .blue .box { border-color: var(--white); box-shadow: 0 8px 0 rgba(255,255,255,.55); }
+  .shop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .item { overflow: hidden; }
+  .item .img { aspect-ratio: 4/3; border-bottom: 4px solid var(--blue); background: radial-gradient(circle at 50% 50%, var(--white) 0 34%, transparent 34.5%), var(--blue); opacity: .9; }
+  .item.empty .img { background: repeating-linear-gradient(45deg, rgba(123,199,234,.18) 0 14px, var(--white) 14px 28px); }
+  .item .body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .item .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+  .board { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 14px; }
+  .pod { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 12px; padding: 20px 12px; }
+  .pod .av { width: 60px; height: 60px; border-radius: 50%; border: 4px solid var(--blue); background: var(--white); }
+  .pod .rank { font: 700 42px/1 'Fredoka'; color: var(--blue); }
+  .p1 { height: 290px; background: var(--blue); } .p1 .rank { color: var(--white); } .p1 .av { border-color: var(--white); } .p1 .slot { background: var(--white); opacity: .6; }
+  .p2 { height: 236px; } .p3 { height: 200px; }
+  .list { overflow: hidden; }
+  .li { display: grid; grid-template-columns: 44px 40px 1fr auto; gap: 14px; align-items: center; padding: 14px 20px; border-bottom: 3px solid rgba(123,199,234,.45); }
+  .li:last-child { border-bottom: 0; }
+  .li .r { font: 700 20px/1 'Fredoka'; color: var(--blue); }
+  .li .av { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--blue); }
+
+  .clips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+  .clip { overflow: hidden; }
+  .clip .th { aspect-ratio: 9/16; border-bottom: 4px solid var(--blue); position: relative; }
+  .clip .th::after { content: ''; position: absolute; left: 50%; top: 50%; width: 46px; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: var(--blue); opacity: .35; }
+  .clip .meta { padding: 12px 14px 16px; display: grid; gap: 8px; }
+
+  footer { padding: 34px 0; background: var(--blue); color: var(--white); }
+  footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-weight: 600; }
+  footer .brand { color: var(--white); } footer .brand img { border-color: var(--white); }
+  .tag { position: fixed; bottom: 16px; right: 16px; background: var(--white); color: var(--blue); border: 4px solid var(--blue); border-radius: 999px; font: 700 14px/1 'Fredoka'; text-transform: uppercase; letter-spacing: .08em; padding: 9px 16px; }
+
+  @media (max-width: 860px) {
+    nav { display: none; }
+    .hero .wrap, .board { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    .shop { grid-template-columns: 1fr; }
+    .clips { grid-template-columns: repeat(2, 1fr); }
+    .bubble { right: 0; }
+  }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <a class="brand bold" href="#"><img src="/demo/assets/josplay-pdp.png" alt="">Josplay</a>
+  <nav><a class="on" href="#">Accueil</a><a href="#recompenses">Récompenses</a><a href="#classement">Classement</a><a href="#clips">Mes clips</a></nav>
+  <span class="coins"><span class="coin"></span><span class="slot" style="width:34px"></span></span>
+</div></header>
+
+<div class="hero sky blue">
+  <span class="cloud" style="width:220px;height:70px;left:-40px;top:70px"></span>
+  <span class="cloud" style="width:300px;height:90px;right:-90px;bottom:120px"></span>
+  <span class="cloud" style="width:180px;height:56px;left:-30px;bottom:40px;opacity:.9"></span>
+  <span class="star" style="left:8%;top:62%"></span><span class="star" style="left:46%;top:16%;width:18px"></span><span class="star" style="right:6%;top:58%;width:34px"></span><span class="star" style="right:38%;top:72%;width:16px"></span>
+  <div class="wrap">
+    <div>
+      <span class="pill">Programme clippeurs</span>
+      <h1 class="bold outline on-blue">Josplay</h1>
+      <div class="btns">
+        <span class="btn solid">Se connecter avec Discord</span>
+        <span class="btn ghost">Voir les récompenses</span>
+      </div>
+    </div>
+    <div class="mascot"><img src="/demo/assets/josplay-pdp.png" alt="Josplay"><span class="bubble">!!!</span></div>
+  </div>
+  <div class="wave"></div>
+</div>
+
+<section><div class="wrap">
+  <div class="head"><span class="num">1</span><h2 class="bold outline">Comment ça marche</h2></div>
+  <div class="steps">
+    <div class="step box"><span class="n">1</span><b>Clippe</b><span class="slot" style="width:80%"></span><span class="slot" style="width:55%"></span></div>
+    <div class="step box"><span class="n">2</span><b>Poste avec #josplay</b><span class="slot" style="width:75%"></span><span class="slot" style="width:60%"></span></div>
+    <div class="step box"><span class="n">3</span><b>Relie tes comptes</b><span class="slot" style="width:85%"></span><span class="slot" style="width:45%"></span></div>
+    <div class="step box"><span class="n">4</span><b>Gagne des coins</b><span class="slot" style="width:70%"></span><span class="slot" style="width:50%"></span></div>
+  </div>
+</div></section>
+
+<section id="recompenses" class="blue sky">
+  <span class="cloud" style="width:260px;height:80px;right:-50px;top:30px"></span>
+  <span class="star" style="left:5%;top:12%"></span><span class="star" style="right:20%;bottom:8%;width:20px"></span>
+  <div class="wrap" style="position:relative">
+  <div class="head"><span class="num">2</span><h2 class="bold outline on-blue">Récompenses</h2></div>
+  <div class="shop">
+    <div class="item empty box"><div class="img"></div><div class="body"><span class="slot" style="width:60%;height:18px"></span><div class="row"><span class="coins"><span class="coin"></span><span class="slot" style="width:48px"></span></span><span class="btn b">Échanger</span></div></div></div>
+    <div class="item empty box"><div class="img"></div><div class="body"><span class="slot" style="width:50%;height:18px"></span><div class="row"><span class="coins"><span class="coin"></span><span class="slot" style="width:48px"></span></span><span class="btn bo">Échanger</span></div></div></div>
+    <div class="item empty box"><div class="img"></div><div class="body"><span class="slot" style="width:55%;height:18px"></span><div class="row"><span class="coins"><span class="coin"></span><span class="slot" style="width:48px"></span></span><span class="btn bo">Échanger</span></div></div></div>
+  </div>
+</div></section>
+
+<section id="classement"><div class="wrap">
+  <div class="head"><span class="num">3</span><h2 class="bold outline">Classement</h2></div>
+  <div class="board">
+    <div class="podium">
+      <div class="pod p2 box"><span class="av"></span><span class="slot" style="width:70%"></span><span class="rank">2</span></div>
+      <div class="pod p1 box"><span class="av"></span><span class="slot" style="width:70%"></span><span class="rank">1</span></div>
+      <div class="pod p3 box"><span class="av"></span><span class="slot" style="width:70%"></span><span class="rank">3</span></div>
+    </div>
+    <div class="list box">
+      <div class="li"><span class="r">#4</span><span class="av"></span><span class="slot" style="width:55%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#5</span><span class="av"></span><span class="slot" style="width:45%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#6</span><span class="av"></span><span class="slot" style="width:60%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#7</span><span class="av"></span><span class="slot" style="width:40%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#8</span><span class="av"></span><span class="slot" style="width:50%"></span><span class="slot" style="width:48px"></span></div>
+    </div>
+  </div>
+</div></section>
+
+<section id="clips" class="blue sky">
+  <span class="cloud" style="width:240px;height:74px;left:-60px;top:40px"></span>
+  <span class="star" style="right:8%;top:14%"></span>
+  <div class="wrap" style="position:relative">
+  <div class="head"><span class="num">4</span><h2 class="bold outline on-blue">Mes clips</h2></div>
+  <div class="clips">
+    <div class="clip box"><div class="th"></div><div class="meta"><span class="slot" style="width:80%;background:var(--blue)"></span><span class="slot" style="width:40%;background:var(--blue)"></span></div></div>
+    <div class="clip box"><div class="th"></div><div class="meta"><span class="slot" style="width:70%;background:var(--blue)"></span><span class="slot" style="width:45%;background:var(--blue)"></span></div></div>
+    <div class="clip box"><div class="th"></div><div class="meta"><span class="slot" style="width:85%;background:var(--blue)"></span><span class="slot" style="width:35%;background:var(--blue)"></span></div></div>
+    <div class="clip box"><div class="th"></div><div class="meta"><span class="slot" style="width:65%;background:var(--blue)"></span><span class="slot" style="width:50%;background:var(--blue)"></span></div></div>
+    <div class="clip box"><div class="th"></div><div class="meta"><span class="slot" style="width:75%;background:var(--blue)"></span><span class="slot" style="width:40%;background:var(--blue)"></span></div></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap"><span class="brand bold"><img src="/demo/assets/josplay-pdp.png" alt="">Josplay</span><span>Programme clippeurs · Neptune</span></div></footer>
+<span class="tag">Maquette</span>
+</body>
+</html>

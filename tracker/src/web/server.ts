@@ -312,7 +312,7 @@ export function createApp(deps: WebDeps): Hono {
   }
 
   // Maquettes de sites pour les calls prospects (statiques, publiques) : /demo/cubi-game
-  const DEMOS: Record<string, string> = { 'cubi-game': 'cubi.html', croshoot: 'croshoot.html' };
+  const DEMOS: Record<string, string> = { 'cubi-game': 'cubi.html', croshoot: 'croshoot.html', josplay: 'josplay.html' };
   app.get('/demo/:slug', (c) => {
     const file = DEMOS[c.req.param('slug')];
     return file ? c.html(asset(`demo/${file}`)) : c.notFound();
