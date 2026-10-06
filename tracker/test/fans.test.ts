@@ -873,6 +873,11 @@ describe('TikTok connecté (API officielle gratuite)', () => {
     expect(tiktokSiteVerification(undefined, 'tiktok-developers-site-verification=gtRi1Z')).toEqual({ file: 'tiktokgtRi1Z.txt', content: 'tiktok-developers-site-verification=gtRi1Z' });
     expect(tiktokSiteVerification(undefined, undefined)).toBeUndefined();
 
+    // Maquette prospect publique
+    expect((await app.request('/demo/cubi-game')).status).toBe(200);
+    expect((await app.request('/demo/assets/cubi-pdp.png')).headers.get('content-type')).toBe('image/png');
+    expect((await app.request('/demo/inconnu')).status).toBe(404);
+
     // Pages légales publiques (exigées par TikTok)
     expect((await app.request('/legal/privacy')).status).toBe(200);
     expect((await app.request('/legal/terms')).status).toBe(200);

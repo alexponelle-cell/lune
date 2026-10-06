@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cubi Game · Clippeurs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Maquette (call prospect) : noir & blanc, géométrie Roblox, zones de contenu vides */
+  :root { --ink: #000; --paper: #fff; --line: #000; --soft: #f4f4f4; --mid: #d9d9d9; --muted: #6b6b6b; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--paper); color: var(--ink); font: 16px/1.5 'Space Grotesk', system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* Grille de blocs (sol Roblox) */
+  .grid-bg { background-image: linear-gradient(var(--mid) 1px, transparent 1px), linear-gradient(90deg, var(--mid) 1px, transparent 1px); background-size: 48px 48px; }
+  .grid-bg.dark { background-color: var(--ink); background-image: linear-gradient(#1c1c1c 1px, transparent 1px), linear-gradient(90deg, #1c1c1c 1px, transparent 1px); }
+
+  header { border-bottom: 2px solid var(--line); background: var(--paper); position: sticky; top: 0; z-index: 5; }
+  header .wrap { display: flex; align-items: center; gap: 28px; height: 68px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .brand img { width: 36px; height: 36px; border: 2px solid var(--line); }
+  nav { display: flex; gap: 4px; margin-left: auto; }
+  nav a { padding: 8px 14px; font-weight: 500; font-size: 14px; border: 2px solid transparent; }
+  nav a.on { border-color: var(--line); }
+  .coins { border: 2px solid var(--line); padding: 7px 14px; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .stud { width: 14px; height: 14px; background: var(--ink); display: inline-block; box-shadow: inset 0 0 0 3px var(--paper), 0 0 0 2px var(--ink); }
+
+  /* Hero */
+  .hero { border-bottom: 2px solid var(--line); }
+  .hero .wrap { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; padding-top: 88px; padding-bottom: 88px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(48px, 8vw, 96px); line-height: .95; letter-spacing: -.03em; font-weight: 700; margin: 14px 0 28px; text-transform: uppercase; }
+  .btns { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; font-weight: 600; border: 2px solid var(--line); background: var(--paper); cursor: default; font: inherit; font-weight: 600; }
+  .btn.dark { background: var(--ink); color: var(--paper); }
+  .slot { display: inline-block; height: 12px; background: var(--mid); vertical-align: middle; }
+  .stage { position: relative; aspect-ratio: 1; }
+  .stage .platform { position: absolute; inset: 14% 8% 8% 14%; background: var(--paper); border: 2px solid var(--line); box-shadow: 14px 14px 0 var(--ink); display: grid; place-items: center; }
+  .stage .platform img { width: 62%; image-rendering: auto; border: 2px solid var(--line); }
+  .stage .cube { position: absolute; border: 2px solid var(--line); background: var(--paper); }
+  .stage .c1 { width: 16%; aspect-ratio: 1; top: 0; left: 0; background: var(--ink); }
+  .stage .c2 { width: 9%; aspect-ratio: 1; top: 4%; left: 22%; }
+  .stage .c3 { width: 11%; aspect-ratio: 1; bottom: 0; right: 0; }
+
+  section { padding: 88px 0; border-bottom: 2px solid var(--line); }
+  .head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 36px; }
+  h2 { font-size: clamp(32px, 4.5vw, 48px); line-height: 1; letter-spacing: -.02em; text-transform: uppercase; font-weight: 700; margin-top: 10px; }
+
+  /* Étapes */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid var(--line); }
+  .step { padding: 28px 24px 32px; border-right: 2px solid var(--line); min-height: 200px; display: flex; flex-direction: column; gap: 18px; }
+  .step:last-child { border-right: 0; }
+  .step .n { width: 40px; height: 40px; border: 2px solid var(--line); display: grid; place-items: center; font-weight: 700; }
+  .step:nth-child(2n) .n { background: var(--ink); color: var(--paper); }
+  .step b { font-size: 20px; text-transform: uppercase; letter-spacing: .01em; }
+
+  /* Récompense */
+  .shop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .item { border: 2px solid var(--line); background: var(--paper); }
+  .item .img { aspect-ratio: 4/3; border-bottom: 2px solid var(--line); display: grid; place-items: center; background: var(--soft); }
+  .item .img img { max-width: 72%; max-height: 82%; }
+  .item .body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .item .row { display: flex; justify-content: space-between; align-items: center; }
+  .item.empty .img { background: repeating-linear-gradient(45deg, var(--soft) 0 12px, var(--paper) 12px 24px); }
+
+  /* Classement */
+  .board { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 12px; }
+  .pod { border: 2px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 12px; padding: 18px 12px; }
+  .pod .av { width: 52px; height: 52px; border: 2px solid var(--line); background: var(--soft); }
+  .pod .rank { font-weight: 700; font-size: 28px; }
+  .p1 { height: 280px; background: var(--ink); color: var(--paper); } .p1 .av { border-color: var(--paper); background: #1c1c1c; } .p1 .slot { background: #3a3a3a; }
+  .p2 { height: 230px; } .p3 { height: 200px; }
+  .list { border: 2px solid var(--line); }
+  .li { display: grid; grid-template-columns: 44px 36px 1fr auto; gap: 14px; align-items: center; padding: 14px 18px; border-bottom: 2px solid var(--line); }
+  .li:last-child { border-bottom: 0; }
+  .li .r { font-weight: 700; color: var(--muted); }
+  .li .av { width: 36px; height: 36px; border: 2px solid var(--line); background: var(--soft); }
+
+  /* Clips */
+  .clips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .clip { border: 2px solid var(--line); }
+  .clip .th { aspect-ratio: 9/16; background: var(--soft); border-bottom: 2px solid var(--line); position: relative; }
+  .clip .th::after { content: ''; position: absolute; left: 50%; top: 50%; width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%) rotate(45deg); border: 2px solid var(--mid); }
+  .clip .meta { padding: 12px; display: grid; gap: 8px; }
+
+  footer { padding: 36px 0; background: var(--ink); color: var(--paper); }
+  footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
+  footer .brand img { border-color: var(--paper); }
+  .tag { position: fixed; bottom: 16px; right: 16px; background: var(--ink); color: var(--paper); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding: 8px 12px; font-weight: 600; }
+
+  @media (max-width: 860px) {
+    nav { display: none; }
+    .hero .wrap, .board { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr 1fr; } .step:nth-child(2) { border-right: 0; } .step:nth-child(-n+2) { border-bottom: 2px solid var(--line); }
+    .shop { grid-template-columns: 1fr; }
+    .clips { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <a class="brand" href="#"><img src="/demo/assets/cubi-pdp.png" alt="">Cubi Game</a>
+  <nav><a class="on" href="#">Accueil</a><a href="#recompenses">Récompenses</a><a href="#classement">Classement</a><a href="#clips">Mes clips</a></nav>
+  <span class="coins"><span class="stud"></span><span class="slot" style="width:34px"></span></span>
+</div></header>
+
+<div class="hero grid-bg"><div class="wrap">
+  <div>
+    <span class="eyebrow">Programme clippeurs</span>
+    <h1>Cubi<br>Game</h1>
+    <div class="btns">
+      <span class="btn dark">Se connecter avec Discord</span>
+      <span class="btn">Voir les récompenses</span>
+    </div>
+  </div>
+  <div class="stage">
+    <span class="cube c1"></span><span class="cube c2"></span><span class="cube c3"></span>
+    <div class="platform"><img src="/demo/assets/cubi-pdp.png" alt="Cubi"></div>
+  </div>
+</div></div>
+
+<section><div class="wrap">
+  <div class="head"><div><span class="eyebrow">01</span><h2>Comment ça marche</h2></div></div>
+  <div class="steps">
+    <div class="step"><span class="n">1</span><b>Clippe</b><span class="slot" style="width:80%"></span><span class="slot" style="width:55%"></span></div>
+    <div class="step"><span class="n">2</span><b>Poste</b><span class="slot" style="width:75%"></span><span class="slot" style="width:60%"></span></div>
+    <div class="step"><span class="n">3</span><b>Relie tes comptes</b><span class="slot" style="width:85%"></span><span class="slot" style="width:45%"></span></div>
+    <div class="step"><span class="n">4</span><b>Gagne des coins</b><span class="slot" style="width:70%"></span><span class="slot" style="width:50%"></span></div>
+  </div>
+</div></section>
+
+<section id="recompenses" class="grid-bg"><div class="wrap">
+  <div class="head"><div><span class="eyebrow">02</span><h2>Récompenses</h2></div></div>
+  <div class="shop">
+    <div class="item">
+      <div class="img"><img src="/demo/assets/cubi-academy.png" alt="Roblox Academy"></div>
+      <div class="body"><b>Roblox Academy · 1 mois</b>
+        <div class="row"><span class="coins"><span class="stud"></span><span class="slot" style="width:48px"></span></span><span class="btn dark" style="padding:10px 16px">Échanger</span></div></div>
+    </div>
+    <div class="item empty"><div class="img"></div><div class="body"><span class="slot" style="width:60%;height:16px"></span><div class="row"><span class="coins"><span class="stud"></span><span class="slot" style="width:48px"></span></span><span class="btn" style="padding:10px 16px">Échanger</span></div></div></div>
+    <div class="item empty"><div class="img"></div><div class="body"><span class="slot" style="width:50%;height:16px"></span><div class="row"><span class="coins"><span class="stud"></span><span class="slot" style="width:48px"></span></span><span class="btn" style="padding:10px 16px">Échanger</span></div></div></div>
+  </div>
+</div></section>
+
+<section id="classement"><div class="wrap">
+  <div class="head"><div><span class="eyebrow">03</span><h2>Classement</h2></div></div>
+  <div class="board">
+    <div class="podium">
+      <div class="pod p2"><span class="av"></span><span class="slot" style="width:70%"></span><span class="rank">2</span></div>
+      <div class="pod p1"><span class="av"></span><span class="slot" style="width:70%"></span><span class="rank">1</span></div>
+      <div class="pod p3"><span class="av"></span><span class="slot" style="width:70%"></span><span class="rank">3</span></div>
+    </div>
+    <div class="list">
+      <div class="li"><span class="r">#4</span><span class="av"></span><span class="slot" style="width:55%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#5</span><span class="av"></span><span class="slot" style="width:45%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#6</span><span class="av"></span><span class="slot" style="width:60%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#7</span><span class="av"></span><span class="slot" style="width:40%"></span><span class="slot" style="width:48px"></span></div>
+      <div class="li"><span class="r">#8</span><span class="av"></span><span class="slot" style="width:50%"></span><span class="slot" style="width:48px"></span></div>
+    </div>
+  </div>
+</div></section>
+
+<section id="clips" class="grid-bg"><div class="wrap">
+  <div class="head"><div><span class="eyebrow">04</span><h2>Mes clips</h2></div></div>
+  <div class="clips">
+    <div class="clip"><div class="th"></div><div class="meta"><span class="slot" style="width:80%"></span><span class="slot" style="width:40%"></span></div></div>
+    <div class="clip"><div class="th"></div><div class="meta"><span class="slot" style="width:70%"></span><span class="slot" style="width:45%"></span></div></div>
+    <div class="clip"><div class="th"></div><div class="meta"><span class="slot" style="width:85%"></span><span class="slot" style="width:35%"></span></div></div>
+    <div class="clip"><div class="th"></div><div class="meta"><span class="slot" style="width:65%"></span><span class="slot" style="width:50%"></span></div></div>
+    <div class="clip"><div class="th"></div><div class="meta"><span class="slot" style="width:75%"></span><span class="slot" style="width:40%"></span></div></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap"><span class="brand"><img src="/demo/assets/cubi-pdp.png" alt="">Cubi Game</span><span>Programme clippeurs · Neptune</span></div></footer>
+<span class="tag">Maquette</span>
+</body>
+</html>

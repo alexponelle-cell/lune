@@ -311,6 +311,23 @@ export function createApp(deps: WebDeps): Hono {
     app.get(`/${v.file.replace(/^\/+/, '')}`, (c) => c.text(v.content));
   }
 
+  // Maquettes de sites pour les calls prospects (statiques, publiques) : /demo/cubi-game
+  const DEMOS: Record<string, string> = { 'cubi-game': 'cubi.html' };
+  app.get('/demo/:slug', (c) => {
+    const file = DEMOS[c.req.param('slug')];
+    return file ? c.html(asset(`demo/${file}`)) : c.notFound();
+  });
+  app.get('/demo/assets/:name', (c) => {
+    const name = c.req.param('name');
+    if (!/^[\w-]+\.(png|webp|jpg)$/.test(name)) return c.notFound();
+    try {
+      const data = readFileSync(new URL(`./app/demo/${name}`, import.meta.url));
+      return c.body(data, 200, { 'content-type': name.endsWith('.png') ? 'image/png' : name.endsWith('.webp') ? 'image/webp' : 'image/jpeg', 'cache-control': 'public, max-age=3600' });
+    } catch {
+      return c.notFound();
+    }
+  });
+
   // Pages légales (exigées par TikTok pour valider l'app)
   app.get('/legal/privacy', (c) => c.html(legalPage('Politique de confidentialité', PRIVACY_HTML)));
   app.get('/legal/terms', (c) => c.html(legalPage('Conditions d’utilisation', TERMS_HTML)));
