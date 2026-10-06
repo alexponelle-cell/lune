@@ -268,6 +268,12 @@ export class FanService {
     return clientId ? this.fans.freshClipViews(clientId, 0, this.clipRuleSince()) : new Map();
   }
 
+  /** Vues qui rapportent des coins (règles du programme) gagnées depuis `from`, par clippeur ; null si pas de programme. */
+  countedViewsSince(from: number): { clientId: number; views: Map<number, number> } | null {
+    const clientId = this.settings().clientId;
+    return clientId ? { clientId, views: this.fans.freshClipViews(clientId, from, this.clipRuleSince()) } : null;
+  }
+
   balance(clipperId: number, now = Date.now()): FanBalance {
     const views = this.viewsByClipper(now).get(clipperId) ?? 0;
     const earned = this.points(views) + this.fans.bonus(clipperId);

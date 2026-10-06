@@ -620,7 +620,15 @@ export function createApp(deps: WebDeps): Hono {
 
   app.get('/api/leaderboard', (c) => {
     const range = rangeOf(c);
-    return c.json({ range, rows: agency.ranked(range, clientIdParam(c.req.query('client'))).map((r) => agency.rowJson(r)) });
+    // Programme fans : vues qui rapportent des coins (mêmes règles que le site fans), à côté des vues brutes
+    const counted = fans.countedViewsSince(range.from);
+    return c.json({
+      range,
+      rows: agency.ranked(range, clientIdParam(c.req.query('client'))).map((r) => ({
+        ...agency.rowJson(r),
+        ...(counted && r.clipper.clientId === counted.clientId ? { counted: counted.views.get(r.clipper.id) ?? 0 } : {}),
+      })),
+    });
   });
 
   app.get('/api/clippers/:id', (c) => {

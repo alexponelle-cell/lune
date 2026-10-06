@@ -388,14 +388,19 @@ function leaderboardTable(rows, sort = 'views') {
   const key = { views: (r) => r.views, posts: (r) => r.posts, score: (r) => r.score.total }[sort];
   const sorted = [...rows].sort((a, b) => key(b) - key(a) || b.views - a.views);
   if (!sorted.length) return '<div class="empty">Aucun clipper pour ce filtre.</div>';
-  return `<div class="table-wrap"><table><thead><tr><th>#</th><th>Clipper</th><th class="r">Vues</th><th class="r">Posts</th>
+  // Programme fans : vues qui rapportent des coins (⚠️ = fait des vues mais rien ne compte : #tag manquant, vieux clips…)
+  const fan = sorted.some((r) => r.counted !== undefined);
+  const countedCell = (r) =>
+    !fan ? '' : r.counted === undefined ? '<td class="r faint">—</td>'
+      : `<td class="r num" title="Vues qui rapportent des coins (clip publié après l'inscription, avec le #tag, compte vérifié)">${r.views > 1000 && r.counted < r.views * 0.2 ? '⚠️ ' : ''}<b>${fmtK(r.counted)}</b></td>`;
+  return `<div class="table-wrap"><table><thead><tr><th>#</th><th>Clipper</th><th class="r">Vues</th>${fan ? '<th class="r" title="Vues qui rapportent des coins">Vues qui comptent</th>' : ''}<th class="r">Posts</th>
     <th class="r">Évol.</th><th class="r">À verser</th><th>Score</th><th></th></tr></thead><tbody>
     ${sorted
       .map(
         (r, i) => `<tr class="link" data-clipper="${r.id}">
       <td><span class="rank ${i < 3 ? `r${i + 1}` : ''}">${i + 1}</span></td>
       <td><div class="who">${avatar(r.username)}<div><b>${esc(r.username)}</b>${plats(r.platforms)}</div></div></td>
-      <td class="r num">${fmtK(r.views)}</td><td class="r num faint">${r.posts}</td>
+      <td class="r num">${fmtK(r.views)}</td>${countedCell(r)}<td class="r num faint">${r.posts}</td>
       <td class="r">${deltaPill(r.viewsDeltaPercent)}</td><td class="r num">${euro(r.reward.total)}</td>
       <td><span class="score-cell">${ring(r.score.total)}<b>${r.score.total}</b></span></td>
       <td class="r"><button class="icon-btn" data-share="${r.id}" title="Copier le lien du profil">${icon('share')}</button></td></tr>`,
@@ -678,7 +683,7 @@ async function pageClient() {
         ${rows.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Clippeur</th><th class="r">Vues</th><th class="r">Clips</th><th class="r">Évol.</th></tr></thead><tbody>
           ${rows.map((r, i) => `<tr><td><span class="rank ${i < 3 ? `r${i + 1}` : ''}">${i + 1}</span></td>
             <td><div class="who">${avatar(r.username)}<div><b>${esc(r.username)}</b>${plats(r.platforms)}</div></div></td>
-            <td class="r num">${fmtK(r.views)}</td><td class="r num faint">${r.posts}</td><td class="r">${deltaPill(r.viewsDeltaPercent)}</td></tr>`).join('')}
+            <td class="r num">${fmtK(r.views)}</td>${countedCell(r)}<td class="r num faint">${r.posts}</td><td class="r">${deltaPill(r.viewsDeltaPercent)}</td></tr>`).join('')}
         </tbody></table></div>` : '<div class="empty">Aucun clippeur sur ce compte.</div>'}</div>
     </div>`;
   const root = main();
