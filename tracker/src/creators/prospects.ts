@@ -102,8 +102,8 @@ export const PROSPECTS: Record<string, Prospect> = {
       programName: 'JOSPLAY CLIPPING',
       creatorName: 'Josplay',
       theme: 'sober',
-      // Bleu identitaire #7BC7EA + blanc, rendu pastel
-      colors: { bg: '#FFFFFF', card: '#FFFFFF', border: '#7BC7EA', text: '#2F84AD', muted: '#5AA6CB', accent: '#7BC7EA', accentInk: '#FFFFFF', highlight: '#7BC7EA' },
+      // Bleu identitaire #7BC7EA + blanc, textes en bleu foncé pour rester lisibles
+      colors: { bg: '#FFFFFF', card: '#FFFFFF', border: '#7BC7EA', text: '#1B5E80', muted: '#3F7FA0', accent: '#7BC7EA', accentInk: '#0E3A52', highlight: '#7BC7EA' },
       font: 'Fredoka',
       logoText: 'josplay',
       rewardAccount: EMAIL('Ta récompense', 'Ta récompense est envoyée sur cet e-mail.'),
