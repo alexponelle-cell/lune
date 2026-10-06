@@ -355,7 +355,7 @@ export class AgencyService {
       postsPerDay: this.settings().postsPerDay,
       now,
       refusedClips: this.repo.refusedClipCount(clipper.id, from),
-      accountErrors: accounts.filter((a) => a.active && a.lastError).map((a) => `@${a.handle} (${a.platform}) : ${a.lastError}`),
+      accountErrors: accounts.filter((a) => a.active && a.lastError).map((a) => `@${a.handle} (${a.platform}) : ${readableError(a.lastError!)}`),
     });
   }
 
@@ -430,4 +430,13 @@ export class AgencyService {
   clientName(clientId: number | null): string | null {
     return clientId ? (this.repo.getClient(clientId) as Client | undefined)?.name ?? null : null;
   }
+}
+
+/** Erreur de relevé lisible par le staff (au lieu du message brut d'Apify / de l'API). */
+export function readableError(err: string): string {
+  if (/usage hard limit|platform-feature-disabled|402|403/i.test(err) && /apify/i.test(err)) return 'relevé en pause (quota Apify atteint), reprend tout seul au prochain relevé';
+  if (/pas connecté/i.test(err)) return 'le clippeur doit connecter ce compte sur le site';
+  if (/introuvable|not found|404/i.test(err)) return 'compte introuvable (pseudo faux, privé ou supprimé)';
+  if (/expirée/i.test(err)) return 'connexion expirée : le clippeur doit la refaire sur le site';
+  return err.length > 140 ? `${err.slice(0, 140)}…` : err;
 }
