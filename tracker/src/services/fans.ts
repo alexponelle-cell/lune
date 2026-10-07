@@ -113,7 +113,9 @@ export class FanService {
     const c = this.creator;
     const defaults = { ...DEFAULT_FANS, programName: c.programName, pointsPer1000: c.pointsPer1000, creatorYoutube: c.youtube, creatorRoblox: c.robloxUsername ?? '' };
     const stored = { ...defaults, ...this.repo.getSetting<Partial<FanSettings>>('fans', {}) };
-    return c.clipRule === false ? { ...stored, clipRule: false } : stored;
+    if (c.clipRule === false) stored.clipRule = false;
+    if (c.trustAccounts) stored.accountReview = false;
+    return stored;
   }
 
   /** Date à partir de laquelle tous les clips comptent (config du créateur), sinon null. */
@@ -768,7 +770,7 @@ export class FanService {
   autoReviewAccounts(now = Date.now()): number {
     let n = 0;
     for (const a of this.accountsToReview()) {
-      if ((a.followers ?? 0) >= FanService.AUTO_MAX_FOLLOWERS || a.topViews >= FanService.AUTO_MAX_VIEWS) continue;
+      if (!this.creator.trustAccounts && ((a.followers ?? 0) >= FanService.AUTO_MAX_FOLLOWERS || a.topViews >= FanService.AUTO_MAX_VIEWS)) continue;
       this.repo.setAccountVerified(a.id, now);
       n++;
     }
@@ -788,7 +790,7 @@ export class FanService {
   /** Repère les fans suspects (gros compte, clip qui explose d'emblée) et les met « à vérifier ». Renvoie les nouveaux. */
   flagSuspicious(): Array<{ id: number; reason: string; discordId: string; username: string }> {
     const clientId = this.settings().clientId;
-    if (!clientId) return [];
+    if (!clientId || this.creator.trustAccounts) return [];
     const found = this.fans.suspiciousClippers(clientId, FanService.REVIEW_FOLLOWERS, FanService.REVIEW_EARLY_VIEWS);
     for (const f of found) {
       this.fans.setReviewStatus(f.id, 'pending');

@@ -71,6 +71,12 @@ describe('programme fans (Neptune)', () => {
     repo.recordCollection(account.id, [{ platformVideoId: 'b', views: 3000, publishedAt: aug, title: 'x' }, { platformVideoId: 'c', views: 9000, publishedAt: july, title: 'x' }], now + 1);
     expect(loann.balance(fan.id, now + 2).views).toBe(4000);
     expect(loann.coinsState(fan, now + 2).tag).toBeNull();
+    // Comptes de confiance : même un gros compte est validé d'office
+    expect(loann.settings().accountReview).toBe(false);
+    repo.setAccountVerified(account.id, null, 500_000);
+    releve(repo);
+    expect(loann.autoReviewAccounts(now)).toBe(1);
+    expect(loann.flagSuspicious()).toEqual([]);
   });
 
   it('grades du mois glissant : seules les vues de la période comptent', () => {

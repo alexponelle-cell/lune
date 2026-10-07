@@ -11,6 +11,8 @@ export const loann: CreatorConfig = {
   clipKeywords: ['Loann', 'LoannLV'],
   // Pas de #tag obligatoire, et tous les clips postés depuis le 1er août 2026 comptent (même avant l'inscription)
   clipRule: false,
+  // Clippeurs de confiance : pas de comptes « à vérifier » ni de contrôle des gros comptes
+  trustAccounts: true,
   countViewsFrom: '2026-08-01',
   youtube: 'LoannLV,netabonnepas-el2vd',
   theme: 'pop',

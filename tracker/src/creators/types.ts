@@ -62,6 +62,8 @@ export interface CreatorConfig {
    * qui monte ou redescend chaque jour selon le mois glissant. Sans ce champ : pas de rôles de grade.
    */
   gradeWindowDays?: number;
+  /** true = clippeurs de confiance : aucun compte « à vérifier » ni fan suspect, tout est validé d'office. */
+  trustAccounts?: true;
   /** false = pas de mot-clé (#tag) obligatoire dans la légende : tous les clips des comptes reliés comptent. */
   clipRule?: false;
   /**
