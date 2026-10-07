@@ -512,7 +512,7 @@ let SEARCH_CACHE = null;
 function renderTopbar() {
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   $('#topbar').innerHTML = `<div class="today"><span class="dot"></span><span style="text-transform:capitalize">${today}</span></div>
-    <div class="search">${icon('search')}<input id="search" placeholder="Rechercher un clipper…" autocomplete="off"><div class="search-results" id="search-results"></div></div>
+    <div class="search">${icon('search')}<input id="search" placeholder="Rechercher un clipper ou un @compte…" autocomplete="off"><div class="search-results" id="search-results"></div></div>
     <a class="icon-btn" href="#/agence" title="Alertes">${icon('bell')}<span class="badge-count" id="alert-count" hidden></span></a>`;
   const input = $('#search');
   const results = $('#search-results');
@@ -523,12 +523,27 @@ function renderTopbar() {
     const hits = SEARCH_CACHE.filter(
       (c) => c.username.toLowerCase().includes(q) || c.accounts.some((a) => a.handle.includes(q)),
     ).slice(0, 8);
-    results.innerHTML = hits.length
-      ? hits.map((c) => `<a href="#/clipper/${c.id}">${avatar(c.username)}<div><b>${esc(c.username)}</b><div class="faint" style="font-size:12px">${esc(c.agency ?? 'Sans agence')}</div></div></a>`).join('')
+    // Comptes TikTok / Insta / YouTube de tous les fans (même hors agence) : à qui il est relié, bouton Libérer
+    const accounts = q.length >= 2 ? (await api(`/api/accounts/search?q=${encodeURIComponent(q)}`).catch(() => ({ results: [] }))).results : [];
+    if (input.value.trim().toLowerCase() !== q) return; // la saisie a changé entre-temps
+    const PF = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+    results.innerHTML = hits.length || accounts.length
+      ? hits.map((c) => `<a href="#/clipper/${c.id}">${avatar(c.username)}<div><b>${esc(c.username)}</b><div class="faint" style="font-size:12px">${esc(c.agency ?? 'Sans agence')}</div></div></a>`).join('') +
+        accounts.map((r) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px"><div style="flex:1;min-width:0"><b>${PF[r.platform] ?? r.platform} @${esc(r.handle)}</b><div class="faint" style="font-size:12px">relié à ${esc(r.username)}${r.active ? '' : ' · libéré'}</div></div>${r.active ? `<button class="btn sm danger" data-release="${r.id}" data-label="${esc(`${PF[r.platform] ?? r.platform} @${r.handle} de ${r.username}`)}">Libérer</button>` : ''}</div>`).join('')
       : '<div class="empty" style="padding:12px">Aucun résultat</div>';
     results.classList.add('open');
   });
-  results.addEventListener('click', () => {
+  results.addEventListener('mousedown', async (e) => {
+    const b = e.target.closest('[data-release]');
+    if (!b) return;
+    e.preventDefault(); // garde la recherche ouverte
+    if (!confirm(`Retirer ${b.dataset.label} ? Il pourra être relié à un autre fan (en refaisant S'inscrire).`)) return;
+    await api(`/api/accounts/${b.dataset.release}/release`, { method: 'POST' });
+    toast('Compte libéré ✅');
+    input.dispatchEvent(new Event('input'));
+  });
+  results.addEventListener('click', (e) => {
+    if (e.target.closest('[data-release]')) return;
     results.classList.remove('open');
     input.value = '';
   });
