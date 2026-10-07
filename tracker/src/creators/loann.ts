@@ -1,7 +1,7 @@
 import type { CreatorConfig } from './types.js';
 
 /**
- * Loann (youtube.com/@LoannLV + @netabonnepas-el2vd) : gabarit « pop » variante « sticker » (memes, couleurs de sa bannière).
+ * Loann (youtube.com/@LoannLV + @netabonnepas-el2vd) : site au style « ms » (charte de Merguez Superstar, ms-creators.com).
  * Récompense : 1 mois de Merguez Superstar (sa formation YouTube) pour 1 M de vues, livré sur l'e-mail du clippeur.
  */
 export const loann: CreatorConfig = {
@@ -11,11 +11,11 @@ export const loann: CreatorConfig = {
   clipKeywords: ['Loann', 'LoannLV'],
   youtube: 'LoannLV,netabonnepas-el2vd',
   theme: 'pop',
-  // Palette tirée de sa bannière (coucher de soleil peint) et du logo MS (gemmes rouge-orange, étoile jaune)
-  style: 'sticker',
+  style: 'ms',
   images: { banner: 'loann-banner.webp', reward: 'loann-reward.webp' },
-  colors: { bg: '#150B2B', card: '#22143F', border: '#3A2766', text: '#FFFFFF', muted: '#C9BCEB', accent: '#FF3D5E', accentInk: '#FFFFFF', accent2: '#FFC21A', accent3: '#7B4DFF' },
-  font: 'Baloo 2',
+  // Charte de Merguez Superstar (ms-creators.com) : crème #FFF7E6, encre #212121, jaune #FFD36E, pêche / orange / corail
+  colors: { bg: '#FFF7E6', card: '#FFFFFF', border: '#212121', text: '#212121', muted: '#5C4A39', accent: '#FF9F4A', accentInk: '#212121', accent2: '#FFD36E', accent3: '#FFA189', highlight: '#FF9F4A' },
+  font: 'Inter',
   logoText: 'loann.',
   pointsPer1000: 10,
   rewardAccount: {

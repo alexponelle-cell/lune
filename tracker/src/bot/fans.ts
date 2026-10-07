@@ -11,12 +11,14 @@ import {
   Events,
   GatewayIntentBits,
   MessageFlags,
+  PermissionFlagsBits,
   REST,
   Routes,
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
+import { coinsDiagnosis, faqAnswer, matchFaq } from '../domain/faq.js';
+import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
 import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
@@ -250,6 +252,49 @@ export function attachAccountsChannel(discord: DiscordClient, fans: FanService):
   });
 }
 
+/** « ❓│aide », « aide », « help », « questions ». */
+export function isHelpChannel(name: string): boolean {
+  const n = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z-]/g, '').replace(/^-+|-+$/g, '');
+  return n === 'aide' || n === 'help' || n === 'questions' || n === 'question';
+}
+
+/**
+ * Salon ❓│aide et salons privés : le bot répond tout seul aux questions fréquentes (gratuit, par mots-clés),
+ * avec le diagnostic du compte pour « pourquoi j'ai 0 coins ». Sinon il se tait et le staff répond.
+ */
+export function attachHelpChannel(discord: DiscordClient, fans: FanService, siteUrl: string): void {
+  const lastAnswer = new Map<string, number>();
+  discord.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !message.inGuild()) return;
+    const channel = message.channel;
+    if (!('name' in channel)) return;
+    // Salon ❓│aide, ou salon privé du clippeur (catégorie 🔒 ESPACES PRIVÉS)
+    const inPrivate = !!channel.parent?.name.startsWith(PRIVATE_CATEGORY);
+    if (!isHelpChannel(channel.name) && !inPrivate) return;
+    // Le staff discute librement ; une réponse auto par personne et par minute au plus
+    if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) return;
+    const intent = matchFaq(message.content);
+    if (!intent) return;
+    const last = lastAnswer.get(message.author.id) ?? 0;
+    if (Date.now() - last < 60_000) return;
+    lastAnswer.set(message.author.id, Date.now());
+    try {
+      const info = fans.faqInfo(siteUrl);
+      let diagnosis: string[] = [];
+      if (intent === 'coins') {
+        const clipper = fans.ensureFan(message.author.id, message.member?.displayName ?? message.author.username);
+        diagnosis = coinsDiagnosis(fans.coinsState(clipper));
+      }
+      const content = `${faqAnswer(intent, info, diagnosis)}\n-# 🤖 Réponse automatique. Pas la bonne réponse ? Le staff passe bientôt.`;
+      await message
+        .reply({ content, allowedMentions: { repliedUser: false } })
+        .catch(() => message.channel.send({ content: `<@${message.author.id}> ${content}`, allowedMentions: { users: [message.author.id] } }));
+    } catch (err) {
+      log.error('salon aide', err);
+    }
+  });
+}
+
 /**
  * Bot des fans (ex. « BeOne Rewards ») : bot séparé, installé sur le serveur du créateur.
  * /site, /coins, et envoi des messages privés préparés par le tracker (coins, niveau, livraison…).
@@ -319,7 +364,10 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     d.on(Events.InteractionCreate, (i) => void handleAlertsButton(i));
     d.on(Events.InteractionCreate, (i) => void handleStepButtons(i));
     d.on(Events.InteractionCreate, (i) => void handleTraining(i, opts.fans));
-    if (readsMessages) attachAccountsChannel(d, opts.fans);
+    if (readsMessages) {
+      attachAccountsChannel(d, opts.fans);
+      attachHelpChannel(d, opts.fans, opts.siteUrl);
+    }
   };
 
   const shopButton = () =>

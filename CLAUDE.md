@@ -22,7 +22,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 - Branche de travail : celle indiquée dans la session (historiquement `claude/project-foundations-r1b3km`).
   **Si deux sessions Claude travaillent en même temps** : chacune `git pull` avant de commencer et avant de pousser,
   et éviter de modifier les mêmes fichiers en parallèle (sinon conflits).
-- Avant chaque push : `cd tracker && npx tsc --noEmit && npx vitest run` (90 tests doivent passer).
+- Avant chaque push : `cd tracker && npx tsc --noEmit && npx vitest run` (tous les tests doivent passer).
 
 ## Le business
 
@@ -30,7 +30,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   sur TikTok / Instagram / YouTube Shorts, les vues leur rapportent des **coins**, échangés contre une **récompense**
   (abonnement à la formation / commu du créateur, etc.) dans une boutique.
 - Pour chaque créateur : **un site fans**, **un serveur Discord** (monté par la commande `/setup` du bot), et ses clippeurs.
-- **Créateurs actifs** : BeOne, SQUIDUU, DEBO, Loann. **Prospects** : Cubi Game, Croshoot, Josplay, Nighting.
+- **Créateurs actifs** : BeOne, SQUIDUU, Loann. **DEBO** : ne répond plus, mis de côté. **Prospects** : Cubi Game, Croshoot, Josplay, Nighting.
 - **Mars** = dashboard staff (classement, comptes à vérifier, coaching des clippeurs…).
 - **Serveur des monteurs** (« Agence PersonalBrand360 ») : 📦 ressources communes en lecture seule, puis par créateur
   📣annonces / 👱ressource / 💬général, + salon privé. Monté par `/setup-montage` (`src/bot/montage.ts`, bouton 🧹 pour nettoyer).
@@ -56,6 +56,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   et si sa légende cite le créateur (mot-clé, ex. #squiduu). Les petits comptes (< 10 k abonnés, aucune vidéo ≥ 100 k vues)
   sont validés automatiquement ; les gros vont dans « Comptes à vérifier » sur Mars.
 - Coaching des clippeurs (points forts / à travailler) : `src/domain/coaching.ts`.
+- **FAQ auto du salon ❓│aide et des salons privés** (gratuite, par mots-clés) : `src/domain/faq.ts` + `attachHelpChannel` (`bot/fans.ts`). « Pourquoi 0 coins » = diagnostic du compte du fan. Le staff (Gérer les messages) n'est jamais repris. ⚠️ Le bot du créateur doit avoir **MESSAGE CONTENT INTENT** activé (portail Discord → Bot), sinon il démarre sans lire les messages (puis Restart du service Railway). Testé OK sur SQUIDUU.
 - Pages légales : `/legal/privacy`, `/legal/terms` (demandées par TikTok / Meta).
 - Vérifier visuellement une page : Playwright avec Chromium dans `/opt/pw-browsers/chromium` (`NODE_PATH=$(npm root -g)`).
 - Le réseau sortant de l'agent bloque souvent Apify, Railway, croshop.fr, etc. : demander des captures à Alex plutôt que de deviner.
@@ -73,14 +74,14 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 - **TikTok officiel** : testé en Sandbox (OK), **demande de validation envoyée**. Quand c'est validé :
   remettre les clés Production sur les 4 services, ajouter les Redirect URIs des 3 autres sites, puis `TIKTOK_APIFY_FALLBACK=0`.
 - **Instagram officiel (Meta)** : testé (OK, démo filmée). Bloqué par la **vérification d'entreprise** : Alex est mineur,
-  il crée une **micro-entreprise avec ses parents** (la micro de Lucas est peut-être inutilisable). Ensuite : vérif d'entreprise Meta,
+  il crée une **micro-entreprise avec ses parents** (prévu ce week-end si son père est d’accord, statut « mineur autorisé ») (la micro de Lucas est peut-être inutilisable). Ensuite : vérif d'entreprise Meta,
   demande de validation avec la démo (il manque l'icône de l'app), puis clés sur Railway et `INSTAGRAM_APIFY_FALLBACK=0`.
   Les clés TikTok et Instagram ont été **retirées de Railway** en attendant.
 - **Maquettes prospects** : Cubi Game, Croshoot, Josplay faites. **Nighting** en pause (pas 100 % intéressé).
   Josplay : récompense à définir.
 - **Liste de Lucas** : IA « clipper » (FAQ gratuite par défaut, il faut ses tutos / conférences / ateliers),
   améliorer le système avec sa data.
-- Josplay : trouver comment rémunérer les clippeurs. Loann : test d'inscription à faire. Railway : plan Hobby.
+- Josplay : trouver comment rémunérer les clippeurs. Loann : test d'inscription à faire. Railway : encore en **Trial** (crédit unique de 5 $, ~1 $ consommé en 2 semaines) → passer en Hobby (5 $/mois) avant la fin du crédit, sinon tout s’arrête.
 
 ## Ma façon de travailler (à garder)
 

@@ -315,6 +315,82 @@
   @keyframes stk { 0%, 100% { transform: rotate(12deg) translateY(0); } 50% { transform: rotate(6deg) translateY(-10px) scale(1.04); } }
   body.sticker .chip.c4 { right: 30%; }
   @media (prefers-reduced-motion: reduce) { .ticker > div, body.sticker .stage-sticker { animation: none; } }
+
+  /* ---------- Style « ms » (charte Merguez Superstar) : crème étoilé, contours noirs, jaune, vagues ---------- */
+  html:has(> body.ms) { overflow-x: clip; }
+  body.ms { --ink: #212121; --yel: #FFD36E; --font: 'Inter'; background: #FFF7E6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cpath transform='translate(40 50) scale(2.2)' fill='%23FFE2B3' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(150 40) scale(1.1)' fill='%23FFE2B3' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(120 140) scale(1.8)' fill='%23FFE2B3' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(30 170) scale(1.0)' fill='%23FFE2B3' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(195 180) scale(1.3)' fill='%23FFE2B3' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3C/svg%3E") repeat; color: var(--ink); }
+  body.ms h1, body.ms h2, body.ms .final h2 { font-family: 'Passion One', var(--font), sans-serif; font-weight: 700; letter-spacing: .005em; line-height: 1.02; color: #fff; -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); }
+  body.ms h1 { font-size: clamp(46px, 7vw, 86px); }
+  body.ms .y { color: var(--yel); -webkit-text-fill-color: var(--yel); }
+  body.ms h3, body.ms .btn, body.ms .menu a, body.ms .tool b, body.ms .price, body.ms .rank .who b, body.ms .faq summary { font-family: 'Cal Sans', var(--font), sans-serif; font-weight: 400; letter-spacing: 0; }
+  body.ms .hero p, body.ms .head p, body.ms .final p { color: #4a3b2c; font-weight: 600; }
+  body.ms .muted, body.ms .tool small, body.ms .rank .who small, body.ms .faq details p, body.ms .reward p, body.ms .panel p { color: #5c4a39; }
+  /* En-tête : pilule jaune à gros contour */
+  body.ms .top { background: transparent; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 10px 12px 0; }
+  body.ms .top-in { background: var(--yel); border: 3px solid var(--ink); border-radius: 99px; box-shadow: 0 5px 0 var(--ink); padding: 8px 10px 8px 18px; }
+  body.ms .logo { color: var(--ink); font-family: 'Passion One', sans-serif; font-size: 28px; letter-spacing: .01em; }
+  body.ms .logo .pp { border: 2.5px solid var(--ink); }
+  body.ms .menu a { color: var(--ink); font-size: 16px; }
+  body.ms .menu a.on { background: var(--ink); color: #fff; border-radius: 99px; }
+  body.ms .menu a.on::after { display: none; }
+  body.ms .pill { background: var(--ink); color: #fff; border: 0; }
+  body.ms .pill small { color: #ffe9b0; }
+  body.ms .coin { color: var(--yel); }
+  /* Boutons, cartes : contour noir + ombre dure, rebond au survol */
+  body.ms .btn { background: #fff; color: var(--ink); border: 2.5px solid var(--ink); border-radius: 99px; box-shadow: 0 4px 0 var(--ink); font-size: 17px; transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .2s; }
+  body.ms .btn.primary { background: var(--yel); color: var(--ink); border-color: var(--ink); }
+  body.ms .btn:hover { transform: translateY(-3px) rotate(-1.5deg); box-shadow: 0 7px 0 var(--ink); border-color: var(--ink); }
+  body.ms .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  body.ms .card { background: #fff; border: 2.5px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s; }
+  body.ms .card:hover { transform: translateY(-5px) rotate(-.6deg); box-shadow: 0 9px 0 var(--ink); border-color: var(--ink); }
+  body.ms .tool .ic, body.ms .tool.hl .ic { background: var(--yel); color: var(--ink); border: 2.5px solid var(--ink); border-radius: 50%; }
+  body.ms .tool.hl { border-color: var(--ink); box-shadow: 0 5px 0 var(--ink); background: #FFF1C9; }
+  body.ms .tools .card:nth-child(odd) { rotate: -1.2deg; } body.ms .tools .card:nth-child(even) { rotate: 1.2deg; }
+  /* Hero : photo en cadre, cartes-stats jaunes à rayons, étincelles flottantes */
+  body.ms .hero { position: relative; }
+  body.ms .stage .photo { border: 4px solid var(--ink); box-shadow: 0 10px 0 var(--ink); background: var(--yel); }
+  body.ms .chip { border: 2.5px solid var(--ink) !important; box-shadow: 0 4px 0 var(--ink); font-family: 'Cal Sans', sans-serif; font-weight: 400; }
+  body.ms .chip.g { background: repeating-conic-gradient(from 0deg at 50% 50%, #FFD36E 0 12deg, #FFC24A 12deg 24deg); color: #fff; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; font-family: 'Passion One', sans-serif; font-size: 22px; border-radius: 16px; box-shadow: 0 5px 0 var(--ink); }
+  body.ms .chip.o { background: #fff; color: var(--ink); }
+  body.ms .stage-sticker { position: absolute; width: 34%; right: -4%; bottom: 4%; z-index: 3; filter: drop-shadow(0 5px 0 rgba(33,33,33,.85)); animation: msBob 3s ease-in-out infinite; }
+  @keyframes msBob { 0%, 100% { transform: rotate(10deg) translateY(0); } 50% { transform: rotate(4deg) translateY(-12px) scale(1.04); } }
+  body.ms .hero::before, body.ms .hero::after { content: '✦'; position: absolute; color: var(--yel); -webkit-text-stroke: 2px var(--ink); font-size: 44px; animation: msTwinkle 2.4s ease-in-out infinite; pointer-events: none; }
+  body.ms .hero::before { left: -10px; top: -18px; } body.ms .hero::after { right: 46%; bottom: -30px; font-size: 32px; animation-delay: -1.2s; }
+  @keyframes msTwinkle { 50% { transform: scale(.7) rotate(25deg); opacity: .7; } }
+  body.ms .chip.c4 { right: 30%; }
+  body.ms .hero-banner { border-bottom: 3px solid var(--ink); }
+  body.ms .hero-banner::after { background: linear-gradient(180deg, transparent 70%, rgba(255,247,230,.6)); }
+  /* Bandeau défilant jaune */
+  body.ms .ticker { background: var(--yel); color: var(--ink); border-block: 3px solid var(--ink); font-family: 'Passion One', sans-serif; transform: rotate(-1.5deg) scale(1.03); }
+  body.ms .ticker > div { font-family: 'Passion One', sans-serif; font-weight: 700; font-size: clamp(20px, 2.8vw, 30px); letter-spacing: .02em; }
+  body.ms .ticker i { color: #fff; -webkit-text-stroke: 1.5px var(--ink); }
+  /* Sections pleine largeur colorées, bord supérieur en vagues (comme ms-creators.com) */
+  body.ms #comment, body.ms main section:nth-of-type(4), body.ms main section:nth-of-type(5) { position: relative; padding: 72px 0 64px; margin-top: 140px; }
+  body.ms #comment::before, body.ms main section:nth-of-type(4)::before, body.ms main section:nth-of-type(5)::before { content: ''; position: absolute; z-index: -1; top: 0; bottom: -60px; left: calc(50% - 50vw); width: 100vw; background: var(--sec) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cpath transform='translate(40 50) scale(2.2)' fill='rgba(255,255,255,.22)' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(150 40) scale(1.1)' fill='rgba(255,255,255,.22)' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(120 140) scale(1.8)' fill='rgba(255,255,255,.22)' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(30 170) scale(1.0)' fill='rgba(255,255,255,.22)' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3Cpath transform='translate(195 180) scale(1.3)' fill='rgba(255,255,255,.22)' d='M0-10 2.9-3.1 10.5-3.2 4.6 1.6 6.5 9 0 5 -6.5 9 -4.6 1.6 -10.5-3.2 -2.9-3.1Z'/%3E%3C/svg%3E") repeat; }
+  body.ms #comment::after, body.ms main section:nth-of-type(4)::after, body.ms main section:nth-of-type(5)::after { content: ''; position: absolute; z-index: -1; top: -58px; height: 60px; left: calc(50% - 50vw); width: 100vw; background: var(--wave) repeat-x; background-size: 240px 60px; }
+  body.ms #comment { --sec: #FFC183; --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='60' viewBox='0 0 240 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60V42C20 8 70 6 96 38C110 6 160 0 180 34C196 10 226 14 240 42V60Z' fill='%23FFC183'/%3E%3Cpath d='M0 42C20 8 70 6 96 38C110 6 160 0 180 34C196 10 226 14 240 42' fill='none' stroke='%23B8763C' stroke-width='3'/%3E%3C/svg%3E"); }
+  body.ms main section:nth-of-type(4) { --sec: #FF9F4A; --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='60' viewBox='0 0 240 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60V42C20 8 70 6 96 38C110 6 160 0 180 34C196 10 226 14 240 42V60Z' fill='%23FF9F4A'/%3E%3Cpath d='M0 42C20 8 70 6 96 38C110 6 160 0 180 34C196 10 226 14 240 42' fill='none' stroke='%23B85E14' stroke-width='3'/%3E%3C/svg%3E"); }
+  body.ms main section:nth-of-type(5) { --sec: #FFA189; --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='60' viewBox='0 0 240 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60V42C20 8 70 6 96 38C110 6 160 0 180 34C196 10 226 14 240 42V60Z' fill='%23FFA189'/%3E%3Cpath d='M0 42C20 8 70 6 96 38C110 6 160 0 180 34C196 10 226 14 240 42' fill='none' stroke='%23B0584A' stroke-width='3'/%3E%3C/svg%3E"); }
+  body.ms .spark { background: var(--yel); color: var(--ink); border: 3px solid var(--ink); box-shadow: 0 5px 0 var(--ink); font-family: 'Passion One', sans-serif; font-size: clamp(22px, 3vw, 30px); border-radius: 16px; }
+  body.ms .spark::before, body.ms .spark::after { color: var(--yel); -webkit-text-stroke: 1.5px var(--ink); font-size: 26px; }
+  body.ms .rank.top { background: #FFF1C9; }
+  body.ms .rank .n, body.ms .rank.top .n { color: var(--ink); font-family: 'Passion One', sans-serif; font-size: 24px; }
+  body.ms .rank .v .up { color: #1f9d55; }
+  body.ms .pp { border: 2px solid var(--ink); }
+  body.ms .faq details { background: #fff; border: 2.5px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); }
+  body.ms .faq summary::after { border-color: var(--ink); }
+  body.ms .final { background: repeating-conic-gradient(from 0deg at 50% 60%, #FFD36E 0 10deg, #FFC24A 10deg 20deg); }
+  body.ms .final::before { display: none; }
+  body.ms .bar { background: #f1e2c6; border: 2px solid var(--ink); height: 12px; }
+  body.ms .bar i { background: #FF9F4A; }
+  body.ms .reward .pic { background: radial-gradient(circle at 50% 45%, #FFE9A8, #FFC183); border: 2.5px solid var(--ink); }
+  body.ms .reward .pic img { object-fit: contain; padding: 12px; filter: drop-shadow(0 5px 0 rgba(33,33,33,.6)); }
+  body.ms footer { border-top: 3px solid var(--ink); color: #5c4a39; }
+  body.ms .tabbar { background: #fff; border-top: 3px solid var(--ink); }
+  body.ms .tabbar a.on { color: var(--ink); }
+  body.ms ::selection { background: var(--yel); color: var(--ink); }
+  @media (max-width: 880px) { body.ms .top { padding: 8px 8px 0; } body.ms #comment, body.ms main section:nth-of-type(4), body.ms main section:nth-of-type(5) { margin-top: 110px; } }
+  @media (prefers-reduced-motion: reduce) { body.ms .stage-sticker, body.ms .hero::before, body.ms .hero::after { animation: none; } }
 </style>
 </head>
 <body>
@@ -491,7 +567,7 @@ function pageHome() {
   <section class="hero" style="margin-bottom:0">
     <div><h1 class="load">${hl(C.texts.heroTitle)}</h1><p class="load">${esc(C.texts.heroText)}</p>
       <div class="ctas load"><a class="btn big" href="#comment">Découvrir</a><a class="btn primary big" href="#/clipper">${esc(C.texts.heroCta)} ${ARROW}</a></div></div>
-    <div class="stage" aria-hidden="true">${creatorPic('photo')}${C.style === 'sticker' && C.images?.reward ? '<img class="stage-sticker" src="/fan/assets/reward" alt="">' : ''}
+    <div class="stage" aria-hidden="true">${creatorPic('photo')}${(C.style === 'sticker' || C.style === 'ms') && C.images?.reward ? '<img class="stage-sticker" src="/fan/assets/reward" alt="">' : ''}
       <span class="chip g c1">${rate}</span><span class="chip o c2">TikTok</span><span class="chip o c3">YouTube</span><span class="chip g c4">1 000 vues</span></div>
   </section>
 

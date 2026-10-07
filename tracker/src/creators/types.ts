@@ -17,7 +17,8 @@ export interface CreatorConfig {
   /** playful = BeOne (clair, jaune) · sober = sombre et épuré · pop = sombre, multicolore et animé. */
   theme: 'playful' | 'sober' | 'pop';
   /** Variante visuelle du thème pop : « sticker » = contours noirs épais et ombres dures (style meme / autocollant). */
-  style?: 'sticker';
+  /** « ms » = charte Merguez Superstar (crème étoilé, contours noirs, jaune, vagues entre les sections). */
+  style?: 'sticker' | 'ms';
   /** Visuels livrés avec le code (src/web/app/fan/) : bannière du hero et image de la récompense. */
   images?: { banner?: string; reward?: string };
   /** accent2 / accent3 : couleurs des dégradés du thème « pop ». highlight : couleur de mise en avant (violet par défaut). */

@@ -89,11 +89,12 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
 | **BeOne** (@BeOnePourcent) | BEONE REWARDS | `playful` (clair, jaune), `fan.html` | objets / gamepass dans son jeu Roblox | automatique via l'API du jeu (`GAME_API_URL` / `GAME_API_TOKEN`), pseudo Roblox |
 | **SQUIDUU** | SQUIDUU | `sober` (noir #0B0A0C, jaune #FCD005, Montserrat) | 1 mois de Squiduuverse = 10 000 coins | automatique via l'API Squiduuverse (`SQUIDUU_API_URL` / `TOKEN`), e-mail Google, orderId anti-doublon |
 | **DEBO** (DEBO PLAYS) | DEBO PLAYS | `pop` (multicolore animé, Nunito) | 50 Robux pour 1 000 coins (100 000 vues) | Robux à la main, pseudo Roblox |
-| **Loann** (@LoannLV + 2ᵉ chaîne) | LOANN CLIPPING | `pop` + `sticker` (Baloo 2, contours noirs, bandeau défilant) | 1 mois de Merguez Superstar (ms-creators.com) = 10 000 coins | e-mail |
+| **Loann** (@LoannLV + 2ᵉ chaîne) | LOANN CLIPPING | style `ms` = charte de Merguez Superstar (ms-creators.com) : crème étoilé #FFF7E6, contours noirs #212121, jaune #FFD36E, vagues pêche/orange/corail, Passion One + Cal Sans + Inter | 1 mois de Merguez Superstar (ms-creators.com) = 10 000 coins | e-mail |
 
 ### Historique et état
 - **SQUIDUU** : campagne officiellement lancée. Le parcours complet a été testé de bout en bout. Les clippeurs sont arrivés.
 - **Loann** : « on met les bouchées doubles ». Test d'inscription à faire.
+- **DEBO** : ne répond plus, mis de côté (ne plus rien développer pour lui).
 - **Josplay** : un call a eu lieu. Il reste à trouver comment rémunérer ses clippeurs (récompense non définie).
 
 ### Prospects
@@ -117,7 +118,7 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
   - `npm start` ;
   - `npm test` ;
   - `npm run register-commands`.
-- **Vérifier avant chaque push** : `cd tracker && npx tsc --noEmit && npx vitest run` (**90 tests**, 7 fichiers dans `test/`).
+- **Vérifier avant chaque push** : `cd tracker && npx tsc --noEmit && npx vitest run` (94 tests, 8 fichiers dans `test/`).
 
 ### Dossiers
 
@@ -249,7 +250,8 @@ Commun aux deux :
   Ça sert de base aux feedbacks vocaux.
 - **Un Mars par créateur** (un service Railway chacun). Le menu « Programme » bascule de l'un à l'autre sans se reconnecter, avec un lien signé.
   La variable `MARS_SITES` les liste.
-- Pour supprimer quelqu'un : page clippeurs, puis supprimer. Ses jetons TikTok / Insta sont supprimés aussi (CASCADE).
+- Pour supprimer quelqu'un : page clippeurs, puis supprimer.
+- **Compte Discord perdu** : Mars → Fans → bouton 🔁 « Transférer » (ID Discord du nouveau compte) : comptes, vues, coins et achats passent sur le nouveau compte (`transferClipper`). Ensuite redonner ses rôles à la main. Ses jetons TikTok / Insta sont supprimés aussi (CASCADE).
 
 ### Serveur des monteurs (`bot/montage.ts`, commande `/setup-montage`)
 - Structure validée par l'équipe :
@@ -339,7 +341,7 @@ Commun aux deux :
 - Chaque service a sa variable `CREATOR` et ses propres secrets.
 - Un push sur la branche déclenche le redéploiement. Sinon, bouton **Deploy** sur Railway.
 - Pour lire les logs : Railway, service, Deployments, View logs. Demander une capture à Alex, puisque l'agent n'a pas accès à Railway.
-- Plan Railway : Hobby, environ 5 $ par mois.
+- Plan Railway : **Trial** (crédit unique de 5 $, ~1 $ consommé du 25/09 au 08/10). À passer en Hobby (5 $/mois, consommation incluse) avant épuisement.
 - Le guide complet de la première mise en ligne est dans `tracker/DEPLOY.md`.
 
 ## 9. Outils de l'agent (environnement cloud)
@@ -409,7 +411,7 @@ Commun aux deux :
 2. **Validation TikTok** à surveiller. Ensuite : clés Production, Redirect URIs, coupure d'Apify.
 3. **Maquette Nighting** : attendre son prompt et ses captures.
 4. **Josplay** : définir la récompense et la rémunération des clippeurs. Remplir la boutique de la maquette.
-5. **IA « clipper »** (FAQ gratuite par défaut) : récupérer les contenus de Lucas (tutos, conférences, ateliers).
+5. **IA « clipper »** : la FAQ auto gratuite du salon ❓│aide est faite (`domain/faq.ts`). Prochaine étape : y ajouter les contenus de Lucas (tutos, conférences, ateliers).
 6. Améliorer le système avec la data de Lucas.
 7. Loann : test d'inscription complet.
 8. Idée en attente : voir qui n'est pas en ligne sur Discord, dans tous les salons
