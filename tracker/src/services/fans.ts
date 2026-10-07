@@ -342,6 +342,7 @@ export class FanService {
       { key: 'registered', label: 'Inscrits (comptes reliés)', count: registered.length },
       { key: 'firstClip', label: '1er clip détecté', count: fans.filter((c) => firstClip.has(c.discordId)).length },
       { key: 'earning', label: 'Gagnent des coins', count: fans.filter((c) => (views.get(c.id) ?? 0) > 0).length },
+      { key: 'canBuy', label: 'Ont assez de coins pour une récompense', count: this.fanTiers(now).filter((t) => t.tier >= 0 || buyers.has(t.clipperId)).length },
       { key: 'bought', label: 'Ont échangé une récompense', count: fans.filter((c) => buyers.has(c.id)).length },
     ];
     return { steps, discordAt: discord.at ?? null, exact: discord.exact ?? false };

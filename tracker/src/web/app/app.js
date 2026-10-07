@@ -1397,7 +1397,7 @@ async function pageOnboarding() {
   }
   const rows = steps.map((x, i) => {
     const prev = steps[i - 1]?.count;
-    const keep = x.count != null && prev ? Math.round((x.count / prev) * 100) : null;
+    const keep = x.count != null && prev ? Math.min(100, Math.round((x.count / prev) * 100)) : null;
     const isWorst = worst && worst.to.key === x.key;
     const w = x.count == null ? 0 : Math.max(2, Math.round((x.count / top) * 100));
     return `<div style="display:grid;grid-template-columns:minmax(150px,240px) 1fr 90px 80px;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)">
@@ -1412,7 +1412,7 @@ async function pageOnboarding() {
   main().innerHTML = `<div class="page-head"><div><h1>Funnel</h1><p>Où les fans s'arrêtent, de l'arrivée sur le serveur jusqu'à l'échange d'une récompense</p></div></div>
     ${worst ? `<div class="card card-pad" style="border-color:var(--orange)">🔴 <b>Plus grosse perte</b> : « ${esc(worst.from.label)} » → « ${esc(worst.to.label)} » : <b>${n(worst.lost)}</b> personnes perdues (${Math.round(worst.rate * 100)} %). C'est l'étape à améliorer en priorité.</div>` : ''}
     <div class="card card-pad"><div style="display:grid;grid-template-columns:minmax(150px,240px) 1fr 90px 80px;gap:12px" class="faint"><span>Étape</span><span></span><span style="text-align:right">Personnes</span><span style="text-align:right">Gardés</span></div>${rows}
-    <p class="faint" style="margin:12px 0 0;font-size:13px">${discordNote}. « Gardés » = part de l'étape précédente qui passe à celle-ci.</p></div>`;
+    <p class="faint" style="margin:12px 0 0;font-size:13px">${discordNote}. « Gardés » = part de l'étape précédente qui passe à celle-ci (plafonné à 100 % : des fans inscrits avant la formation ou partis du serveur font parfois dépasser).</p></div>`;
 }
 
 async function pageFunnel() {

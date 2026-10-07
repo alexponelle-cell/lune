@@ -52,7 +52,7 @@ describe('programme fans (Neptune)', () => {
     fans.ensureFan('d7', 'Curieux'); // venu sur le site, rien relié
     fans.setBotState('onboarding', { at: now, exact: true, members: 50, reader: 30, rules: 20, trained: 10 });
     const f = fans.onboardingFunnel(now);
-    expect(f.steps.map((x) => x.count)).toEqual([50, 30, 20, 10, 1, 1, 1, 0]);
+    expect(f.steps.map((x) => x.count)).toEqual([50, 30, 20, 10, 1, 1, 1, 0, 0]);
     expect(f.exact).toBe(true);
   });
 
