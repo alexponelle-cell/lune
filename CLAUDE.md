@@ -30,7 +30,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   sur TikTok / Instagram / YouTube Shorts, les vues leur rapportent des **coins**, échangés contre une **récompense**
   (abonnement à la formation / commu du créateur, etc.) dans une boutique.
 - Pour chaque créateur : **un site fans**, **un serveur Discord** (monté par la commande `/setup` du bot), et ses clippeurs.
-- **Créateurs actifs** : BeOne, SQUIDUU, DEBO, Loann. **Prospects** : Cubi Game, Croshoot, Josplay, Nighting.
+- **Créateurs actifs** : BeOne, SQUIDUU, Loann. **DEBO** : ne répond plus, mis de côté. **Prospects** : Cubi Game, Croshoot, Josplay, Nighting.
 - **Mars** = dashboard staff (classement, comptes à vérifier, coaching des clippeurs…).
 - **Serveur des monteurs** (« Agence PersonalBrand360 ») : 📦 ressources communes en lecture seule, puis par créateur
   📣annonces / 👱ressource / 💬général, + salon privé. Monté par `/setup-montage` (`src/bot/montage.ts`, bouton 🧹 pour nettoyer).

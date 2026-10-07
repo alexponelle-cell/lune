@@ -94,6 +94,7 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
 ### Historique et état
 - **SQUIDUU** : campagne officiellement lancée. Le parcours complet a été testé de bout en bout. Les clippeurs sont arrivés.
 - **Loann** : « on met les bouchées doubles ». Test d'inscription à faire.
+- **DEBO** : ne répond plus, mis de côté (ne plus rien développer pour lui).
 - **Josplay** : un call a eu lieu. Il reste à trouver comment rémunérer ses clippeurs (récompense non définie).
 
 ### Prospects
