@@ -102,9 +102,8 @@ export interface CreatorConfig {
     /** Frise verticale « Le programme c'est… » : titre de section puis étapes. */
     timelineTitle: string;
     timeline: Array<{ title: string; text: string; emoji: string }>;
-    /** Avis qui défilent (source citée dans reviewsTitle). */
-    reviewsTitle: string;
-    reviews: Array<{ name: string; text: string }>;
+    /** Avis Trustpilot qui défilent (captures ms-review-*.webp, 2 rangées en sens opposés), lien vers la page Trustpilot. */
+    reviews: { url: string; score: string; top: string[]; bottom: string[] };
     /** Conférenciers : fichiers ms-speakerNN.webp. */
     speakersTitle: string;
     speakers: string[];

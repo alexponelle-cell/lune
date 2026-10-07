@@ -92,7 +92,7 @@ export const loann: CreatorConfig = {
       '⚠️ Le non-respect des règles peut entraîner un avertissement, un mute ou un bannissement.',
     ].join('\n'),
   },
-  // Accueil façon ms-creators.com (avis : vrais avis Trustpilot sur MS, cités comme tels)
+  // Accueil façon ms-creators.com (avis : captures des vrais avis Trustpilot de MS, avec lien vers Trustpilot)
   ms: {
     heroLine: 'même si tu débutes',
     statLeft: { badge: 'N°1', text: 'Programme de clipping de Loann' },
@@ -107,16 +107,12 @@ export const loann: CreatorConfig = {
       { emoji: '🏆', title: 'Un classement', text: 'Chaque semaine, le top 3 des clippeurs est mis en avant sur le Discord.' },
       { emoji: '🎁', title: 'Des mois de MS', text: 'Tu échanges tes coins contre Merguez Superstar, la commu pour vivre de YouTube.' },
     ],
-    reviewsTitle: 'Avis Trustpilot sur MS : 4,8/5',
-    reviews: [
-      { name: 'XOON', text: 'Meilleur accompagnement pour devenir créateur de contenu' },
-      { name: 'New Perlo', text: 'Tellement rentable' },
-      { name: 'Alexandre', text: 'Une pure merveille, merci à toute l’équipe de MS' },
-      { name: 'Simon', text: '10/10' },
-      { name: 'Pierre', text: 'Très instructif' },
-      { name: 'DELTAx', text: 'Incroyable' },
-      { name: 'Maxime J', text: 'C’est très correct' },
-    ],
+    reviews: {
+      url: 'https://fr.trustpilot.com/review/ms-creators.com',
+      score: '97 avis — 4.8/5',
+      top: ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'].map((n) => `ms-review-${n}.webp`),
+      bottom: ['b1', 'b2', 'b3', 'b4', 'b5', 'b6'].map((n) => `ms-review-${n}.webp`),
+    },
     speakersTitle: 'Sur MS : des conférenciers exceptionnels !',
     speakers: Array.from({ length: 10 }, (_, i) => `ms-speaker${String(i + 1).padStart(2, '0')}.webp`),
     tiersTitle: 'Et toi, quel clippeur deviendras-tu ?',

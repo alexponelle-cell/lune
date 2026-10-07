@@ -430,20 +430,18 @@
   body.ms .tl .join { width: 240px; aspect-ratio: 1; border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink); display: grid; place-items: center; align-content: center; gap: 6px; }
   body.ms .tl .join img { width: 64%; filter: drop-shadow(0 4px 0 rgba(33,33,33,.75)); }
   body.ms .tl .join span { font-size: 26px; }
-  /* Avis qui défilent */
-  body.ms .rating { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; font-family: 'Cal Sans', sans-serif; font-size: clamp(22px, 3vw, 34px); margin: 18px 0 20px; }
-  body.ms .stars5 { display: inline-flex; gap: 3px; }
-  body.ms .stars5 i { width: 1.05em; height: 1.05em; background: #00B67A; display: grid; place-items: center; color: #fff; font-style: normal; font-size: .7em; }
-  body.ms .marq { overflow: hidden; margin: 0 calc(50% - 50vw); padding: 8px 0; }
-  body.ms .marq > div { display: flex; gap: 16px; width: max-content; animation: msMarq 46s linear infinite; }
-  body.ms .marq.rev > div { animation-direction: reverse; animation-duration: 54s; }
-  body.ms .marq:hover > div { animation-play-state: paused; }
-  @keyframes msMarq { to { transform: translateX(-50%); } }
-  body.ms .rev-card { width: 300px; background: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink); padding: 14px 16px; display: grid; gap: 8px; }
-  body.ms .rev-card .who { display: flex; gap: 10px; align-items: center; font-weight: 700; }
-  body.ms .rev-card .who .pp { width: 38px; height: 38px; font-size: 16px; background: #FFE2B3; }
-  body.ms .rev-card p { margin: 0; font-weight: 600; }
-  body.ms .rev-card .stars5 { font-size: 20px; }
+  /* Avis Trustpilot (même rendu que ms-creators.com : captures d'avis, 2 rangées en sens opposés, ~100 px/s) */
+  body.ms .tp { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; gap: 15px; margin: 18px calc(50% - 50vw) 0; color: var(--ink); }
+  body.ms .tp-head { display: flex; justify-content: center; align-items: center; gap: 14px; flex-wrap: wrap; font-family: 'Cal Sans', var(--font), sans-serif; font-size: clamp(26px, 3vw, 40px); padding: 0 16px; }
+  body.ms .tp-logo { height: clamp(34px, 3.6vw, 50px); width: auto; }
+  body.ms .tp-stars { display: inline-flex; gap: 3px; } body.ms .tp-stars img { width: clamp(30px, 2.8vw, 40px); height: auto; }
+  body.ms .tp-row { list-style: none; margin: 0; padding: 0 10px 15px 0; display: flex; gap: 10px; width: max-content; animation: tpL 60s linear infinite; will-change: transform; }
+  body.ms .tp-row.r { animation-name: tpR; }
+  body.ms .tp-row li { flex: none; border-radius: 8px; box-shadow: 5px 5px 0 #000; }
+  body.ms .tp-row img { display: block; height: 150px; width: auto; border-radius: 8px; }
+  @keyframes tpL { from { transform: translateX(0); } to { transform: translateX(-25%); } }
+  @keyframes tpR { from { transform: translateX(-25%); } to { transform: translateX(0); } }
+  @media (max-width: 880px) { body.ms .tp-row img { height: 120px; } }
   body.ms .clip-card { width: 250px; background: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink); padding: 12px 14px; display: flex; gap: 12px; align-items: center; }
   body.ms .clip-card .pp { width: 44px; height: 44px; }
   body.ms .clip-card b { display: block; } body.ms .clip-card small { color: #1f9d55; font-weight: 700; }
@@ -492,7 +490,7 @@
     body.ms .msfaq { grid-template-columns: 1fr; gap: 30px; }
     body.ms .tl .box { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   }
-  @media (prefers-reduced-motion: reduce) { body.ms .marq > div, body.ms .band > div, body.ms .frame .logo-ms { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { body.ms .tp-row, body.ms .marq > div, body.ms .band > div, body.ms .frame .logo-ms { animation: none; } }
   @media (max-width: 880px) { body.ms .top { padding: 8px 8px 0; } }
   @media (prefers-reduced-motion: reduce) { body.ms .stage-sticker, body.ms .hero::before, body.ms .hero::after { animation: none; } }
 </style>
@@ -666,13 +664,12 @@ function bindBuy(root) {
 const SOCIAL = SVG('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>')
   + SVG('<rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z"/>')
   + SVG('<path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.5 2.6 2.4 4.4 5 4.6"/>');
-const stars = () => `<span class="stars5" aria-label="5 étoiles">${'<i>★</i>'.repeat(5)}</span>`;
 const joinBtn = () => `<a class="btn primary big" href="${ME ? '#/clipper' : '/fan/auth/discord'}">${esc(C.texts.heroCta)} ${ARROW}</a>`;
 function pageHomeMs() {
   const M = C.ms, logo = C.images?.reward ? '/fan/assets/reward' : '';
   const lb = PUB.leaderboard.slice(0, 5);
-  const half = Math.ceil(M.reviews.length / 2);
-  const revRow = (list, rev) => { const cards = list.map((r) => `<div class="rev-card"><div class="who">${avatar(r.name)}${esc(r.name)}</div>${stars()}<p>${esc(r.text)}</p></div>`).join('').repeat(3); return `<div class="marq ${rev ? 'rev' : ''}" aria-hidden="${rev}"><div>${cards}${cards}</div></div>`; };
+  // Avis Trustpilot : 2 rangées de captures qui défilent en sens opposés, à vitesse constante (comme ms-creators.com)
+  const revRow = (files, dir) => { const cards = files.map((f) => `<li><img src="/fan/assets/${esc(f)}" alt="Avis Trustpilot 5 étoiles" loading="lazy"></li>`).join(''); return `<ul class="tp-row ${dir}" data-speed="100">${cards}${cards}${cards}${cards}</ul>`; };
   const spk = M.speakers.map((f) => `<span class="spk"><img src="/fan/assets/${esc(f)}" alt="" loading="lazy"></span>`).join('');
   const lv = C.levels;
   const bandItem = `${logo ? `<img src="${logo}" alt="">` : ''}<span>${esc(M.band)}</span>`;
@@ -695,8 +692,10 @@ function pageHomeMs() {
 
   <section class="msec orange">
     <div class="mscta rv">${joinBtn()}</div>
-    <div class="rating rv">${stars()}<span>${esc(M.reviewsTitle)}</span></div>
-    ${revRow(M.reviews.slice(0, half), false)}${revRow(M.reviews.slice(half), true)}
+    <a class="tp" href="${esc(M.reviews.url)}" target="_blank" rel="noopener">
+      <span class="tp-head"><img class="tp-logo" src="/fan/assets/ms-tp-logo.webp" alt="Trustpilot"><span class="tp-stars">${'<img src="/fan/assets/ms-tp-star.webp" alt="">'.repeat(5)}</span><span>${esc(M.reviews.score)}</span></span>
+      ${revRow(M.reviews.top, 'l')}${revRow(M.reviews.bottom, 'r')}
+    </a>
   </section>
 
   <section class="msec cream">
@@ -834,6 +833,14 @@ function pageProfile() {
     </div></div></section>`;
 }
 
+/** Bandeaux d'avis : durée calée sur la largeur réelle pour garder une vitesse constante (px/s). */
+function tickers(root) {
+  root.querySelectorAll('.tp-row').forEach((ul) => {
+    const set = () => { if (ul.scrollWidth) ul.style.animationDuration = `${ul.scrollWidth / 4 / Number(ul.dataset.speed)}s`; };
+    set(); ul.querySelectorAll('img').forEach((i) => i.addEventListener('load', set));
+  });
+}
+
 // ---------- Routeur ----------
 async function refresh() { await loadMe(); route(); }
 function route() {
@@ -844,6 +851,7 @@ function route() {
   const app = $('#app');
   app.innerHTML = `<div class="page">${{ '': pageHome, recompenses: pageShop, clipper: pageClip, classement: pageRanking, profil: pageProfile }[known]()}</div>`;
   observe(app);
+  tickers(app);
   bindBuy(app);
   const af = $('#account');
   if (af) af.onsubmit = async (e) => { e.preventDefault(); try { await saveAccount(new FormData(e.target).get('v')); await refresh(); } catch (err) { toast(err.message, 'err'); } };
