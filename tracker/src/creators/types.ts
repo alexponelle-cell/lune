@@ -98,6 +98,8 @@ export interface CreatorConfig {
   discord?: { welcome: string; rules: string };
   /** Style « ms » : accueil sur le modèle de ms-creators.com. Visuels ms-*.webp dans src/web/app/fan/. */
   ms?: {
+    /** Variante de charte sur la même mise en page (classe CSS sur <body>), ex. « cubi » = noir, blanc et orange. */
+    skin?: 'cubi';
     /** Sous-titre du hero (sous heroTitle). */
     heroLine: string;
     /** Image du cadre central du hero (fichier ms-*.webp), sinon la photo du créateur. */
@@ -113,10 +115,10 @@ export interface CreatorConfig {
     timelineTitle: string;
     timeline: Array<{ title: string; text: string; emoji: string }>;
     /** Avis Trustpilot qui défilent (2 rangées en sens opposés), lien vers la page Trustpilot. avatar = ms-av-*.webp, sinon initiales. */
-    reviews: { url: string; score: string; top: MsReview[]; bottom: MsReview[] };
+    reviews?: { url: string; score: string; top: MsReview[]; bottom: MsReview[] };
     /** Conférenciers : fichiers ms-speakerNN.webp. */
-    speakersTitle: string;
-    speakers: string[];
+    speakersTitle?: string;
+    speakers?: string[];
     /** Paliers (niveaux du créateur) : fichiers ms-tier1..4.webp. */
     tiersTitle: string;
     /** Bandeau défilant jaune avec le logo (image de la récompense). */

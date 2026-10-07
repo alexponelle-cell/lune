@@ -515,6 +515,37 @@
     body.ms .msfaq { grid-template-columns: 1fr; gap: 30px; }
     body.ms .tl .box { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   }
+  /* ---------- Skin « cubi » (Cubi Game) : même mise en page riche, charte noir / blanc / orange, blocs Roblox ---------- */
+  body.ms.cubi { --yel: #FF9A1F; --ink: #111111; background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='%23F1F1F1'/%3E%3Crect x='38' y='38' width='20' height='20' rx='4' fill='%23F1F1F1'/%3E%3C/svg%3E") repeat; }
+  body.ms.cubi h1, body.ms.cubi h2, body.ms.cubi .final h2, body.ms.cubi .ol, body.ms.cubi .logo, body.ms.cubi .ticker > div, body.ms.cubi .spark, body.ms.cubi .rank .n, body.ms.cubi .goal-top > b, body.ms.cubi .scard .bdg { font-family: 'Bungee', 'Space Grotesk', sans-serif; font-weight: 400; letter-spacing: 0; }
+  body.ms.cubi .mshero h1 { font-size: clamp(30px, 4.6vw, 58px); }
+  body.ms.cubi .msh { font-size: clamp(26px, 3.8vw, 44px); }
+  body.ms.cubi .logo { font-size: 22px; }
+  body.ms.cubi .rays { background: repeating-conic-gradient(from 0deg at 50% 55%, #FF9A1F 0 10deg, #FFB547 10deg 20deg); }
+  body.ms.cubi .mshero .line, body.ms.cubi .msh2 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  body.ms.cubi .hero p, body.ms.cubi .head p, body.ms.cubi .final p, body.ms.cubi .mscta small, body.ms.cubi .offer small, body.ms.cubi .muted { color: #444; }
+  body.ms.cubi .frame { background: #fff; border-radius: 18px; }
+  body.ms.cubi .frame > img:first-child { object-fit: contain; background: #fff; }
+  body.ms.cubi .card, body.ms.cubi .btn, body.ms.cubi .offer, body.ms.cubi .scard, body.ms.cubi .tl .box, body.ms.cubi .tier, body.ms.cubi .vs, body.ms.cubi .frame, body.ms.cubi .tl .join { border-radius: 14px; }
+  body.ms.cubi .msec::before { background: var(--sec) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='rgba%28255%2C255%2C255%2C.07%29'/%3E%3Crect x='38' y='38' width='20' height='20' rx='4' fill='rgba%28255%2C255%2C255%2C.07%29'/%3E%3C/svg%3E") repeat; }
+  body.ms.cubi .msec::after { top: -86px; }
+  body.ms.cubi .msec.peach { --sec: #111111; --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='90' viewBox='0 0 480 90' preserveAspectRatio='none'%3E%3Cpath d='M0 90V60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480V90Z' fill='%23111111'/%3E%3Cpath d='M0 60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480' fill='none' stroke='%23111111' stroke-width='4'/%3E%3C/svg%3E"); }
+  body.ms.cubi .msec.peach .msh, body.ms.cubi .msec.peach .tl h3 { -webkit-text-stroke: 0; text-shadow: 0 4px 0 #FF9A1F; }
+  body.ms.cubi .msec.peach .tl::before { background: #FF9A1F; }
+  body.ms.cubi .msec.orange { --sec: #FF9A1F; --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='90' viewBox='0 0 480 90' preserveAspectRatio='none'%3E%3Cpath d='M0 90V60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480V90Z' fill='%23FF9A1F'/%3E%3Cpath d='M0 60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480' fill='none' stroke='%23111111' stroke-width='4'/%3E%3C/svg%3E"); }
+  body.ms.cubi .msec.cream { --sec: #FFFFFF; }
+  body.ms.cubi .msec.cream::after { --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='90' viewBox='0 0 480 90' preserveAspectRatio='none'%3E%3Cpath d='M0 90V60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480V90Z' fill='%23FFFFFF'/%3E%3Cpath d='M0 60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480' fill='none' stroke='%23111111' stroke-width='4'/%3E%3C/svg%3E"); }
+  body.ms.cubi .msec.coral { --sec: #111111; --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='90' viewBox='0 0 480 90' preserveAspectRatio='none'%3E%3Cpath d='M0 90V60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480V90Z' fill='%23111111'/%3E%3Cpath d='M0 60H40V40H80V52H120V24H160V44H200V30H240V56H280V36H320V20H360V48H400V32H440V58H480' fill='none' stroke='%23111111' stroke-width='4'/%3E%3C/svg%3E"); }
+  body.ms.cubi .tier:nth-child(1) { background: #F1F1F1; } body.ms.cubi .tier:nth-child(2) { background: #FFE3C2; } body.ms.cubi .tier:nth-child(3) { background: #FFFFFF; } body.ms.cubi .tier:nth-child(4) { background: #FFC979; }
+  body.ms.cubi .band { background: #111; color: #fff; } body.ms.cubi .band span { font-family: 'Bungee', sans-serif; color: #FF9A1F; }
+  body.ms.cubi .vs .alone { background: #E6E6E6; }
+  body.ms.cubi .msfaq details { background: #1E1E1E; border-color: #FF9A1F; box-shadow: 0 4px 0 #FF9A1F; }
+  body.ms.cubi .ask { background: radial-gradient(circle at 50% 35%, #2A2A2A, #111); border-color: #FF9A1F; }
+  body.ms.cubi .goal-bar i { background: repeating-linear-gradient(-45deg, #FF9A1F 0 18px, #FFB547 18px 36px); }
+  body.ms.cubi .rank.top { background: #FFE3C2; }
+  body.ms.cubi .tl .box .e { border-radius: 12px; }
+  body.ms.cubi .tl .join span { font-size: 17px; text-align: center; padding: 0 10px; }
+  body.ms.cubi .band span { max-width: none; white-space: nowrap; font-size: clamp(18px, 2.2vw, 26px); }
   @media (prefers-reduced-motion: reduce) { body.ms .tp-row, body.ms .marq > div, body.ms .band > div, body.ms .frame .logo-ms { animation: none; } }
   @media (max-width: 880px) { body.ms .top { padding: 8px 8px 0; } }
   @media (prefers-reduced-motion: reduce) { body.ms .stage-sticker, body.ms .hero::before, body.ms .hero::after { animation: none; } }
@@ -704,7 +735,7 @@ function pageHomeMs() {
   const tpStars = `<span class="tp-s">${'<i></i>'.repeat(5)}</span>`;
   const revCard = (r) => `<li class="tp-c${r.text ? ' long' : r.title ? '' : ' solo'}"><div class="tp-who">${r.avatar ? `<img src="/fan/assets/${esc(r.avatar)}" alt="">` : `<span style="background:${esc(r.bg ?? '#eee')};color:${esc(r.fg ?? '#333')}">${esc(r.initials ?? r.name.charAt(0))}</span>`}<div><b>${esc(r.name)}</b><small>${esc(r.meta)}</small></div></div>${tpStars}${r.title ? `<strong>${esc(r.title)}</strong>` : ''}${r.text ? `<p>${esc(r.text)}</p>` : ''}</li>`;
   const revRow = (list, dir) => { const cards = list.map(revCard).join(''); return `<ul class="tp-row ${dir}" data-speed="100">${cards}${cards}${cards}${cards}</ul>`; };
-  const spk = M.speakers.map((f) => `<li class="spk"><img src="/fan/assets/${esc(f)}" alt="" loading="lazy"></li>`).join('');
+  const spk = (M.speakers ?? []).map((f) => `<li class="spk"><img src="/fan/assets/${esc(f)}" alt="" loading="lazy"></li>`).join('');
   const lv = C.levels;
   const bandItem = `${logo ? `<img src="${logo}" alt="">` : ''}<span>${esc(M.band)}</span>`;
   return `<section class="mshero">
@@ -724,18 +755,18 @@ function pageHomeMs() {
       <div class="step rv"><a class="join rays" href="#/recompenses">${logo ? `<img src="${logo}" alt="">` : ''}<span class="ol">1 M de vues = 1 mois !</span></a></div></div>
   </section>
 
-  <section class="msec orange">
+${M.reviews ? `  <section class="msec orange">
     <div class="mscta rv">${joinBtn()}</div>
     <a class="tp" href="${esc(M.reviews.url)}" target="_blank" rel="noopener">
       <span class="tp-head"><img class="tp-logo" src="/fan/assets/ms-tp-logo.webp" alt="Trustpilot"><span class="tp-stars">${'<img src="/fan/assets/ms-tp-star.webp" alt="">'.repeat(5)}</span><span>${esc(M.reviews.score)}</span></span>
       ${revRow(M.reviews.top, 'l')}${revRow(M.reviews.bottom, 'r')}
     </a>
-  </section>
+  </section>` : ''}
 
   <section class="msec cream">
-    <h2 class="msh2 rv">${esc(M.speakersTitle)}</h2>
-    <div class="spk-wrap" aria-hidden="true"><ul class="tp-row r" data-speed="82">${spk}${spk}${spk}${spk}</ul></div>
-    <h2 class="msh2 rv" style="margin-top:56px">${esc(M.tiersTitle)}</h2>
+    ${spk ? `<h2 class="msh2 rv">${esc(M.speakersTitle ?? '')}</h2>
+    <div class="spk-wrap" aria-hidden="true"><ul class="tp-row r" data-speed="82">${spk}${spk}${spk}${spk}</ul></div>` : ''}
+    <h2 class="msh2 rv" style="margin-top:${spk ? 56 : 0}px">${esc(M.tiersTitle)}</h2>
     <div class="tiers">${lv.slice(0, 4).map((l, i) => `<div class="tier rv"><img src="/fan/assets/ms-tier${i + 1}.webp" alt="">${esc(l.name)}<small>${i === 0 ? `&lt; ${compact(lv[1]?.min ?? 0)}` : `&gt; ${compact(l.min)}`} vues${C.gradeWindowDays ? '/mois' : ''}</small></div>`).join('')}</div>
   </section>
 
