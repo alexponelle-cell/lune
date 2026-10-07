@@ -113,7 +113,7 @@ const stopWeb = startWeb(
       .map(([name, url]) => ({ name: name!.trim(), url: url!.trim().replace(/\/+$/, '') })),
     selfUrl: dashboardUrl.replace(/\/+$/, ''),
     game,
-    emailApi: !!(config.SQUIDUU_API_URL && config.SQUIDUU_API_TOKEN),
+    emailApi: !!((config.GRANT_API_URL ?? config.SQUIDUU_API_URL) && (config.GRANT_API_TOKEN ?? config.SQUIDUU_API_TOKEN)),
     youtubeApiKey: config.YOUTUBE_API_KEY,
     discordOAuth:
       config.OAUTH_CLIENT_SECRET && (config.OAUTH_CLIENT_ID ?? config.DISCORD_CLIENT_ID)
@@ -191,7 +191,9 @@ if (config.FANS_BOT_TOKEN) {
 // Messages privés des fans (coins, niveau, objet abordable, top 3, livraison)
 const stopGameDelivery = game ? every('livraison jeu', 1, () => deliverPendingOrders(game, fans.fans)) : () => {};
 // Livraison automatique par e-mail (Squiduuverse) si l'API est configurée
-const emailApi = config.SQUIDUU_API_URL && config.SQUIDUU_API_TOKEN ? new EmailGrantClient(config.SQUIDUU_API_URL, config.SQUIDUU_API_TOKEN) : undefined;
+const grantUrl = config.GRANT_API_URL ?? config.SQUIDUU_API_URL;
+const grantToken = config.GRANT_API_TOKEN ?? config.SQUIDUU_API_TOKEN;
+const emailApi = grantUrl && grantToken ? new EmailGrantClient(grantUrl, grantToken) : undefined;
 const stopEmailDelivery = emailApi ? every('livraison e-mail', 1, () => deliverEmailOrders(emailApi, fans.fans)) : () => {};
 // Règle anti-triche gratuite : le clip doit citer le créateur dans sa légende
 // Rattrapage unique : comptes déjà inscrits qui ont rapporté → repassent par la vérification du staff

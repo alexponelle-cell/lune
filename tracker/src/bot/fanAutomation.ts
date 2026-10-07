@@ -295,6 +295,36 @@ export async function weeklyRanking(client: Client<true>, fans: FanService, now 
   return true;
 }
 
+/** Le 1er du mois à partir de 10 h (Paris) : top N du mois écoulé récompensé (ex. Loann : 1 mois de MS), annoncé dans #classement. */
+export async function monthlyPodium(client: Client<true>, fans: FanService, now = Date.now()): Promise<boolean> {
+  const { hour, day } = parisClock(now);
+  if (!day.endsWith('-01') || hour < 10) return false;
+  const r = fans.awardMonthlyPrize(now);
+  if (!r) return false;
+  const medals = ['🥇', '🥈', '🥉'];
+  const lines = r.winners.map((w, i) => `${medals[i] ?? `**${i + 1}.**`} <@${w.discordId}> · ${compact(w.views)} vues`);
+  for (const guild of setupGuilds(client, fans)) {
+    const ch = channel(guild, RANKING_CHANNEL);
+    if (!ch) continue;
+    await ch
+      .send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(accent(fans))
+            .setTitle(`🏆 Podium de ${r.month}`)
+            .setDescription(
+              r.winners.length
+                ? `${lines.join('\n')}\n\n🎁 Le top ${r.winners.length} gagne **${r.reward}**, offert ! Il est envoyé sur l’e-mail de votre inscription.\nNouveau mois, compteurs à zéro : à vous de jouer 🔥`
+                : 'Personne n’a fait de vues ce mois-ci. Le podium du mois prochain est grand ouvert 🔥',
+            ),
+        ],
+        allowedMentions: { users: r.winners.map((w) => w.discordId) },
+      })
+      .catch((err) => log.warn(`podium du mois (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`));
+  }
+  return true;
+}
+
 /** Nouvelles vidéos du créateur → #nouvelles-vidéos (1er passage : mémorise l'existant sans rien poster). */
 export async function announceNewVideos(client: Client<true>, fans: FanService, youtubeApiKey: string): Promise<number> {
   const videos = await fans.latestVideos(youtubeApiKey, 5);

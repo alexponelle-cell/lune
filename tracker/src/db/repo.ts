@@ -63,6 +63,8 @@ export interface Account {
   /** Propriété du compte prouvée (code dans la bio) ; null = pas encore vérifié (fans). */
   verifiedAt: number | null;
   followers: number | null;
+  /** 1 = compte de /inscription, 2 = 2e compte du même réseau (/inscription2). */
+  slot: number;
 }
 
 export interface VideoInput {
@@ -115,6 +117,7 @@ const toAccount = (r: Row): Account => ({
   createdAt: r.created_at,
   verifiedAt: r.verified_at ?? null,
   followers: r.followers ?? null,
+  slot: r.slot ?? 1,
 });
 
 export function slugify(name: string): string {
@@ -239,6 +242,8 @@ export class Repo {
     handle: string;
     url: string;
     now?: number;
+    /** 2 = 2e compte du même réseau (/inscription2) ; absent = inchangé (1 pour un nouveau compte). */
+    slot?: number;
   }): { account: Account; created: boolean; conflict?: Clipper } {
     const existing = this.getAccountByHandle(input.platform, input.handle);
     if (existing) {
@@ -250,22 +255,22 @@ export class Repo {
           this.db.prepare('DELETE FROM tiktok_tokens WHERE account_id = ?').run(existing.id);
           this.db.prepare('DELETE FROM instagram_tokens WHERE account_id = ?').run(existing.id);
           this.db
-            .prepare('UPDATE accounts SET clipper_id = ?, client_id = COALESCE(?, client_id), url = ?, active = 1, created_at = ?, verified_at = ? WHERE id = ?')
-            .run(input.clipperId, input.clientId, input.url, now, now, existing.id);
+            .prepare('UPDATE accounts SET clipper_id = ?, client_id = COALESCE(?, client_id), url = ?, active = 1, created_at = ?, verified_at = ?, slot = ? WHERE id = ?')
+            .run(input.clipperId, input.clientId, input.url, now, now, input.slot ?? 1, existing.id);
         })();
         return { account: this.getAccountByHandle(input.platform, input.handle)!, created: true };
       }
       this.db
-        .prepare('UPDATE accounts SET active = 1, client_id = COALESCE(?, client_id) WHERE id = ?')
-        .run(input.clientId, existing.id);
+        .prepare('UPDATE accounts SET active = 1, client_id = COALESCE(?, client_id), slot = COALESCE(?, slot) WHERE id = ?')
+        .run(input.clientId, input.slot ?? null, existing.id);
       return { account: this.getAccountByHandle(input.platform, input.handle)!, created: false };
     }
     const r = this.db
       .prepare(
-        `INSERT INTO accounts (clipper_id, client_id, platform, handle, url, created_at, verified_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+        `INSERT INTO accounts (clipper_id, client_id, platform, handle, url, created_at, verified_at, slot)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
       )
-      .get(input.clipperId, input.clientId, input.platform, input.handle, input.url, input.now ?? Date.now(), input.now ?? Date.now());
+      .get(input.clipperId, input.clientId, input.platform, input.handle, input.url, input.now ?? Date.now(), input.now ?? Date.now(), input.slot ?? 1);
     return { account: toAccount(r as Row), created: true };
   }
 

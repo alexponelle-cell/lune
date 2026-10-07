@@ -7,6 +7,7 @@ import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform }
 import type { AgencyService } from './agency.js';
 import { type CoinsState, coinsDiagnosis, type FaqInfo, type FaqIntent, fanAccountError, videoKey } from '../domain/faq.js';
 import { beone } from '../creators/beone.js';
+import { parisMidnight } from '../jobs/collect.js';
 import type { CreatorConfig } from '../creators/types.js';
 
 /** Programme fans (bot Neptune) : les fans clippent, gagnent des points avec leurs vues et les échangent en boutique. */
@@ -114,7 +115,7 @@ export class FanService {
     const defaults = { ...DEFAULT_FANS, programName: c.programName, pointsPer1000: c.pointsPer1000, creatorYoutube: c.youtube, creatorRoblox: c.robloxUsername ?? '' };
     const stored = { ...defaults, ...this.repo.getSetting<Partial<FanSettings>>('fans', {}) };
     if (c.clipRule === false) stored.clipRule = false;
-    if (c.trustAccounts) stored.accountReview = false;
+    if (c.trustAccounts) Object.assign(stored, { accountReview: false, orderReview: false });
     return stored;
   }
 
@@ -325,6 +326,55 @@ export class FanService {
       .filter((r) => !!r.clipper);
     const avatars = this.fans.avatars(rows.map((r) => r.clipper!.id));
     return rows.map((r, i) => ({ rank: i + 1, id: r.clipper!.id, name: r.clipper!.username, avatar: avatars.get(r.clipper!.id) ?? null, views: r.views, coins: this.points(r.views) }));
+  }
+
+  /** Classement sur une période [from, to[ : vues gagnées entre les deux dates (clips qui comptent). */
+  periodLeaderboard(from: number, to: number, limit = 10) {
+    const s = this.settings();
+    if (!s.clientId) return [];
+    const since = this.fans.freshClipViews(s.clientId, from, this.clipRuleSince(), this.countFrom());
+    const after = this.fans.freshClipViews(s.clientId, to, this.clipRuleSince(), this.countFrom());
+    const rows = [...since]
+      .map(([id, v]) => [id, v - (after.get(id) ?? 0)] as const)
+      .filter(([, views]) => views > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([id, views]) => ({ clipper: this.repo.getClipper(id), views }))
+      .filter((r) => !!r.clipper);
+    const avatars = this.fans.avatars(rows.map((r) => r.clipper!.id));
+    return rows.map((r, i) => ({ rank: i + 1, id: r.clipper!.id, discordId: r.clipper!.discordId, name: r.clipper!.username, avatar: avatars.get(r.clipper!.id) ?? null, views: r.views }));
+  }
+
+  /** Début (minuit, heure de Paris) du mois de `now`, et du mois précédent. */
+  static monthStart(now: number, offset = 0): number {
+    const [y, m] = new Date(now).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }).split('-').map(Number) as [number, number];
+    return parisMidnight(Date.UTC(y, m - 1 + offset, 1, 12));
+  }
+
+  /** Classement du mois en cours (si le créateur a un classement du mois). */
+  monthLeaderboard(now = Date.now(), limit = 10) {
+    return this.creator.monthlyPrize ? this.periodLeaderboard(FanService.monthStart(now), now + 1, limit) : [];
+  }
+
+  /**
+   * 1er du mois : les N premiers du mois écoulé reçoivent la récompense principale (commande offerte, livrée
+   * automatiquement si l'API de livraison est branchée). Une seule fois par mois. Renvoie les gagnants.
+   */
+  awardMonthlyPrize(now = Date.now()): { month: string; winners: Array<{ rank: number; discordId: string; name: string; views: number }>; reward: string } | null {
+    const n = this.creator.monthlyPrize;
+    if (!n) return null;
+    const start = FanService.monthStart(now, -1);
+    const end = FanService.monthStart(now);
+    const key = new Date(start + 12 * 3_600_000).toISOString().slice(0, 7);
+    if (this.botState<string>('monthly-prize', '') === key) return null;
+    this.setBotState('monthly-prize', key);
+    const shop = this.fans.items({ activeOnly: true });
+    const item = (this.creator.reward && shop.find((i) => i.ref === this.creator.reward!.ref)) ?? shop[0];
+    if (!item) return null;
+    const month = new Date(start + 12 * 3_600_000).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
+    const winners = this.periodLeaderboard(start, end, n);
+    for (const w of winners) this.fans.giftOrder(w.id, item.id, `top ${w.rank} de ${month}`, now);
+    return { month, reward: item.name, winners: winners.map(({ rank, discordId, name, views }) => ({ rank, discordId, name, views })) };
   }
 
   // --- Automatisations du serveur Discord (rôles de niveau, classement, vidéos) ---------
@@ -592,12 +642,12 @@ export class FanService {
    * Formulaire /inscription : un champ par plateforme (@pseudo ou lien). Champ vide = plateforme retirée.
    * Un compte déjà relié à quelqu'un d'autre est refusé.
    */
-  setAccounts(clipper: Clipper, input: Partial<Record<Platform, string>>) {
+  setAccounts(clipper: Clipper, input: Partial<Record<Platform, string>>, slot = 1) {
     const out = { linked: [] as AccountLink[], removed: [] as Platform[], conflicts: [] as AccountLink[], invalid: [] as Platform[] };
     for (const platform of ['tiktok', 'youtube', 'instagram'] as const) {
       const raw = input[platform];
       if (raw === undefined) continue;
-      const current = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.platform === platform);
+      const current = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.platform === platform && a.slot === slot);
       const value = raw.trim();
       if (!value) {
         for (const a of current) this.repo.deactivateAccount(a.id);
@@ -613,7 +663,12 @@ export class FanService {
         out.linked.push(link);
         continue;
       }
-      const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link });
+      // Déjà relié par ce fan dans l'autre emplacement (/inscription ↔ /inscription2) : on ne le déplace pas
+      if (this.repo.listAccountsForClipper(clipper.id).some((a) => a.active && a.platform === platform && a.handle === link.handle && a.slot !== slot)) {
+        out.linked.push(link);
+        continue;
+      }
+      const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link, slot });
       if (r.conflict) {
         out.conflicts.push(link);
         continue;
@@ -695,7 +750,7 @@ export class FanService {
     const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link, now });
     if (r.conflict) throw new Error(`Le compte @${link.handle} est déjà relié à un autre clippeur : contacte le staff.`);
     this.repo.setAccountVerified(r.account.id, now);
-    for (const a of current) if (a.id !== r.account.id) this.repo.deactivateAccount(a.id);
+    for (const a of current) if (a.id !== r.account.id && a.slot === r.account.slot) this.repo.deactivateAccount(a.id);
     return r.account.id;
   }
   private lastVerify = new Map<number, number>();
@@ -984,6 +1039,10 @@ export class FanService {
       clips,
       items: this.fans.items({ activeOnly: true }),
       leaderboard: this.leaderboard(now).map(({ id: _id, ...r }) => r),
+      // Classement du mois (créateurs avec récompense du mois, ex. Loann : top 3 = 1 mois offert)
+      ...(this.creator.monthlyPrize
+        ? { monthPrize: this.creator.monthlyPrize, monthLeaderboard: this.monthLeaderboard(now).map(({ id: _id, discordId: _d, ...r }) => r) }
+        : {}),
     };
   }
 

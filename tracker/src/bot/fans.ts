@@ -20,7 +20,7 @@ import {
 import { log } from '../log.js';
 import { FAQ_MENU, faqAnswer, type FaqIntent, looksLikeQuestion, matchFaq, PERSONAL_INTENTS } from '../domain/faq.js';
 import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
-import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
+import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking, monthlyPodium } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -47,6 +47,10 @@ const inscriptionCommand = (fans: FanService) =>
     .setDescription(`Relie tes comptes TikTok, YouTube, Instagram (et ton ${fans.creator.rewardAccount.kind === 'email' ? 'e-mail' : 'pseudo Roblox'})`)
     .toJSON();
 const INSCRIPTION_MODAL = 'fans:inscription';
+/** /inscription2 : un 2e compte par réseau (facultatif), compté pour le même profil. */
+const inscription2Command = () =>
+  new SlashCommandBuilder().setName('inscription2').setDescription('Ajoute un 2e compte TikTok, YouTube ou Instagram (compté sur ton profil)').toJSON();
+const INSCRIPTION2_MODAL = 'fans:inscription2';
 /** Bouton « S'inscrire » posté par /setup (ouvre le même formulaire que /inscription). */
 export const SIGNUP_BUTTON = 'fans:signup';
 
@@ -88,7 +92,7 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         const fan = fans.ensureFan(interaction.user.id, name);
         const accounts = fans.accountsOf(fan.id);
         const current = (p: string) => {
-          const a = accounts.find((x) => x.platform === p);
+          const a = accounts.find((x) => x.platform === p && x.slot === 1);
           return a ? `@${a.handle}` : '';
         };
         const modal = new ModalBuilder().setCustomId(INSCRIPTION_MODAL).setTitle(`Inscription ${fans.settings().programName}`.slice(0, 45));
@@ -104,6 +108,35 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         if (r) rbx.setValue(r);
         modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(rbx));
         await interaction.showModal(modal);
+        return;
+      }
+      if (interaction.isChatInputCommand() && interaction.commandName === 'inscription2') {
+        const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
+        const fan = fans.ensureFan(interaction.user.id, name);
+        const second = fans.accountsOf(fan.id).filter((a) => a.slot === 2);
+        const modal = new ModalBuilder().setCustomId(INSCRIPTION2_MODAL).setTitle('2e compte (facultatif)');
+        for (const f of PLATFORM_FIELDS) {
+          const input = new TextInputBuilder().setCustomId(f.id).setLabel(`2e compte ${f.label}`).setPlaceholder(`${f.placeholder} (vide = aucun)`).setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(200);
+          const a = second.find((x) => x.platform === f.id);
+          if (a) input.setValue(`@${a.handle}`);
+          modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+        }
+        await interaction.showModal(modal);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId === INSCRIPTION2_MODAL) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
+        const fan = fans.ensureFan(interaction.user.id, name);
+        const get = (id: string) => interaction.fields.getTextInputValue(id) ?? '';
+        const res = fans.setAccounts(fan, { tiktok: get('tiktok'), youtube: get('youtube'), instagram: get('instagram') }, 2);
+        const lines: string[] = [];
+        if (res.linked.length) lines.push(`✅ 2es comptes suivis : ${res.linked.map((a) => `**${PF[a.platform]}** @${a.handle}`).join(', ')}. Leurs vues s'ajoutent à ton profil.`);
+        if (res.removed.length) lines.push(`🗑️ Retiré : ${res.removed.map((p) => PF[p]).join(', ')}`);
+        if (res.conflicts.length) lines.push(`⛔ Déjà relié à quelqu'un d'autre : ${res.conflicts.map((a) => `@${a.handle}`).join(', ')}. Si c'est ton compte, préviens le staff.`);
+        if (res.invalid.length) lines.push(`🤔 Pas compris : ${res.invalid.map((p) => PF[p]).join(', ')}. Mets ton @pseudo ou le lien de ton profil.`);
+        if (fans.unverifiedAccounts(fan.id).length) lines.push('🔎 Tes nouveaux comptes vont être vérifiés (sous 24 h) : leurs vues compteront dès la validation.');
+        await interaction.editReply(lines.join('\n') || 'Rien à changer 👍');
         return;
       }
       if (interaction.isModalSubmit() && interaction.customId === INSCRIPTION_MODAL) {
@@ -339,7 +372,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       ? opts.guildIds.map((g) => Routes.applicationGuildCommands(opts.clientId!, g))
       : [Routes.applicationCommands(opts.clientId)];
     for (const route of routes) {
-      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand(opts.fans), setupCommand] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
+      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand(opts.fans), inscription2Command(), setupCommand] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
     }
   }
   // Lire le salon #mes-comptes demande « Message Content Intent » (portail Discord, onglet Bot).
@@ -353,7 +386,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
   let timer: NodeJS.Timeout | undefined;
   let autoTimer: NodeJS.Timeout | undefined;
   // Commandes enregistrées sur chaque serveur où est le bot (au démarrage et dès qu'on l'invite)
-  const commandBody = () => [...fanCommandDefinitions, inscriptionCommand(opts.fans), setupCommand];
+  const commandBody = () => [...fanCommandDefinitions, inscriptionCommand(opts.fans), inscription2Command(), setupCommand];
   const registerIn = (appId: string, guildId: string) =>
     new REST()
       .setToken(opts.token)
@@ -382,6 +415,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       await syncGradeRoles(c, opts.fans).catch((err) => log.error('grades du mois', err));
       await snapshotOnboarding(c, opts.fans).catch((err) => log.error('funnel onboarding', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
+      await monthlyPodium(c, opts.fans).catch((err) => log.error('podium du mois', err));
       if (opts.youtubeApiKey) await announceNewVideos(c, opts.fans, opts.youtubeApiKey).catch((err) => log.error('nouvelles vidéos', err));
     };
     autoTimer = setInterval(() => void automations(), 15 * 60_000);

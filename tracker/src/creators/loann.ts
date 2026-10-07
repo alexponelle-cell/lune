@@ -13,6 +13,8 @@ export const loann: CreatorConfig = {
   clipRule: false,
   // Clippeurs de confiance : pas de comptes « à vérifier » ni de contrôle des gros comptes
   trustAccounts: true,
+  // Classement du mois : le top 3 gagne 1 mois de Merguez Superstar (offert le 1er du mois suivant)
+  monthlyPrize: 3,
   countViewsFrom: '2026-08-01',
   youtube: 'LoannLV,netabonnepas-el2vd',
   theme: 'pop',

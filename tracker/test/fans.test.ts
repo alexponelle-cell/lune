@@ -79,6 +79,38 @@ describe('programme fans (Neptune)', () => {
     expect(loann.flagSuspicious()).toEqual([]);
   });
 
+  it('classement du mois : le top 3 du mois écoulé reçoit la récompense offerte, une seule fois', () => {
+    const loann = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('loann'));
+    loann.fans.createItem({ name: '1 mois de MS', kind: 'item' as never, ref: 'ms-1m', price: 10000 });
+    const sept = FanService.monthStart(Date.parse('2026-09-15T12:00:00Z'));
+    const oct = FanService.monthStart(Date.parse('2026-10-15T12:00:00Z'));
+    expect(new Date(oct).toISOString()).toBe('2026-09-30T22:00:00.000Z');
+    const mk = (id: string, views: number) => {
+      const fan = loann.ensureFan(id, id);
+      loann.addAccounts(fan, `https://www.tiktok.com/@${id}.clips`);
+      const acc = repo.listAccountsForClipper(fan.id)[0]!;
+      repo.db.prepare('UPDATE accounts SET created_at = ?, verified_at = ? WHERE id = ?').run(sept - 1, sept - 1, acc.id);
+      repo.recordCollection(acc.id, [{ platformVideoId: `${id}v`, views: 0, publishedAt: sept + 1000 }], sept + 2000);
+      repo.recordCollection(acc.id, [{ platformVideoId: `${id}v`, views, publishedAt: sept + 1000 }], sept + 86_400_000);
+      return fan;
+    };
+    mk('a', 500); mk('b', 3000); mk('c', 2000); mk('d', 1000);
+    const r = loann.awardMonthlyPrize(oct + 11 * 3_600_000)!;
+    expect(r.winners.map((w) => w.name)).toEqual(['b', 'c', 'd']);
+    expect(loann.fans.orders({}).filter((o) => o.price === 0)).toHaveLength(3);
+    expect(loann.awardMonthlyPrize(oct + 12 * 3_600_000)).toBeNull();
+  });
+
+  it('/inscription2 : un 2e compte du même réseau, compté sur le même profil', () => {
+    const fan = fans.ensureFan('d5', 'Duo');
+    fans.setAccounts(fan, { tiktok: '@duo.main' });
+    fans.setAccounts(fan, { tiktok: '@duo.second' }, 2);
+    expect(fans.accountsOf(fan.id).map((a) => `${a.handle}:${a.slot}`).sort()).toEqual(['duo.main:1', 'duo.second:2']);
+    // Changer le 2e ne touche pas au 1er, et le vider le retire
+    fans.setAccounts(fan, { tiktok: '' }, 2);
+    expect(fans.accountsOf(fan.id).map((a) => a.handle)).toEqual(['duo.main']);
+  });
+
   it('grades du mois glissant : seules les vues de la période comptent', () => {
     const fan = fanWithViews();
     expect(fans.fanLevels(now, 30).find((f) => f.clipperId === fan.id)?.views).toBe(5000);

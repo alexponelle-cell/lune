@@ -62,6 +62,11 @@ export interface CreatorConfig {
    * qui monte ou redescend chaque jour selon le mois glissant. Sans ce champ : pas de rôles de grade.
    */
   gradeWindowDays?: number;
+  /**
+   * Classement du mois : les N premiers (vues gagnées sur le mois calendaire) reçoivent la récompense principale
+   * gratuitement, le 1er du mois suivant (annonce dans #classement, livraison comme un achat). Ex. 3.
+   */
+  monthlyPrize?: number;
   /** true = clippeurs de confiance : aucun compte « à vérifier » ni fan suspect, tout est validé d'office. */
   trustAccounts?: true;
   /** false = pas de mot-clé (#tag) obligatoire dans la légende : tous les clips des comptes reliés comptent. */

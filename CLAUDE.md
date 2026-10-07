@@ -37,7 +37,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 
 ## Technique (dossier `tracker/`)
 
-- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v18**),
+- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v19**),
   **Hono** (serveur web), **zod**, **vitest**.
 - `src/creators/*.ts` : **config de chaque créateur** (nom, couleurs, police, textes, récompense, niveaux, messages Discord).
   Choisie au démarrage par la variable `CREATOR`. Ajouter un créateur = copier `squiduu.ts`, l'adapter, l'ajouter dans `index.ts`.
@@ -82,7 +82,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 - **Site Loann** (style « ms », copie de ms-creators.com) : pour les clippeurs déjà inscrits, message « 1 M de vues = 1 mois de MS ». Boutons « Voir ma progression » → page `#/progression` (barre vers 1 M, stats, classement). Avis Trustpilot de MS en cartes HTML, conférenciers MS (`ms-*.webp`). Textes dans `loann.ts` (champ `ms`), rendu `pageHomeMs()` dans `fan-sober.html`.
 - **Liste de Lucas** : IA « clipper » (FAQ gratuite par défaut, il faut ses tutos / conférences / ateliers),
   améliorer le système avec sa data.
-- Josplay : trouver comment rémunérer les clippeurs. Loann : bot OK sur le nouveau serveur (/setup + FAQ ❓│aide testés), reste un test d’inscription complet. Loann : **pas de #tag** (`clipRule: false`) et **tous les clips depuis le 1er août 2026 comptent** (`countViewsFrom`, rattrapage unique : TOUS les clips depuis le 1er août, jusqu’à 500 par compte ; comptes de confiance `trustAccounts`, pas de vérif staff). Railway : encore en **Trial** (crédit unique de 5 $, ~1 $ consommé en 2 semaines) → passer en Hobby (5 $/mois) avant la fin du crédit, sinon tout s’arrête.
+- Josplay : trouver comment rémunérer les clippeurs. Loann : bot OK sur le nouveau serveur (/setup + FAQ ❓│aide testés), reste un test d’inscription complet. Loann : **pas de #tag** (`clipRule: false`) et **tous les clips depuis le 1er août 2026 comptent** (`countViewsFrom`, rattrapage unique : TOUS les clips depuis le 1er août, jusqu’à 500 par compte ; comptes de confiance `trustAccounts`, pas de vérif staff ni de validation des achats). **Podium du mois** (`monthlyPrize: 3`) : le 1er du mois à 10 h, le top 3 du mois écoulé reçoit 1 mois de MS offert (commande à 0 coin, annonce dans #classement ; `monthLeaderboard` dans `/api/fan/public` pour le site). **Livraison auto MS** : prête (`GRANT_API_URL` / `GRANT_API_TOKEN`, même format que Squiduuverse : POST /grant {email, months, orderId}), il faut que MS fournisse l’API. **/inscription2** : 2ᵉ compte par réseau (colonne `accounts.slot`, v19). Railway : encore en **Trial** (crédit unique de 5 $, ~1 $ consommé en 2 semaines) → passer en Hobby (5 $/mois) avant la fin du crédit, sinon tout s’arrête.
 
 ## Ma façon de travailler (à garder)
 

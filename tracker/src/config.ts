@@ -39,6 +39,9 @@ const schema = z.object({
   /** API de livraison par e-mail (ex. Squiduuverse : +1 mois au compte de cet e-mail). */
   SQUIDUU_API_URL: optionalString,
   SQUIDUU_API_TOKEN: optionalString,
+  /** API de livraison par e-mail du service offert (même format que Squiduuverse), ex. Merguez Superstar pour Loann. */
+  GRANT_API_URL: optionalString,
+  GRANT_API_TOKEN: optionalString,
 
   DATABASE_PATH: z.string().default('./data/tracker.db'),
 

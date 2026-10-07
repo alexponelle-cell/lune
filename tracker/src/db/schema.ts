@@ -445,4 +445,7 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
     created_at INTEGER NOT NULL
   );
   `,
+
+  // v19 : 2e compte par réseau (/inscription2) : slot 1 = comptes de /inscription, slot 2 = comptes de /inscription2
+  `ALTER TABLE accounts ADD COLUMN slot INTEGER NOT NULL DEFAULT 1;`,
 ];

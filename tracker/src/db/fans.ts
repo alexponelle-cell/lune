@@ -477,6 +477,16 @@ export class FanRepo {
     })();
   }
 
+  /** Récompense offerte (classement du mois) : commande à 0 coin, déjà validée, livrée comme un achat. */
+  giftOrder(clipperId: number, itemId: number, label: string, now = Date.now()): ShopOrder {
+    const item = this.item(itemId);
+    if (!item) throw new Error('Objet introuvable');
+    const r = this.db
+      .prepare('INSERT INTO shop_orders (clipper_id, item_id, item_name, kind, ref, price, created_at, approved_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?) RETURNING *')
+      .get(clipperId, item.id, `${item.name} (${label})`.slice(0, 120), item.kind, item.ref, now, now);
+    return toOrder(r as Row);
+  }
+
   orders(opts: { clipperId?: number; status?: OrderStatus; limit?: number } = {}): ShopOrder[] {
     const where: string[] = [];
     const args: unknown[] = [];
