@@ -100,6 +100,8 @@ export interface CreatorConfig {
   ms?: {
     /** Sous-titre du hero (sous heroTitle). */
     heroLine: string;
+    /** Image du cadre central du hero (fichier ms-*.webp), sinon la photo du créateur. */
+    heroImage?: string;
     /** Carte-stat de gauche (badge rond + texte) et de droite (gros chiffre + texte). */
     statLeft: { badge: string; text: string };
     statRight: { big: string; text: string };

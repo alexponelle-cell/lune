@@ -407,7 +407,7 @@
   body.ms .msstage { display: grid; grid-template-columns: 1fr minmax(0, 2.2fr) 1fr; gap: 34px; align-items: center; }
   body.ms .frame { aspect-ratio: 16 / 10; border: 4px solid var(--ink); border-radius: 26px; box-shadow: 0 8px 0 var(--ink); overflow: hidden; position: relative; background: #000; }
   body.ms .frame > img:first-child { width: 100%; height: 100%; object-fit: cover; display: block; }
-  body.ms .frame .logo-ms { position: absolute; right: 14px; bottom: 10px; width: 26%; filter: drop-shadow(0 4px 0 rgba(33,33,33,.8)); animation: msBob 3s ease-in-out infinite; }
+  body.ms .frame .logo-ms { position: absolute; right: 12px; bottom: 8px; width: 17%; filter: drop-shadow(0 4px 0 rgba(33,33,33,.8)); animation: msBob 3s ease-in-out infinite; }
   body.ms .scard { position: relative; border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 5px 0 var(--ink); padding: 44px 14px 18px; text-align: center; transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
   body.ms .scard:hover { transform: translateY(-5px) rotate(-1.5deg); }
   body.ms .scard .bdg { position: absolute; left: 50%; top: 0; translate: -50% -50%; min-width: 58px; height: 58px; padding: 0 8px; border-radius: 99px; background: var(--ink); color: #fff; display: grid; place-items: center; font-family: 'Passion One', sans-serif; font-size: 24px; }
@@ -711,7 +711,7 @@ function pageHomeMs() {
     <h1 class="load">${hl(C.texts.heroTitle)}</h1><p class="line load">${esc(M.heroLine)}</p>
     <div class="msstage load">
       <div class="scard rays"><span class="bdg">${esc(M.statLeft.badge)}</span><div class="ol t">${esc(M.statLeft.text)}</div><div class="ic">🏆</div></div>
-      <div class="frame">${'<img src="/fan/assets/creator.png" alt="">'}${logo ? `<img class="logo-ms" src="${logo}" alt="">` : ''}</div>
+      <div class="frame"><img src="/fan/assets/${esc(M.heroImage ?? 'creator.png')}" alt="">${logo ? `<img class="logo-ms" src="${logo}" alt="">` : ''}</div>
       <div class="scard rays"><span class="bdg">✦</span><div class="ol big">${esc(M.statRight.big)}</div><div class="ol t">${esc(M.statRight.text)}</div></div>
     </div>
     <div class="mscta load">${joinBtn()}<small>${ctaNoteMs()}</small></div>
