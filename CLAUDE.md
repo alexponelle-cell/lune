@@ -64,7 +64,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 ## Déploiement
 
 - **Railway** : un service par créateur (`lune` = BeOne + agence + Mars, puis `squiduu`, `Debo`, `loann`), tous déployés depuis ce repo.
-  URL publique de lune : https://lune-production-dbd1.up.railway.app
+  URL publique de lune : https://lune-production-dbd1.up.railway.app · loann : https://loann-production.up.railway.app/fan
 - Les secrets (token Discord, clés API, TikTok, Instagram, Apify…) sont dans les Variables Railway de chaque service.
 - Détails : `tracker/DEPLOY.md`, `tracker/README.md`.
 
