@@ -9,8 +9,7 @@ export const cubi: CreatorConfig = {
   programName: 'CUBI GAME CLIPPING',
   creatorName: 'Cubi Game',
   clipKeywords: ['Cubi', 'CubiGame', 'Cubi Game'],
-  // À compléter : handle(s) de la chaîne YouTube (photo HD, vidéos du créateur)
-  youtube: '',
+  youtube: 'cubi-game6913',
   theme: 'pop',
   style: 'ms',
   images: { reward: 'cubi-academy.webp' },
