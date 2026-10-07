@@ -12,6 +12,8 @@ export class YouTubeFetcher implements PlatformFetcher {
   constructor(
     private readonly apiKey: string,
     private readonly maxVideos: number,
+    /** Rattrapage : toutes les vidéos publiées depuis cette date (pages de 50), au lieu des N dernières. */
+    private readonly since?: number,
   ) {}
 
   private async get<T>(path: string, params: Record<string, string>): Promise<T> {
@@ -49,21 +51,34 @@ export class YouTubeFetcher implements PlatformFetcher {
     const channel = await this.channel(account, 'snippet,contentDetails,statistics');
     const profile = { bio: channel.snippet.description ?? '', followers: channel.statistics?.hiddenSubscriberCount ? undefined : Number(channel.statistics?.subscriberCount ?? 0) };
 
-    const playlist = await this.get<{ items?: Array<{ contentDetails: { videoId: string } }> }>('playlistItems', {
-      part: 'contentDetails',
-      playlistId: channel.contentDetails!.relatedPlaylists.uploads,
-      maxResults: String(Math.min(this.maxVideos, 50)),
-    });
-    const ids = (playlist.items ?? []).map((i) => i.contentDetails.videoId);
+    const ids: string[] = [];
+    let pageToken: string | undefined;
+    // Rattrapage : jusqu'à 20 pages de 50 (1 unité de quota chacune), on s'arrête dès qu'on passe avant la date
+    for (let page = 0; page < (this.since ? 20 : 1); page++) {
+      const playlist = await this.get<{ items?: Array<{ contentDetails: { videoId: string; videoPublishedAt?: string } }>; nextPageToken?: string }>('playlistItems', {
+        part: 'contentDetails',
+        playlistId: channel.contentDetails!.relatedPlaylists.uploads,
+        maxResults: String(this.since ? 50 : Math.min(this.maxVideos, 50)),
+        ...(pageToken ? { pageToken } : {}),
+      });
+      const items = playlist.items ?? [];
+      const recent = this.since ? items.filter((i) => !i.contentDetails.videoPublishedAt || Date.parse(i.contentDetails.videoPublishedAt) >= this.since!) : items;
+      ids.push(...recent.map((i) => i.contentDetails.videoId));
+      pageToken = playlist.nextPageToken;
+      if (!pageToken || recent.length < items.length) break;
+    }
     if (ids.length === 0) return { externalId: channel.id, displayName: channel.snippet.title, videos: [], ...profile };
 
-    const videos = await this.get<{
-      items?: Array<{
-        id: string;
-        snippet: { title: string; publishedAt: string; description?: string; tags?: string[] };
-        statistics: { viewCount?: string; likeCount?: string; commentCount?: string };
-      }>;
-    }>('videos', { part: 'snippet,statistics', id: ids.join(',') });
+    type Video = {
+      id: string;
+      snippet: { title: string; publishedAt: string; description?: string; tags?: string[] };
+      statistics: { viewCount?: string; likeCount?: string; commentCount?: string };
+    };
+    const videos: { items: Video[] } = { items: [] };
+    for (let i = 0; i < ids.length; i += 50) {
+      const r = await this.get<{ items?: Video[] }>('videos', { part: 'snippet,statistics', id: ids.slice(i, i + 50).join(',') });
+      videos.items.push(...(r.items ?? []));
+    }
 
     return {
       externalId: channel.id,

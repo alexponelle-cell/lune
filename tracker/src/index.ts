@@ -49,11 +49,14 @@ if (instagramCreds && config.FETCHER_MODE === 'live') {
   fetchers.instagram = new InstagramOfficialFetcher(instagramStore, config.VIDEOS_PER_ACCOUNT, fetchers.instagram);
   fanFetchers.instagram = new InstagramOfficialFetcher(instagramStore, 15, config.INSTAGRAM_APIFY_FALLBACK === '1' ? fanFetchers.instagram : undefined);
 }
-// Rattrapage (créateur avec countViewsFrom, ex. Loann) : chaque compte de fan est relu UNE fois avec 30 vidéos,
-// pour retrouver ses clips depuis la date de départ ; ensuite il repasse au rythme normal (5 vidéos)
-const backfillFetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(30, config.VIDEOS_PER_ACCOUNT) });
-if (tiktokCreds && config.FETCHER_MODE === 'live') backfillFetchers.tiktok = fanFetchers.tiktok;
-if (instagramCreds && config.FETCHER_MODE === 'live') backfillFetchers.instagram = fanFetchers.instagram;
+// Rattrapage (créateur avec countViewsFrom, ex. Loann) : chaque compte de fan est relu UNE fois avec TOUS ses clips
+// depuis la date de départ (jusqu'à 500) ; ensuite il repasse au rythme normal (5 vidéos)
+const backfillFetchers = (since: number) => {
+  const f = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: 500 }, since);
+  if (tiktokCreds && config.FETCHER_MODE === 'live') f.tiktok = fanFetchers.tiktok;
+  if (instagramCreds && config.FETCHER_MODE === 'live') f.instagram = fanFetchers.instagram;
+  return f;
+};
 /** Comptes connectés officiellement (TikTok + Instagram) : relus gratuitement. */
 const connectedAccounts = () => new Set([...tiktokStore.connected(), ...instagramStore.connected()]);
 
@@ -206,12 +209,13 @@ const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, async () 
   );
   if (fanClient === null) return { agence };
   let rattrapage;
-  if (fans.countFrom() !== null) {
-    const done = new Set(fans.botState<number[]>('backfill', []));
+  const countFrom = fans.countFrom();
+  if (countFrom !== null) {
+    const done = new Set(fans.botState<number[]>('backfill-all', []));
     const startedAt = Date.now();
-    rattrapage = await collectAll(repo, backfillFetchers, Date.now, (account) => account.clientId !== fanClient || done.has(account.id));
+    rattrapage = await collectAll(repo, backfillFetchers(countFrom), Date.now, (account) => account.clientId !== fanClient || done.has(account.id));
     for (const a of repo.listActiveAccounts()) if (a.clientId === fanClient && a.lastCheckedAt !== null && a.lastCheckedAt >= startedAt) done.add(a.id);
-    fans.setBotState('backfill', [...done]);
+    fans.setBotState('backfill-all', [...done]);
   }
   const last = repo.lastPublishedByAccount();
   const free = connected;

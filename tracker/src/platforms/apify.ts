@@ -20,6 +20,9 @@ async function runActor<T>(token: string, actorId: string, input: unknown): Prom
   return (await res.json()) as T[];
 }
 
+/** « 2026-08-01 » (format de date des actors Apify). */
+const isoDay = (t: number) => new Date(t).toISOString().slice(0, 10);
+
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
 export class TikTokApifyFetcher implements PlatformFetcher {
@@ -28,6 +31,8 @@ export class TikTokApifyFetcher implements PlatformFetcher {
   constructor(
     private readonly token: string,
     private readonly maxVideos: number,
+    /** Rattrapage : toutes les vidéos publiées depuis cette date (dans la limite de maxVideos). */
+    private readonly since?: number,
     private readonly actorId = 'clockworks~tiktok-scraper',
     private readonly profileActorId = 'clockworks~tiktok-profile-scraper',
   ) {}
@@ -36,6 +41,7 @@ export class TikTokApifyFetcher implements PlatformFetcher {
     const items = await runActor<Record<string, any>>(this.token, this.actorId, {
       profiles: [account.handle],
       resultsPerPage: this.maxVideos,
+      ...(this.since ? { oldestPostDateUnified: isoDay(this.since) } : {}),
       shouldDownloadVideos: false,
       shouldDownloadCovers: false,
     });
@@ -73,6 +79,8 @@ export class InstagramApifyFetcher implements PlatformFetcher {
   constructor(
     private readonly token: string,
     private readonly maxVideos: number,
+    /** Rattrapage : tous les reels publiés depuis cette date (dans la limite de maxVideos). */
+    private readonly since?: number,
     private readonly actorId = 'apify~instagram-reel-scraper',
     private readonly profileActorId = 'apify~instagram-profile-scraper',
   ) {}
@@ -88,6 +96,7 @@ export class InstagramApifyFetcher implements PlatformFetcher {
     const items = await runActor<Record<string, any>>(this.token, this.actorId, {
       username: [account.handle],
       resultsLimit: this.maxVideos,
+      ...(this.since ? { onlyPostsNewerThan: isoDay(this.since) } : {}),
     });
     return {
       displayName: items[0]?.ownerFullName,

@@ -15,7 +15,8 @@ class MissingCredentials implements PlatformFetcher {
   }
 }
 
-export function createFetchers(config: Config): FetcherRegistry {
+/** `since` : rattrapage, toutes les vidéos publiées depuis cette date (jusqu'à VIDEOS_PER_ACCOUNT). */
+export function createFetchers(config: Config, since?: number): FetcherRegistry {
   const n = config.VIDEOS_PER_ACCOUNT;
   if (config.FETCHER_MODE === 'mock') {
     return {
@@ -26,11 +27,11 @@ export function createFetchers(config: Config): FetcherRegistry {
   }
   return {
     youtube: config.YOUTUBE_API_KEY
-      ? new YouTubeFetcher(config.YOUTUBE_API_KEY, n)
+      ? new YouTubeFetcher(config.YOUTUBE_API_KEY, n, since)
       : new MissingCredentials('youtube', 'YOUTUBE_API_KEY'),
-    tiktok: config.APIFY_TOKEN ? new TikTokApifyFetcher(config.APIFY_TOKEN, n) : new MissingCredentials('tiktok', 'APIFY_TOKEN'),
+    tiktok: config.APIFY_TOKEN ? new TikTokApifyFetcher(config.APIFY_TOKEN, n, since) : new MissingCredentials('tiktok', 'APIFY_TOKEN'),
     instagram: config.APIFY_TOKEN
-      ? new InstagramApifyFetcher(config.APIFY_TOKEN, n)
+      ? new InstagramApifyFetcher(config.APIFY_TOKEN, n, since)
       : new MissingCredentials('instagram', 'APIFY_TOKEN'),
   };
 }
