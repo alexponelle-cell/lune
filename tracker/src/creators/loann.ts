@@ -94,10 +94,10 @@ export const loann: CreatorConfig = {
   },
   // Accueil façon ms-creators.com (avis : captures des vrais avis Trustpilot de MS, avec lien vers Trustpilot)
   ms: {
-    heroLine: 'même si tu débutes',
-    statLeft: { badge: 'N°1', text: 'Programme de clipping de Loann' },
-    statRight: { big: '1 M', text: 'de vues = 1 mois de MS' },
-    ctaNote: 'Gratuit · aucun abonné minimum',
+    heroLine: 'tes vues te paient la formation YouTube n°1',
+    statLeft: { badge: 'N°1', text: 'Communauté formatrice de YouTube en France' },
+    statRight: { big: '4.8/5', text: '97 avis sur Trustpilot' },
+    ctaNote: 'Connecte-toi avec Discord pour voir où tu en es',
     offer: { title: 'Les mois de MS s’additionnent', text: '10 000 coins = 1 mois de Merguez Superstar, sans limite !', side: 'Rejoins la commu MS' },
     timelineTitle: 'Clipper Loann c’est',
     timeline: [
@@ -137,10 +137,10 @@ export const loann: CreatorConfig = {
   },
   statuses: { pending: 'En attente', delivered: 'Livré ✅', refunded: 'Remboursé' },
   texts: {
-    heroTitle: 'Gagner **Merguez Superstar** c’est facile.',
+    heroTitle: '**1 M de vues** = 1 mois de MS',
     heroText: 'Poste des clips de Loann sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges contre des mois de Merguez Superstar, sa formation YouTube.',
     ticker: ['CLIPPE LOANN', 'FAIS DES VUES', 'GAGNE MERGUEZ SUPERSTAR', '1M DE VUES = 1 MOIS', 'PERCE SUR YOUTUBE'],
-    heroCta: 'Commencer à clipper',
+    heroCta: 'Voir ma progression',
     steps: [
       { title: 'Crée ton clip', text: 'Un passage de Loann qui mérite d’être vu.' },
       { title: 'Poste-le', text: 'Sur TikTok, Instagram ou YouTube.' },
