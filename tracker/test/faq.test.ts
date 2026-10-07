@@ -74,3 +74,14 @@ describe('menu /aide', () => {
     }
   });
 });
+
+describe('YouTube : #tag dans la description', () => {
+  it('le titre gardé contient la description (vérif de la légende)', async () => {
+    const { withDescription } = await import('../src/platforms/youtube.js');
+    const { citesCreator } = await import('../src/services/clipCheck.js');
+    const t = withDescription('HACK AZAR', 'SQUIDUU PRANK DES INCONNUS SUR AZAR #squiduu #clips');
+    expect(t.startsWith('HACK AZAR · ')).toBe(true);
+    expect(citesCreator(t, ['squiduu'])).toBe(true);
+    expect(withDescription('Titre', '')).toBe('Titre');
+  });
+});

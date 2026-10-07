@@ -378,6 +378,8 @@ Commun aux deux :
 - **Badges « +coins » trompeurs** : affichés seulement si le clip compte.
 - **Premières maquettes trop simples** (« pas au niveau de SQUIDUU / BeOne ») : refaites sur le vrai gabarit du site.
 - **Erreur dans developers.tiktok** : provoquée par un point final dans un champ.
+- **Short YouTube « ne rapporte pas » alors que #squiduu est dans la description** : le relevé YouTube ne gardait que le titre. Corrigé : titre + début de la description + tags (`withDescription`, `platforms/youtube.ts`). Repris au relevé suivant.
+- **Compteur « clips sans #tag » toujours à 0** : la requête cherchait `clip_check = 'refused'` au lieu de `'no'`. Corrigé.
 
 ---
 

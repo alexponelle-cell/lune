@@ -60,7 +60,7 @@ export class YouTubeFetcher implements PlatformFetcher {
     const videos = await this.get<{
       items?: Array<{
         id: string;
-        snippet: { title: string; publishedAt: string };
+        snippet: { title: string; publishedAt: string; description?: string; tags?: string[] };
         statistics: { viewCount?: string; likeCount?: string; commentCount?: string };
       }>;
     }>('videos', { part: 'snippet,statistics', id: ids.join(',') });
@@ -73,7 +73,8 @@ export class YouTubeFetcher implements PlatformFetcher {
         platformVideoId: v.id,
         url: `https://www.youtube.com/shorts/${v.id}`,
         thumbnailUrl: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
-        title: v.snippet.title,
+        // Le #tag est souvent dans la description d'un Short : on la garde avec le titre (vérif de la légende)
+        title: withDescription(v.snippet.title, v.snippet.description, v.snippet.tags),
         publishedAt: Date.parse(v.snippet.publishedAt),
         views: Number(v.statistics.viewCount ?? 0),
         likes: v.statistics.likeCount ? Number(v.statistics.likeCount) : undefined,
@@ -81,4 +82,12 @@ export class YouTubeFetcher implements PlatformFetcher {
       })),
     };
   }
+}
+
+/** Titre + début de la description (+ tags) : c'est souvent là que le clippeur met le #tag du créateur. */
+export function withDescription(title: string, description?: string, tags?: string[]): string {
+  const extra = [description?.replace(/\s+/g, ' ').trim().slice(0, 200), tags?.length ? tags.map((t) => `#${t.replace(/\s+/g, '')}`).join(' ') : '']
+    .filter(Boolean)
+    .join(' ');
+  return extra ? `${title} · ${extra}` : title;
 }

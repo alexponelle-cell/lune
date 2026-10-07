@@ -546,7 +546,7 @@ export class Repo {
   /** Clips refusés (légende sans le créateur) publiés depuis `from`. */
   refusedClipCount(clipperId: number, from: number): number {
     return (this.db
-      .prepare("SELECT COUNT(*) AS n FROM videos v JOIN accounts a ON a.id = v.account_id WHERE a.clipper_id = ? AND a.active = 1 AND v.clip_check = 'refused' AND v.published_at >= ?")
+      .prepare("SELECT COUNT(*) AS n FROM videos v JOIN accounts a ON a.id = v.account_id WHERE a.clipper_id = ? AND a.active = 1 AND v.clip_check = 'no' AND v.published_at >= ?")
       .get(clipperId, from) as { n: number }).n;
   }
 
