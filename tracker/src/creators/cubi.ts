@@ -43,6 +43,14 @@ export const cubi: CreatorConfig = {
   ],
   ms: {
     skin: 'cubi',
+    rewardShort: 'Roblox Academy',
+    // Paliers en cubes : chocolat, bronze, argent, or
+    tierCubes: [
+      { top: '#8B5A3C', left: '#6B3F26', right: '#4E2C1A' },
+      { top: '#E3A15F', left: '#C97B35', right: '#9C5A22' },
+      { top: '#F2F4F7', left: '#C9CED6', right: '#9AA1AC' },
+      { top: '#FFE27A', left: '#F5C21B', right: '#C99400' },
+    ],
     heroLine: 'tes vues te paient la formation pour créer ton jeu Roblox',
     statLeft: { badge: '🎮', text: 'Apprends à créer ton propre jeu Roblox' },
     statRight: { big: '10', text: 'coins pour 1 000 vues' },

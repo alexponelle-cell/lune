@@ -98,6 +98,10 @@ export interface CreatorConfig {
   discord?: { welcome: string; rules: string };
   /** Style « ms » : accueil sur le modèle de ms-creators.com. Visuels ms-*.webp dans src/web/app/fan/. */
   ms?: {
+    /** Nom court de la récompense dans les phrases (« ton mois de … »), ex. « MS », « Roblox Academy ». */
+    rewardShort?: string;
+    /** Paliers dessinés en cubes (couleurs du dessus / gauche / droite), à la place des étoiles ms-tier*.webp. */
+    tierCubes?: Array<{ top: string; left: string; right: string }>;
     /** Variante de charte sur la même mise en page (classe CSS sur <body>), ex. « cubi » = noir, blanc et orange. */
     skin?: 'cubi';
     /** Sous-titre du hero (sous heroTitle). */

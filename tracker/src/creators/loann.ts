@@ -96,6 +96,7 @@ export const loann: CreatorConfig = {
   },
   // Accueil façon ms-creators.com (avis : captures des vrais avis Trustpilot de MS, avec lien vers Trustpilot)
   ms: {
+    rewardShort: 'MS',
     heroLine: 'tes vues te paient la formation YouTube n°1',
     heroImage: 'ms-hero-loann.webp',
     statLeft: { badge: 'N°1', text: 'Communauté formatrice de YouTube en France' },
