@@ -20,6 +20,10 @@ import {
 } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
+import { faqMenuRow } from './fans.js';
+
+const HELP_CHANNEL = '❓│aide';
+const HELP_TITLE = '❓ Questions fréquentes';
 
 /**
  * Serveur Discord d'un programme fans, monté par le bot du créateur avec /setup (admins).
@@ -147,7 +151,7 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
       { name: '📣│annonces', access: readonly(ROLE_CLIPPER) },
       { name: '💬│général', access: writable(ROLE_CLIPPER) },
       { name: '🎥│mes-clips', access: writable(ROLE_CLIPPER), topic: 'Partage tes meilleurs clips' },
-      { name: '❓│aide', access: writable(ROLE_CLIPPER), topic: 'Une question ? Le staff te répond ici' },
+      { name: HELP_CHANNEL, access: writable(ROLE_CLIPPER), topic: 'Une question ? Le bot répond tout de suite (/aide), sinon le staff' },
     ],
   },
   {
@@ -428,6 +432,22 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     }
     await ch.send(build());
     created.push(`message #${key}`);
+  }
+  // ❓│aide : menu des questions fréquentes (retrouvé par son titre : le salon contient aussi les réponses du bot)
+  const help = channels.get(bare(HELP_CHANNEL));
+  if (help) {
+    const msg = () => ({
+      embeds: [new EmbedBuilder().setColor(color(fans)).setTitle(HELP_TITLE).setDescription('Choisis ta question dans le menu : le bot te répond tout de suite, avec **tes** chiffres (visible par toi seul).\n\nTu peux aussi écrire ta question ici, ou coller le lien d’un clip pour savoir s’il compte.')],
+      components: [faqMenuRow()],
+    });
+    const recent = await help.messages.fetch({ limit: 50 }).catch(() => null);
+    const pinned = recent?.find((m) => m.author.id === me && m.embeds[0]?.title === HELP_TITLE);
+    if (pinned) await pinned.edit(msg()).catch(() => {});
+    else {
+      const sent = await help.send(msg());
+      await sent.pin().catch(() => {});
+      created.push(`message #${bare(HELP_CHANNEL)}`);
+    }
   }
   return created;
 }

@@ -330,7 +330,7 @@ Commun aux deux :
 ## 7. Commandes Discord
 
 - **Bot agence** : `/stats`, `/classement`, `/client`, `/retirer-compte`, `/avis`, `/inscription` (agence), `/setup-montage [nettoyer]`.
-- **Bot créateur** : `/setup` (monte ou met à jour le serveur), `/site`, `/coins`, `/inscription`.
+- **Bot créateur** : `/setup` (monte ou met à jour le serveur), `/site`, `/coins`, `/inscription`, `/aide` (menu de questions fréquentes, réponses perso).
 - Les commandes sont enregistrées sur chaque serveur, y compris quand le bot est invité après son démarrage.
   `/setup` affiche le service et la version qui répondent, pratique pour diagnostiquer.
 

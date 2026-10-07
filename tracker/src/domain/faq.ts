@@ -150,3 +150,25 @@ export function fanAccountError(err: string): string {
   if (/expirée/i.test(err)) return '**connexion expirée** : reconnecte ce compte sur le site (onglet Clipper)';
   return 'problème de relevé, le staff va regarder 👀';
 }
+
+/** Menu de /aide (et du message épinglé du salon ❓│aide) : questions cliquables, réponse perso. Max 25 options. */
+export const FAQ_MENU: Array<{ intent: FaqIntent; label: string; emoji: string }> = [
+  { intent: 'coins', label: 'Pourquoi j’ai 0 coins ?', emoji: '🔎' },
+  { intent: 'balance', label: 'Combien j’ai de coins ?', emoji: '🪙' },
+  { intent: 'missing', label: 'Il me manque combien pour la récompense ?', emoji: '🎯' },
+  { intent: 'rank', label: 'Je suis combien au classement ?', emoji: '🏆' },
+  { intent: 'tag', label: 'C’est quoi le #tag à mettre ?', emoji: '🏷️' },
+  { intent: 'link', label: 'Comment relier mes comptes ?', emoji: '🔗' },
+  { intent: 'connect', label: 'Connecter mon TikTok / Insta', emoji: '📱' },
+  { intent: 'when', label: 'Quand mes vues sont-elles comptées ?', emoji: '🌙' },
+  { intent: 'rate', label: 'Combien de coins pour 1 000 vues ?', emoji: '💰' },
+  { intent: 'reward', label: 'Comment échanger mes coins ?', emoji: '🎁' },
+  { intent: 'grow', label: 'Comment faire plus de vues ?', emoji: '🚀' },
+  { intent: 'editing', label: 'Comment faire un bon clip ?', emoji: '🎬' },
+  { intent: 'repost', label: 'Je peux poster le même clip partout ?', emoji: '♻️' },
+  { intent: 'followers', label: 'Il faut combien d’abonnés ?', emoji: '👥' },
+  { intent: 'site', label: 'Le lien du site', emoji: '🌐' },
+];
+
+/** Questions qui demandent les chiffres du fan. */
+export const PERSONAL_INTENTS: ReadonlySet<FaqIntent> = new Set(['coins', 'balance', 'missing', 'rank', 'clip']);

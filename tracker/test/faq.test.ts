@@ -62,3 +62,15 @@ describe('FAQ : questions perso et clips', () => {
     expect(matchFaq('c’est quand le prochain live ?')).toBeNull();
   });
 });
+
+describe('menu /aide', () => {
+  it('chaque question du menu a une réponse et le menu tient dans Discord', async () => {
+    const { FAQ_MENU, faqAnswer } = await import('../src/domain/faq.js');
+    const info = { creatorName: 'SQUIDUU', tag: '#squiduu', pointsPer1000: 10, reward: { name: '1 mois', price: 10_000 }, siteUrl: 'https://x/fan', officialLogin: [] };
+    expect(FAQ_MENU.length).toBeLessThanOrEqual(25);
+    for (const q of FAQ_MENU) {
+      expect(q.label.length).toBeLessThanOrEqual(100);
+      expect(faqAnswer(q.intent, info, ['ligne perso']).length).toBeGreaterThan(5);
+    }
+  });
+});

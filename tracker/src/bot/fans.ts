@@ -15,9 +15,10 @@ import {
   REST,
   Routes,
   SlashCommandBuilder,
+  StringSelectMenuBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { faqAnswer, looksLikeQuestion, matchFaq } from '../domain/faq.js';
+import { FAQ_MENU, faqAnswer, type FaqIntent, looksLikeQuestion, matchFaq, PERSONAL_INTENTS } from '../domain/faq.js';
 import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
 import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
@@ -27,7 +28,17 @@ import { status } from '../status.js';
 export const fanCommandDefinitions = [
   new SlashCommandBuilder().setName('site').setDescription('Reçois ton lien de connexion à ton espace (vues, coins, boutique)').toJSON(),
   new SlashCommandBuilder().setName('coins').setDescription('Tes vues et tes coins').toJSON(),
+  new SlashCommandBuilder().setName('aide').setDescription('Questions fréquentes : clique, le bot te répond (avec tes chiffres)').toJSON(),
 ];
+export const FAQ_SELECT = 'fans:faq';
+/** Menu déroulant des questions fréquentes (/aide et message épinglé de ❓│aide). */
+export const faqMenuRow = () =>
+  new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(FAQ_SELECT)
+      .setPlaceholder('❓ Choisis ta question…')
+      .addOptions(FAQ_MENU.map((q) => ({ label: q.label, value: q.intent, emoji: q.emoji }))),
+  );
 export const FAN_COMMANDS = new Set(fanCommandDefinitions.map((c) => c.name));
 /** /inscription n'existe que sur le bot des fans (le bot de l'agence a déjà son /inscription). */
 const inscriptionCommand = (fans: FanService) =>
@@ -177,13 +188,32 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
   });
 }
 
-export function attachFanCommands(discord: DiscordClient, fans: FanService): void {
+export function attachFanCommands(discord: DiscordClient, fans: FanService, siteUrl = ''): void {
+  // Question choisie dans le menu de /aide ou du salon ❓│aide : réponse visible par le fan seulement
+  discord.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isStringSelectMenu() || interaction.customId !== FAQ_SELECT) return;
+    try {
+      const intent = interaction.values[0] as FaqIntent;
+      const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
+      const diagnosis = PERSONAL_INTENTS.has(intent) ? fans.faqPersonal(intent, fans.ensureFan(interaction.user.id, name), '') : [];
+      await interaction.reply({ content: faqAnswer(intent, fans.faqInfo(siteUrl || fans.publicSiteUrl()), diagnosis), flags: MessageFlags.Ephemeral });
+    } catch (err) {
+      log.error('menu aide', err);
+      if (!interaction.replied) await interaction.reply({ content: 'Oups, réessaie dans un instant.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
+  });
   discord.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand() || !FAN_COMMANDS.has(interaction.commandName)) return;
     try {
       const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
       const fan = fans.ensureFan(interaction.user.id, name);
-      if (interaction.commandName === 'site') {
+      if (interaction.commandName === 'aide') {
+        await interaction.reply({
+          content: '❓ **Choisis ta question**, je te réponds tout de suite (avec tes chiffres).\nPour un clip précis, colle son lien dans ❓│aide.',
+          components: [faqMenuRow()],
+          flags: MessageFlags.Ephemeral,
+        });
+      } else if (interaction.commandName === 'site') {
         const url = fans.loginUrl(fan.id);
         await interaction.reply({
           content: `🔐 **Ton lien de connexion perso** (valable 10 min, ne le partage pas) :\n${url}\n\nTu y suis tes clips, tes vues et tes coins, et tu les échanges dans la boutique.\n📱 Pas encore de compte relié ? Fais **/inscription**.`,
@@ -357,7 +387,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
   const wire = (d: DiscordClient) => {
     d.once(Events.ClientReady, onReady);
     d.on(Events.Error, (err) => log.error('bot fans', err));
-    attachFanCommands(d, opts.fans);
+    attachFanCommands(d, opts.fans, opts.siteUrl);
     attachInscription(d, opts.fans);
     d.on(Events.GuildCreate, (g) => {
       log.info(`bot fans invité sur ${g.name}`);
