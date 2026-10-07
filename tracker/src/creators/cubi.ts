@@ -2,7 +2,7 @@ import type { CreatorConfig } from './types.js';
 
 /**
  * Cubi Game (Roblox) : même mise en page riche que Loann (style « ms »), à sa charte noir / blanc / orange (skin « cubi »).
- * Récompense : 1 mois de Roblox Academy pour 1 M de vues, livré sur l'e-mail du clippeur.
+ * Récompense : 1 mois de Roblox Academy pour 100 k vues, livré sur l'e-mail du clippeur.
  */
 export const cubi: CreatorConfig = {
   id: 'cubi',
@@ -30,7 +30,7 @@ export const cubi: CreatorConfig = {
   reward: {
     name: '1 mois de Roblox Academy',
     description: 'Apprends à créer et faire grandir ton propre jeu Roblox avec Cubi Game. Les mois s’additionnent.',
-    price: 10_000,
+    price: 1_000,
     ref: 'academy-1m',
     url: '#',
     linkLabel: 'Découvrir la Roblox Academy',
@@ -48,7 +48,7 @@ export const cubi: CreatorConfig = {
     statLeft: { badge: '🎮', text: 'Apprends à créer ton propre jeu Roblox' },
     statRight: { big: '10', text: 'coins pour 1 000 vues' },
     ctaNote: 'Connecte-toi avec Discord pour voir où tu en es',
-    offer: { title: 'Les mois de Roblox Academy s’additionnent', text: '10 000 coins = 1 mois de Roblox Academy, sans limite !', side: 'La formation de Cubi Game' },
+    offer: { title: 'Les mois de Roblox Academy s’additionnent', text: '1 000 coins = 1 mois de Roblox Academy, sans limite !', side: 'La formation de Cubi Game' },
     timelineTitle: 'Clipper Cubi Game c’est',
     timeline: [
       { emoji: '✂️', title: 'Des clips', text: 'Tu choisis un passage de Cubi Game qui mérite d’être vu, et tu le montes à ta façon.' },
@@ -58,21 +58,21 @@ export const cubi: CreatorConfig = {
       { emoji: '🧱', title: 'La Roblox Academy', text: 'Tu échanges tes coins contre des mois de formation pour créer ton jeu Roblox.' },
     ],
     tiersTitle: 'Et toi, quel clippeur deviendras-tu ?',
-    band: '1 M DE VUES = 1 MOIS DE ROBLOX ACADEMY',
+    band: '100 K VUES = 1 MOIS DE ROBLOX ACADEMY',
     alone: { title: 'Seul', text: 'Des clips postés pour rien : pas de récompense, pas de suivi, personne pour t’aider…' },
     withUs: { title: 'Avec Cubi Game', lines: ['Tes vues paient.', 'Des mois de Roblox Academy offerts', 'Un classement chaque semaine', 'Un Discord pour t’aider', 'Une commu de clippeurs'] },
     faqAside: 'Tu as encore des questions ? Pose-les sur le Discord !',
   },
   statuses: { pending: 'En attente', delivered: 'Livré ✅', refunded: 'Remboursé' },
   texts: {
-    heroTitle: '**1 M de vues** = 1 mois de Roblox Academy',
+    heroTitle: '**100 k vues** = 1 mois de Roblox Academy',
     heroText: 'Poste des clips de Cubi Game sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges contre des mois de Roblox Academy.',
     heroCta: 'Voir ma progression',
     steps: [
       { title: 'Crée ton clip', text: 'Un passage de Cubi Game qui mérite d’être vu.' },
       { title: 'Poste-le', text: 'Sur TikTok, Instagram ou YouTube.' },
       { title: 'Gagne des coins', text: '10 coins pour 1 000 vues, tous comptes confondus.' },
-      { title: 'Prends ton mois', text: '10 000 coins = 1 mois de Roblox Academy.' },
+      { title: 'Prends ton mois', text: '1 000 coins = 1 mois de Roblox Academy.' },
     ],
     shopTitle: 'Récompenses',
     shopText: 'Échange tes coins contre des mois de Roblox Academy, la formation de Cubi Game.',
@@ -86,7 +86,7 @@ export const cubi: CreatorConfig = {
       { q: 'Comment je gagne des coins ?', a: 'Tu postes des clips de Cubi Game sur TikTok, Instagram ou YouTube. Chaque vue compte : 1 000 vues = 10 coins, tous comptes confondus.' },
       { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, clique sur « S’inscrire » dans le salon inscription et renseigne tes comptes.' },
       { q: 'Quand mes vues sont-elles comptées ?', a: 'Une fois par jour. Seules les vues faites après ton inscription rapportent des coins.' },
-      { q: 'Comment je reçois mon mois de Roblox Academy ?', a: 'Renseigne ton e-mail dans ton profil et échange 10 000 coins dans la boutique : ton accès est envoyé sur cet e-mail et tu reçois un message Discord dès que c’est fait.' },
+      { q: 'Comment je reçois mon mois de Roblox Academy ?', a: 'Renseigne ton e-mail dans ton profil et échange 1 000 coins dans la boutique : ton accès est envoyé sur cet e-mail et tu reçois un message Discord dès que c’est fait.' },
       { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum. Un compte qui vient de démarrer peut gagner des coins dès son premier clip.' },
     ],
     finalTitle: 'Prêt à **clipper** ?',

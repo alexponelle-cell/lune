@@ -752,7 +752,7 @@ function pageHomeMs() {
   <section class="msec peach" id="comment">
     <h2 class="msh ol rv">${esc(M.timelineTitle)}</h2>
     <div class="tl">${M.timeline.map((t) => `<div class="step rv"><h3 class="ol">${esc(t.title)}</h3><div class="box"><span class="e rays">${t.emoji}</span><span>${esc(t.text)}</span></div></div>`).join('')}
-      <div class="step rv"><a class="join rays" href="#/recompenses">${logo ? `<img src="${logo}" alt="">` : ''}<span class="ol">1 M de vues = 1 mois !</span></a></div></div>
+      <div class="step rv"><a class="join rays" href="#/recompenses">${logo ? `<img src="${logo}" alt="">` : ''}<span class="ol">${compact((C.reward?.price ?? 0) * 1000 / PUB.pointsPer1000)} vues = 1 mois !</span></a></div></div>
   </section>
 
 ${M.reviews ? `  <section class="msec orange">
