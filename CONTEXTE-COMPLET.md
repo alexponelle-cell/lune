@@ -127,7 +127,7 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
 | `src/index.ts` | Démarrage : config, DB, fetchers (YouTube / TikTok / Instagram / Apify), bots, serveur web, tâches planifiées |
 | `src/config.ts` | Variables d'environnement validées par zod (liste en section 5) |
 | `src/creators/` | **Config de chaque créateur** (`beone.ts`, `squiduu.ts`, `debo.ts`, `loann.ts`), le type dans `types.ts` et `index.ts` (`CREATORS`). `prospects.ts` = les maquettes |
-| `src/db/schema.ts` | Migrations SQLite numérotées (**v17** actuellement). Toujours ajouter une nouvelle version, ne jamais modifier une ancienne |
+| `src/db/schema.ts` | Migrations SQLite numérotées (**v18** actuellement). Toujours ajouter une nouvelle version, ne jamais modifier une ancienne |
 | `src/db/repo.ts`, `src/db/fans.ts` | Accès aux données (agence, fans) |
 | `src/domain/` | Logique pure testable : `coaching.ts`, `links.ts` (parse des liens de profils), `remuneration.ts`, `time.ts`… |
 | `src/services/` | `agency.ts` (stats, coaching, erreurs lisibles), `fans.ts` (programme fans : coins, boutique, classement, tri des comptes, connexions officielles), `game.ts` (API du jeu Roblox), `emailGrant.ts` (livraison par e-mail / API), `clipCheck.ts` (vérif des légendes), `training.ts` (formation), `recruitment.ts`, `analytics.ts` |
@@ -151,6 +151,7 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
 - v15 : `tiktok_tokens`.
 - v16 : `instagram_tokens`.
 - v17 : ces deux tables recréées avec `ON DELETE CASCADE`, pour qu'on puisse supprimer un clippeur.
+- v18 : `faq_misses` (questions du salon aide non reconnues par la FAQ automatique).
 
 ---
 

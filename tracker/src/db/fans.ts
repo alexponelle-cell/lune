@@ -249,6 +249,34 @@ export class FanRepo {
    * Clips du fan (récents d'abord). `counted` : le clip rapporte des coins (mêmes règles que freshClipViews :
    * compte vérifié, publié après l'ajout du compte, légende qui cite le créateur depuis la règle).
    */
+  /** Question non reconnue par la FAQ automatique. */
+  addFaqMiss(discordId: string, username: string, text: string, now = Date.now()): void {
+    this.db.prepare('INSERT INTO faq_misses (discord_id, username, text, created_at) VALUES (?, ?, ?, ?)').run(discordId, username, text.slice(0, 500), now);
+    this.db.prepare('DELETE FROM faq_misses WHERE id NOT IN (SELECT id FROM faq_misses ORDER BY id DESC LIMIT 300)').run();
+  }
+
+  faqMisses(limit = 100): Array<{ id: number; discordId: string; username: string; text: string; createdAt: number }> {
+    return this.db.prepare('SELECT id, discord_id AS discordId, username, text, created_at AS createdAt FROM faq_misses ORDER BY id DESC LIMIT ?').all(limit) as never;
+  }
+
+  deleteFaqMiss(id: number): void {
+    this.db.prepare('DELETE FROM faq_misses WHERE id = ?').run(id);
+  }
+
+  /** Clip retrouvé par son identifiant (ou un morceau de son lien), tous fans confondus. */
+  findClip(key: string): { clipperId: number; handle: string; platform: string; views: number; gained: number; publishedAt: number | null; accountCreatedAt: number; verified: boolean; clipCheck: string | null } | undefined {
+    const r = this.db
+      .prepare(
+        `SELECT a.clipper_id AS clipperId, a.handle, a.platform, v.views, MAX(v.views - v.baseline_views, 0) AS gained, v.published_at AS publishedAt,
+                a.created_at AS accountCreatedAt, a.verified_at IS NOT NULL AS verified, v.clip_check AS clipCheck
+           FROM videos v JOIN accounts a ON a.id = v.account_id
+          WHERE a.active = 1 AND (v.platform_video_id = @key OR v.url LIKE '%' || @key || '%')
+          ORDER BY v.updated_at DESC LIMIT 1`,
+      )
+      .get({ key }) as (Row & { verified: number }) | undefined;
+    return r ? { ...(r as never as { clipperId: number; handle: string; platform: string; views: number; gained: number; publishedAt: number | null; accountCreatedAt: number; clipCheck: string | null }), verified: !!r.verified } : undefined;
+  }
+
   clips(clipperId: number, limit = 40, ruleSince: number | null = null): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null; counted: boolean }> {
     return (
       this.db

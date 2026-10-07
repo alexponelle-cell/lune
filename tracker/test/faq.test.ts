@@ -48,3 +48,17 @@ describe('FAQ du salon aide', () => {
     expect(ok[0]).toContain('120 coins');
   });
 });
+
+describe('FAQ : questions perso et clips', () => {
+  it('reconnaît solde, manque, classement et lien de clip', async () => {
+    const { matchFaq, videoKey, looksLikeQuestion } = await import('../src/domain/faq.js');
+    expect(matchFaq('combien j’ai de coins ?')).toBe('balance');
+    expect(matchFaq('il me manque combien pour le mois ?')).toBe('missing');
+    expect(matchFaq('je suis combien au classement ?')).toBe('rank');
+    expect(matchFaq('pk ce clip compte pas https://www.tiktok.com/@kev/video/7412345678901234567')).toBe('clip');
+    expect(videoKey('https://www.instagram.com/reel/C9abcDEF12/?igsh=x')).toBe('C9abcDEF12');
+    expect(videoKey('https://youtube.com/shorts/dQw4w9WgXcQ?si=1')).toBe('dQw4w9WgXcQ');
+    expect(looksLikeQuestion('c’est quand le prochain live ?')).toBe(true);
+    expect(matchFaq('c’est quand le prochain live ?')).toBeNull();
+  });
+});

@@ -3,7 +3,7 @@
  * et on répond avec les infos du programme (taux, récompense, #tag) et, pour « pourquoi j'ai 0 coins »,
  * avec le diagnostic du compte du fan. Si on ne reconnaît rien, on laisse le staff répondre.
  */
-export type FaqIntent = 'coins' | 'link' | 'tag' | 'when' | 'rate' | 'reward' | 'site' | 'connect' | 'followers' | 'editing' | 'repost' | 'grow';
+export type FaqIntent = 'coins' | 'link' | 'tag' | 'when' | 'rate' | 'reward' | 'site' | 'connect' | 'followers' | 'editing' | 'repost' | 'grow' | 'balance' | 'missing' | 'rank' | 'clip';
 
 export interface FaqInfo {
   creatorName: string;
@@ -24,6 +24,10 @@ const has = (t: string, ...words: string[]) => words.some((w) => t.includes(w));
 
 /** Ordre = priorité : le premier qui correspond gagne. */
 const RULES: Array<{ intent: FaqIntent; test: (t: string) => boolean }> = [
+  // Questions perso (réponse avec les chiffres du fan)
+  { intent: 'missing', test: (t) => has(t, 'manque', 'il me reste', 'encore combien', 'quand je peux echanger', 'quand est ce que je peux echanger', 'assez de coin', 'assez pour') },
+  { intent: 'rank', test: (t) => has(t, 'classement', 'place', 'rang', ' top ', 'position') && has(t, 'je suis', 'jsuis', 'ma place', 'mon rang', 'ma position', 'suis combien', 'suis ou', 'mon classement') },
+  { intent: 'balance', test: (t) => (has(t, 'combien') && has(t, 'j ai', 'jai', 'mes coin', 'mes piece', 'mes point', 'mon solde') && has(t, 'coin', 'piece', 'point', 'solde')) || has(t, 'mon solde', 'mes coins ', 'voir mes coins') },
   { intent: 'connect', test: (t) => has(t, 'connect', 'co mon', 'connecter') && has(t, 'tiktok', 'tik tok', 'insta') },
   { intent: 'coins', test: (t) => has(t, 'coin', 'piece', 'point') && has(t, ' 0 ', ' zero', 'pas de', 'aucun', 'rien', 'pourquoi', 'pk ', 'pq ', 'bug', 'compte pas', 'comptent pas', 'marche pas', 'bouge pas') },
   { intent: 'coins', test: (t) => has(t, 'vues') && has(t, 'compte pas', 'comptent pas', 'pas compte', 'pas pris', 'apparai', 'affiche pas', 'bouge pas', 'detecte') },
@@ -43,22 +47,44 @@ const RULES: Array<{ intent: FaqIntent; test: (t: string) => boolean }> = [
 const isQuestion = (raw: string, t: string) =>
   raw.includes('?') || /^ (comment|pourquoi|pk|pq|quand|combien|est ce|c est quoi|ou |on peut|je peux|j peux|jpeux|faut il|il faut|svp|aide|help)/.test(t) || has(t, ' svp ', ' stp ', ' pk ', ' pq ', 'quelqu un sait', 'qqn sait', 'comment ', 'pourquoi ', ' c normal ', ' normal que ');
 
+/** Lien d'une vidéo TikTok / Instagram / YouTube → identifiant cherché dans les clips relevés. */
+export function videoKey(raw: string): string | null {
+  const url = raw.match(/https?:\/\/\S+/)?.[0];
+  if (!url || !/tiktok\.com|instagram\.com|youtube\.com|youtu\.be/i.test(url)) return null;
+  return (
+    url.match(/\/video\/(\d{8,})/)?.[1] ??
+    url.match(/instagram\.com\/(?:[\w.]+\/)?(?:reels?|p)\/([\w-]{5,})/i)?.[1] ??
+    url.match(/(?:shorts\/|[?&]v=|youtu\.be\/)([\w-]{11})/)?.[1] ??
+    null
+  );
+}
+
+/** Ressemble à une question (même si la FAQ ne la reconnaît pas) : sert à noter les questions sans réponse. */
+export function looksLikeQuestion(raw: string): boolean {
+  const t = normalize(raw);
+  return t.length >= 8 && t.length <= 400 && isQuestion(raw, t);
+}
+
 export function matchFaq(raw: string): FaqIntent | null {
   const t = normalize(raw);
+  if (videoKey(raw) && (isQuestion(raw, t) || has(t, 'coin', 'vue', 'compte', 'marche'))) return 'clip';
   if (t.length < 8 || t.length > 400 || !isQuestion(raw, t)) return null;
   return RULES.find((r) => r.test(t))?.intent ?? null;
 }
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
 
-/** Réponse à une question reconnue. `diagnosis` : lignes propres au fan (question sur ses coins). */
+/** Réponse à une question reconnue. `diagnosis` : lignes propres au fan (ses coins, son classement, un clip…). */
 export function faqAnswer(intent: FaqIntent, info: FaqInfo, diagnosis: string[] = []): string {
+  if (intent === 'balance' || intent === 'missing' || intent === 'rank' || intent === 'clip') {
+    return diagnosis.length ? diagnosis.join('\n') : `Fais **/coins** ici pour voir tes vues et tes coins 🪙 (ou va sur le site 👉 ${info.siteUrl}).`;
+  }
   const rate = `**1 000 vues = ${fmt(info.pointsPer1000)} coins** 🪙, tous comptes confondus`;
   const reward = info.reward ? `**${info.reward.name}** (${fmt(info.reward.price)} coins)` : 'les récompenses de la boutique';
   const official = info.officialLogin.length
     ? `\n📱 Pense aussi à **connecter ${info.officialLogin.map((p) => (p === 'tiktok' ? 'ton TikTok' : 'ton Instagram')).join(' et ')}** sur le site (onglet Clipper) : c'est ce qui compte tes vues.`
     : '';
-  switch (intent) {
+  switch (intent as Exclude<FaqIntent, 'balance' | 'missing' | 'rank' | 'clip'>) {
     case 'coins':
       return diagnosis.length
         ? `🔎 J'ai regardé ton compte :\n${diagnosis.map((l) => `• ${l}`).join('\n')}`

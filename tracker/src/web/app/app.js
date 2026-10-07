@@ -1545,7 +1545,21 @@ async function pageSuivi() {
 
 const ORDER_PILL = { pending: '<span class="pill wait">À livrer</span>', delivered: '<span class="pill ok">Livré</span>', refunded: '<span class="pill gray">Remboursé</span>' };
 
+async function loadFaqMisses(tries = 0) {
+  const box = document.getElementById('faq-misses');
+  // La page se dessine après le chargement des fans : on attend que la carte existe
+  if (!box) { if (tries < 40) setTimeout(() => loadFaqMisses(tries + 1), 150); return; }
+  const { misses } = await api('/api/fans/faq-misses').catch(() => ({ misses: [] }));
+  const body = misses.length
+    ? `<div class="table-wrap"><table><thead><tr><th>Question</th><th>Fan</th><th>Le</th><th class="r"></th></tr></thead><tbody>${misses.map((m) => `<tr><td>${esc(m.text)}</td><td>${esc(m.username)}</td><td class="num faint">${dm(m.createdAt)}</td><td class="r"><button class="icon-btn" data-del-miss="${m.id}" style="display:inline-grid" title="Retirer">${icon('trash')}</button></td></tr>`).join('')}</tbody></table></div>`
+    : '<div class="empty">Aucune question sans réponse 🎉</div>';
+  box.querySelector('.empty, .table-wrap')?.remove();
+  box.insertAdjacentHTML('beforeend', body);
+  box.querySelectorAll('[data-del-miss]').forEach((b) => (b.onclick = async () => { await api(`/api/fans/faq-misses/${b.dataset.delMiss}`, { method: 'DELETE' }); loadFaqMisses(40); }));
+}
+
 async function pageBoutique() {
+  setTimeout(() => loadFaqMisses(), 0);
   loading();
   const d = await api('/api/fans');
   const s = d.settings;
@@ -1584,6 +1598,8 @@ async function pageBoutique() {
             <td class="r"><button class="btn sm dark" data-link-fan="${f.id}">Relier ses comptes</button></td></tr>`).join('')}</tbody></table></div>`
           : '<div class="empty">Tous les fans ont au moins un compte relié 🎉</div>'}</div>`;
       })()}
+
+      <div class="card" id="faq-misses"><div class="card-head"><div><h2>Questions sans réponse</h2><p>Ce que les clippeurs demandent dans ❓│aide et que le bot ne sait pas encore répondre. Envoie-les à Claude pour qu'il ajoute les réponses.</p></div></div><div class="empty">Chargement…</div></div>
 
       <div class="card"><div class="card-head"><div><h2>Objets en boutique</h2><p>Référence jeu = l'ID du produit côté jeu (rempli automatiquement à l'import)</p></div><div class="actions">${d.gameApi ? `<button class="btn" data-import-game>${icon('download')} Importer depuis le jeu</button>` : ''}<button class="btn dark" data-add-item>${icon('plus')} Nouvel objet</button></div></div>
         <div class="table-wrap"><table><thead><tr><th>Objet</th><th>Type</th><th>Référence jeu</th><th class="r">Prix</th><th class="r">Stock</th><th>État</th><th class="r"></th></tr></thead><tbody>

@@ -37,7 +37,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 
 ## Technique (dossier `tracker/`)
 
-- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v17**),
+- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v18**),
   **Hono** (serveur web), **zod**, **vitest**.
 - `src/creators/*.ts` : **config de chaque créateur** (nom, couleurs, police, textes, récompense, niveaux, messages Discord).
   Choisie au démarrage par la variable `CREATOR`. Ajouter un créateur = copier `squiduu.ts`, l'adapter, l'ajouter dans `index.ts`.
@@ -56,7 +56,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   et si sa légende cite le créateur (mot-clé, ex. #squiduu). Les petits comptes (< 10 k abonnés, aucune vidéo ≥ 100 k vues)
   sont validés automatiquement ; les gros vont dans « Comptes à vérifier » sur Mars.
 - Coaching des clippeurs (points forts / à travailler) : `src/domain/coaching.ts`.
-- **FAQ auto du salon ❓│aide et des salons privés** (gratuite, par mots-clés) : `src/domain/faq.ts` + `attachHelpChannel` (`bot/fans.ts`). « Pourquoi 0 coins » = diagnostic du compte du fan. Le staff (Gérer les messages) n'est jamais repris. ⚠️ Le bot du créateur doit avoir **MESSAGE CONTENT INTENT** activé (portail Discord → Bot), sinon il démarre sans lire les messages (puis Restart du service Railway). Testé OK sur SQUIDUU.
+- **FAQ auto du salon ❓│aide et des salons privés** (gratuite, par mots-clés) : `src/domain/faq.ts` + `attachHelpChannel` (`bot/fans.ts`). Réponses perso : solde, ce qu'il manque pour la récompense, place au classement, « pourquoi ce clip ne compte pas » (lien collé), « pourquoi 0 coins ». Questions non reconnues → table `faq_misses` (v18), carte « Questions sans réponse » dans Mars → Fans : les ajouter à `domain/faq.ts`. Le staff (Gérer les messages) n'est jamais repris. ⚠️ Le bot du créateur doit avoir **MESSAGE CONTENT INTENT** activé (portail Discord → Bot), sinon il démarre sans lire les messages (puis Restart du service Railway). Testé OK sur SQUIDUU.
 - Pages légales : `/legal/privacy`, `/legal/terms` (demandées par TikTok / Meta).
 - Vérifier visuellement une page : Playwright avec Chromium dans `/opt/pw-browsers/chromium` (`NODE_PATH=$(npm root -g)`).
 - Le réseau sortant de l'agent bloque souvent Apify, Railway, croshop.fr, etc. : demander des captures à Alex plutôt que de deviner.

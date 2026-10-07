@@ -47,6 +47,19 @@ describe('programme fans (Neptune)', () => {
     return fan;
   }
 
+  it('FAQ perso : solde, classement, clip qui compte et questions sans réponse', () => {
+    const fan = fanWithViews();
+    expect(fans.faqPersonal('balance', fan, '').join(' ')).toContain('50 coins');
+    expect(fans.faqPersonal('rank', fan, '').join(' ')).toMatch(/1er/);
+    expect(fans.faqPersonal('clip', fan, 'https://www.tiktok.com/@paul.clips/video/v1').join(' ')).toBe('🔎 Je ne trouve pas ce clip dans nos relevés. Raisons possibles : • il a été posté **après le dernier relevé** (les vues sont relevées chaque nuit 🌙) ; • il est sur un compte **pas relié** à ton inscription (vérifie dans 📝│inscription).');
+    repo.db.prepare("UPDATE videos SET platform_video_id = '7412345678901234567'").run();
+    expect(fans.faqPersonal('clip', fan, 'https://www.tiktok.com/@paul.clips/video/7412345678901234567').join(' ')).toContain('✅ Ce clip compte');
+    const other = fans.ensureFan('d2', 'Autre');
+    expect(fans.faqPersonal('clip', other, 'https://www.tiktok.com/@x/video/7412345678901234567')[0]).toContain('un autre membre');
+    fans.logFaqMiss('d1', 'Paul', 'c’est quand le prochain live ?');
+    expect(fans.fans.faqMisses()).toMatchObject([{ username: 'Paul', text: 'c’est quand le prochain live ?' }]);
+  });
+
   it('formation : liens réglés dans Mars, tout coché → débloqué une seule fois', async () => {
     fans.saveSettings({ training: '206 | https://youtu.be/abcdefghijk\n201 https://frame.io/x\n203 | https://cdn.test/203.mp4?v=1\nligne sans lien' });
     const fan = fans.ensureFan('d9', 'Clip');
