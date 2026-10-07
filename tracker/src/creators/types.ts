@@ -3,6 +3,9 @@
  * Tout ce qui est propre à la marque vit ici : nom, couleurs, textes, récompense, taux.
  * Choisi au démarrage par la variable CREATOR (ex. CREATOR=squiduu). Envoyé tel quel au site.
  */
+/** Avis Trustpilot recopié tel quel (style « ms »). */
+export interface MsReview { name: string; meta: string; title?: string; text?: string; avatar?: string; initials?: string; bg?: string; fg?: string }
+
 export interface CreatorConfig {
   id: string;
   /** Nom du programme (logo, onglet, bot). */
@@ -102,8 +105,8 @@ export interface CreatorConfig {
     /** Frise verticale « Le programme c'est… » : titre de section puis étapes. */
     timelineTitle: string;
     timeline: Array<{ title: string; text: string; emoji: string }>;
-    /** Avis Trustpilot qui défilent (captures ms-review-*.webp, 2 rangées en sens opposés), lien vers la page Trustpilot. */
-    reviews: { url: string; score: string; top: string[]; bottom: string[] };
+    /** Avis Trustpilot qui défilent (2 rangées en sens opposés), lien vers la page Trustpilot. avatar = ms-av-*.webp, sinon initiales. */
+    reviews: { url: string; score: string; top: MsReview[]; bottom: MsReview[] };
     /** Conférenciers : fichiers ms-speakerNN.webp. */
     speakersTitle: string;
     speakers: string[];
