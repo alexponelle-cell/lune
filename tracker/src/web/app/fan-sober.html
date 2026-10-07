@@ -754,7 +754,7 @@ function pageHomeMs() {
 
   <section class="msec coral">
     <div class="msfaq"><div class="faq">${(C.texts.faq ?? []).map((f) => `<details class="rv"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('')}</div>
-      <div class="ask rv">${logo ? `<img src="${logo}" alt="">` : ''}<div class="ol">${esc(M.faqAside)}</div>${PUB.discordInviteUrl ? `<a class="btn primary big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord ${ARROW}</a>` : joinBtn()}</div></div>
+      <div class="ask rv">${logo ? `<img src="${logo}" alt="">` : ''}<div class="ol">${esc(M.faqAside)}</div>${PUB.discordInviteUrl ? `<a class="btn primary big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Ouvrir le Discord ${ARROW}</a>` : joinBtn()}</div></div>
   </section>`;
 }
 
@@ -812,7 +812,7 @@ function pageClip() {
   const head = `<div class="head rv"><h2>${esc(C.texts.clipTitle)} <span class="y">${esc(C.creatorName)}</span></h2><p>${esc(C.texts.clipText)}</p></div>`;
   const how = `<div class="card panel rv" style="margin-bottom:14px"><h3>Relier tes comptes</h3>
     <p>Sur le Discord, ouvre un ticket et fais <code>/inscription</code>. Renseigne tes comptes TikTok, YouTube et Instagram, et ton ${esc(C.rewardAccount.label.charAt(0).toLowerCase() + C.rewardAccount.label.slice(1))}. Seules les vues faites après l'inscription comptent.</p>
-    ${PUB.discordInviteUrl ? `<a class="btn primary" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Rejoindre le Discord ${ARROW}</a>` : ''}</div>`;
+    ${PUB.discordInviteUrl ? `<a class="btn primary" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Ouvrir le Discord ${ARROW}</a>` : ''}</div>`;
   if (!ME) return `<section style="margin-top:56px">${head}${how}${loginCard('Suis tes **clips**', 'Connecte-toi avec Discord pour voir tes clips, tes vues et tes coins.')}</section>`;
   return `<section style="margin-top:56px">${head}
     ${ME.accounts.length ? `<div class="card panel rv" style="margin-bottom:14px"><h3>Comptes suivis</h3><p>Tes vues sont mises à jour toutes les 1 à 2 nuits.</p><div class="tags">${ME.accounts.map((a) => `<span class="tag">${PLATFORM[a.platform]} · @${esc(a.handle)}</span>`).join('')}</div>${tiktokBlock()}</div>` : how}
