@@ -56,6 +56,23 @@ describe('programme fans (Neptune)', () => {
     expect(f.exact).toBe(true);
   });
 
+  it('Loann : pas de #tag, et tous les clips depuis le 1er août comptent (toutes leurs vues, même postés avant l’inscription)', () => {
+    const loann = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('loann'));
+    expect(loann.settings().clipRule).toBe(false);
+    expect(loann.countFromLabel()).toBe('1er août');
+    const fan = loann.ensureFan('d9', 'Lou', now);
+    loann.addAccounts(fan, 'https://www.tiktok.com/@lou.clips');
+    const account = repo.listAccountsForClipper(fan.id)[0]!;
+    repo.setAccountVerified(account.id, now);
+    const aug = Date.parse('2026-08-10T12:00:00+02:00');
+    const july = Date.parse('2026-07-10T12:00:00+02:00');
+    // 1er relevé (référence), puis un 2e relevé qui découvre de vieux clips : ceux d'août comptent en entier
+    repo.recordCollection(account.id, [{ platformVideoId: 'a', views: 1000, publishedAt: aug, title: 'sans tag' }], now);
+    repo.recordCollection(account.id, [{ platformVideoId: 'b', views: 3000, publishedAt: aug, title: 'x' }, { platformVideoId: 'c', views: 9000, publishedAt: july, title: 'x' }], now + 1);
+    expect(loann.balance(fan.id, now + 2).views).toBe(4000);
+    expect(loann.coinsState(fan, now + 2).tag).toBeNull();
+  });
+
   it('grades du mois glissant : seules les vues de la période comptent', () => {
     const fan = fanWithViews();
     expect(fans.fanLevels(now, 30).find((f) => f.clipperId === fan.id)?.views).toBe(5000);

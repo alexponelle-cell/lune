@@ -9,6 +9,9 @@ export const loann: CreatorConfig = {
   programName: 'LOANN CLIPPING',
   creatorName: 'Loann',
   clipKeywords: ['Loann', 'LoannLV'],
+  // Pas de #tag obligatoire, et tous les clips postés depuis le 1er août 2026 comptent (même avant l'inscription)
+  clipRule: false,
+  countViewsFrom: '2026-08-01',
   youtube: 'LoannLV,netabonnepas-el2vd',
   theme: 'pop',
   style: 'ms',
@@ -162,7 +165,7 @@ export const loann: CreatorConfig = {
     faq: [
       { q: 'Comment je gagne des coins ?', a: 'Tu postes des clips de Loann sur TikTok, Instagram ou YouTube. Chaque vue compte : 1 000 vues = 10 coins, tous comptes confondus.' },
       { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, clique sur « S’inscrire » dans le salon inscription et renseigne tes comptes.' },
-      { q: 'Quand mes vues sont-elles comptées ?', a: 'Une fois par jour. Seules les vues faites après ton inscription rapportent des coins.' },
+      { q: 'Quand mes vues sont-elles comptées ?', a: 'Une fois par jour. Tous tes clips postés depuis le 1er août 2026 comptent, même ceux d’avant ton inscription.' },
       { q: 'Comment je reçois mon mois de Merguez Superstar ?', a: 'Renseigne l’e-mail de ton compte Merguez Superstar dans ton profil, échange 10 000 coins dans la boutique : ton accès est envoyé sur cet e-mail et tu reçois un message Discord dès que c’est fait.' },
       { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum. Un compte qui vient de démarrer peut gagner des coins dès son premier clip.' },
     ],

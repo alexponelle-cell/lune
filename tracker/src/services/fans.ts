@@ -112,7 +112,27 @@ export class FanService {
   settings(): FanSettings {
     const c = this.creator;
     const defaults = { ...DEFAULT_FANS, programName: c.programName, pointsPer1000: c.pointsPer1000, creatorYoutube: c.youtube, creatorRoblox: c.robloxUsername ?? '' };
-    return { ...defaults, ...this.repo.getSetting<Partial<FanSettings>>('fans', {}) };
+    const stored = { ...defaults, ...this.repo.getSetting<Partial<FanSettings>>('fans', {}) };
+    return c.clipRule === false ? { ...stored, clipRule: false } : stored;
+  }
+
+  /** Date à partir de laquelle tous les clips comptent (config du créateur), sinon null. */
+  countFrom(): number | null {
+    const d = this.creator.countViewsFrom;
+    return d ? Date.parse(`${d}T00:00:00+02:00`) : null;
+  }
+
+  /** « 1er août » : la date ci-dessus en toutes lettres, pour les messages aux fans. */
+  countFromLabel(): string | null {
+    const t = this.countFrom();
+    if (t === null) return null;
+    const label = new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+    return label.replace(/^1 /, '1er ');
+  }
+
+  /** Mot-clé à mettre dans la légende (« #squiduu »), null si la règle est coupée. */
+  private tagLabel(): string | null {
+    return this.settings().clipRule ? `#${this.clipKeywords()[0] ?? 'createur'}` : null;
   }
 
   /**
@@ -266,13 +286,13 @@ export class FanService {
   /** Vues qui rapportent des coins : clips publiés après l'inscription uniquement. */
   private viewsByClipper(_now = Date.now()): Map<number, number> {
     const clientId = this.settings().clientId;
-    return clientId ? this.fans.freshClipViews(clientId, 0, this.clipRuleSince()) : new Map();
+    return clientId ? this.fans.freshClipViews(clientId, 0, this.clipRuleSince(), this.countFrom()) : new Map();
   }
 
   /** Vues qui rapportent des coins (règles du programme) gagnées depuis `from`, par clippeur ; null si pas de programme. */
   countedViewsSince(from: number): { clientId: number; views: Map<number, number> } | null {
     const clientId = this.settings().clientId;
-    return clientId ? { clientId, views: this.fans.freshClipViews(clientId, from, this.clipRuleSince()) } : null;
+    return clientId ? { clientId, views: this.fans.freshClipViews(clientId, from, this.clipRuleSince(), this.countFrom()) } : null;
   }
 
   balance(clipperId: number, now = Date.now()): FanBalance {
@@ -287,7 +307,7 @@ export class FanService {
   /** Fans (Discord) dont le 1er clip a été détecté : ils débloquent la communauté. */
   firstClipDone(): Set<string> {
     const s = this.settings();
-    return s.clientId ? this.fans.firstClipDiscordIds(s.clientId, this.clipRuleSince()) : new Set();
+    return s.clientId ? this.fans.firstClipDiscordIds(s.clientId, this.clipRuleSince(), this.countFrom()) : new Set();
   }
 
   /** Classement de la semaine (7 derniers jours) : pseudo, avatar, vues, coins gagnés. */
@@ -295,7 +315,7 @@ export class FanService {
     const s = this.settings();
     if (!s.clientId) return [];
     // Vues des 7 derniers jours, sur les clips publiés après l'inscription (comme les coins)
-    const rows = [...this.fans.freshClipViews(s.clientId, now - 7 * 86_400_000, this.clipRuleSince())]
+    const rows = [...this.fans.freshClipViews(s.clientId, now - 7 * 86_400_000, this.clipRuleSince(), this.countFrom())]
       .filter(([, views]) => views > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, limit)
@@ -312,7 +332,7 @@ export class FanService {
     const s = this.settings();
     if (!s.clientId) return [];
     // windowDays : vues qui comptent des N derniers jours (grades du mois glissant), sinon depuis toujours
-    const views = windowDays ? this.fans.freshClipViews(s.clientId, now - windowDays * 86_400_000, this.clipRuleSince()) : this.viewsByClipper(now);
+    const views = windowDays ? this.fans.freshClipViews(s.clientId, now - windowDays * 86_400_000, this.clipRuleSince(), this.countFrom()) : this.viewsByClipper(now);
     return this.repo
       .listClippers({ clientId: s.clientId })
       .filter((c) => !c.discordId.startsWith('manual:'))
@@ -433,7 +453,7 @@ export class FanService {
   me(clipper: Clipper, now = Date.now()) {
     const s = this.settings();
     // Coins affichés seulement sur les clips qui comptent (sinon 0 : vieux clip, compte pas vérifié, légende sans le créateur)
-    const clips = this.fans.clips(clipper.id, 40, this.clipRuleSince()).map((c) => ({ ...c, coins: c.counted ? this.points(c.gained) : 0 }));
+    const clips = this.fans.clips(clipper.id, 40, this.clipRuleSince(), this.countFrom()).map((c) => ({ ...c, coins: c.counted ? this.points(c.gained) : 0 }));
     return {
       id: clipper.id,
       avatar: this.fans.avatar(clipper.id),
@@ -464,7 +484,8 @@ export class FanService {
     const main = (this.creator.reward && shop.find((i) => i.ref === this.creator.reward!.ref)) ?? shop[0];
     return {
       creatorName: this.creator.creatorName,
-      tag: `#${this.clipKeywords()[0] ?? 'createur'}`,
+      tag: this.tagLabel(),
+      countFrom: this.countFromLabel(),
       pointsPer1000: s.pointsPer1000,
       reward: main ? { name: main.name, price: main.price } : null,
       siteUrl,
@@ -476,7 +497,7 @@ export class FanService {
   coinsState(clipper: Clipper, now = Date.now()): CoinsState {
     const ruleSince = this.clipRuleSince();
     const connected = this.officialLogin?.connected() ?? new Set<number>();
-    const clips = this.fans.clips(clipper.id, 200, ruleSince);
+    const clips = this.fans.clips(clipper.id, 200, ruleSince, this.countFrom());
     const b = this.balance(clipper.id, now);
     return {
       accounts: this.repo.listAccountsForClipper(clipper.id).filter((a) => a.active).map((a) => ({
@@ -491,7 +512,8 @@ export class FanService {
       refusedTag: this.settings().clipRule && ruleSince ? this.repo.refusedClipCount(clipper.id, ruleSince) : 0,
       balance: b.balance,
       views: b.views,
-      tag: `#${this.clipKeywords()[0] ?? 'createur'}`,
+      tag: this.tagLabel(),
+      countFrom: this.countFromLabel(),
       pointsPer1000: this.settings().pointsPer1000,
     };
   }
@@ -519,7 +541,7 @@ export class FanService {
       const row = this.leaderboard(now, 1000).find((r) => r.id === clipper.id);
       return row
         ? [`🏆 Tu es **${row.rank}${row.rank === 1 ? 'er' : 'e'}** du classement de la semaine avec **${fmt(row.views)} vues** qui comptent.`, row.rank > 3 ? 'Le top 3 du lundi gagne un rôle spécial, accroche-toi ! 🔥' : 'Tu es dans le top 3, garde le rythme ! 🔥']
-        : ['Tu n\'es pas encore dans le classement de cette semaine : il faut des vues sur des clips qui comptent (postés depuis l\'inscription, avec le #tag) 💪'];
+        : ['Tu n\'es pas encore dans le classement de cette semaine : il faut des vues sur des clips qui comptent (postés depuis l\'inscription) 💪'];
     }
     if (intent === 'clip') {
       const key = videoKey(text);
@@ -536,9 +558,12 @@ export class FanService {
       const ruleSince = this.clipRuleSince();
       const reasons: string[] = [];
       if (!clip.verified) reasons.push(`le compte @${clip.handle} est **en vérification par le staff** (gros compte)`);
-      if (clip.publishedAt !== null && clip.publishedAt < clip.accountCreatedAt) reasons.push('il a été publié **avant ton inscription** (seuls les nouveaux clips rapportent)');
+      const from = this.countFrom();
+      if (clip.publishedAt !== null && clip.publishedAt < clip.accountCreatedAt && (from === null || clip.publishedAt < from))
+        reasons.push(from === null ? 'il a été publié **avant ton inscription** (seuls les nouveaux clips rapportent)' : `il a été publié **avant le ${this.countFromLabel()}**`);
       if (ruleSince && clip.publishedAt !== null && clip.publishedAt >= ruleSince && clip.clipCheck !== 'ok') reasons.push(`sa légende ne contient pas **${tag}** (ajoute-le, il sera repris au prochain relevé)`);
-      if (!reasons.length) return [`✅ Ce clip compte ! **${fmt(clip.views)} vues** dont ${fmt(clip.gained)} depuis le suivi → **+${fmt(this.points(clip.gained))} coins** 🪙`];
+      const gained = from !== null && clip.publishedAt !== null && clip.publishedAt >= from ? clip.views : clip.gained;
+      if (!reasons.length) return [`✅ Ce clip compte ! **${fmt(clip.views)} vues**${gained === clip.views ? '' : ` dont ${fmt(gained)} depuis le suivi`} → **+${fmt(this.points(gained))} coins** 🪙`];
       return [`❌ Ce clip (${fmt(clip.views)} vues) ne rapporte pas de coins parce que :`, ...reasons.map((r) => `• ${r}`)];
     }
     return [];

@@ -8,7 +8,10 @@ export type FaqIntent = 'coins' | 'link' | 'tag' | 'when' | 'rate' | 'reward' | 
 export interface FaqInfo {
   creatorName: string;
   /** Mot-clé à mettre dans la légende (ex. « #squiduu »). */
-  tag: string;
+  /** null = pas de mot-clé obligatoire pour ce créateur. */
+  tag: string | null;
+  /** Date (texte) à partir de laquelle tous les clips comptent, même postés avant l'inscription (ex. « 1er août »). */
+  countFrom?: string | null;
   pointsPer1000: number;
   reward: { name: string; price: number } | null;
   siteUrl: string;
@@ -84,15 +87,18 @@ export function faqAnswer(intent: FaqIntent, info: FaqInfo, diagnosis: string[] 
   const official = info.officialLogin.length
     ? `\n📱 Pense aussi à **connecter ${info.officialLogin.map((p) => (p === 'tiktok' ? 'ton TikTok' : 'ton Instagram')).join(' et ')}** sur le site (onglet Clipper) : c'est ce qui compte tes vues.`
     : '';
+  const after = info.countFrom ? `publié **depuis le ${info.countFrom}**` : `publié **après** que tu as relié le compte`;
+  const tagLine = info.tag ? `\n• sa légende contient **${info.tag}**` : '';
   switch (intent as Exclude<FaqIntent, 'balance' | 'missing' | 'rank' | 'clip'>) {
     case 'coins':
       return diagnosis.length
         ? `🔎 J'ai regardé ton compte :\n${diagnosis.map((l) => `• ${l}`).join('\n')}`
-        : `Pour qu'un clip rapporte des coins 🪙 :\n• il est posté sur un compte **relié** (et vérifié)\n• il est publié **après** que tu as relié le compte\n• sa légende contient **${info.tag}**\nLes vues sont relevées **chaque nuit**, donc les coins arrivent le lendemain.`;
+        : `Pour qu'un clip rapporte des coins 🪙 :\n• il est posté sur un compte **relié** (et vérifié)\n• il est ${after}${tagLine}\nLes vues sont relevées **chaque nuit**, donc les coins arrivent le lendemain.`;
     case 'tag':
+      if (!info.tag) return `Pas de #tag obligatoire ici 🙌 Poste tes clips de ${info.creatorName} sur un compte relié, ils comptent tous.`;
       return `Mets **${info.tag}** dans la légende de **chaque clip** ✍️ Sans ça, le clip ne rapporte aucun coin (c'est comme ça qu'on sait qu'il parle de ${info.creatorName}).\nTu peux modifier la légende d'un clip déjà posté : il sera repris au prochain relevé.`;
     case 'link':
-      return `Pour relier tes comptes TikTok / Insta / YouTube : va dans **📝│inscription** et clique sur **S'inscrire** 🔗\nSeules les vues des clips postés **après** l'inscription comptent.${official}`;
+      return `Pour relier tes comptes TikTok / Insta / YouTube : va dans **📝│inscription** et clique sur **S'inscrire** 🔗\n${info.countFrom ? `Tous tes clips postés **depuis le ${info.countFrom}** comptent, même ceux d'avant ton inscription.` : `Seules les vues des clips postés **après** l'inscription comptent.`}${official}`;
     case 'connect':
       return `Va sur le site 👉 ${info.siteUrl} → onglet **Clipper** → **Connecter mon TikTok / Instagram** (1 clic, on ne publie rien).\nPour Insta, ton compte doit être en **compte créateur** (Paramètres → Type de compte → Passer à un compte professionnel → Créateur, gratuit).`;
     case 'when':
@@ -110,7 +116,7 @@ export function faqAnswer(intent: FaqIntent, info: FaqInfo, diagnosis: string[] 
     case 'grow':
       return `Les clips qui font des vues 🚀 :\n• **Accroche dans les 2 premières secondes** (le moment le plus fort en premier, pas d'intro)\n• **Court** : 15 à 40 secondes, coupe tous les blancs\n• **Sous-titres** gros et lisibles + un titre qui donne envie\n• **Régularité** : 1 à 3 clips par jour, sur TikTok, Insta **et** Shorts\n• Choisis les moments **drôles, choquants ou impressionnants** de ${info.creatorName}\nTout est détaillé dans **🎓│tutos** 🎬`;
     case 'repost':
-      return `Oui ✅ Tu peux poster le même clip sur TikTok, Insta **et** YouTube Shorts : chaque plateforme compte, tant que le compte est relié et que la légende contient **${info.tag}**.`;
+      return `Oui ✅ Tu peux poster le même clip sur TikTok, Insta **et** YouTube Shorts : chaque plateforme compte, tant que le compte est relié${info.tag ? ` et que la légende contient **${info.tag}**` : ''}.`;
   }
 }
 
@@ -122,8 +128,10 @@ export interface CoinsState {
   refusedTag: number;
   balance: number;
   views: number;
-  tag: string;
+  tag: string | null;
   pointsPer1000: number;
+  /** Date (texte) à partir de laquelle les clips comptent, même postés avant l'inscription. */
+  countFrom?: string | null;
 }
 
 export function coinsDiagnosis(s: CoinsState): string[] {
@@ -136,7 +144,7 @@ export function coinsDiagnosis(s: CoinsState): string[] {
   if (unverified.length) out.push(`${unverified.map((a) => `@${a.handle}`).join(', ')} : **en vérification par le staff** (gros compte), ses vues compteront une fois validé.`);
   if (!s.clips && !never.length) out.push('**Aucun clip détecté** sur tes comptes reliés. Poste depuis ces comptes-là (pas un autre) 🎬');
   if (s.refusedTag) out.push(`**${s.refusedTag} clip(s) sans ${s.tag}** dans la légende : ils ne rapportent rien. Ajoute ${s.tag} (même après coup) ✍️`);
-  if (s.clips && !s.counted && !s.refusedTag) out.push('Tes clips détectés ont été **publiés avant ton inscription** : seuls les nouveaux clips rapportent.');
+  if (s.clips && !s.counted && !s.refusedTag) out.push(s.countFrom ? `Tes clips détectés ont été **publiés avant le ${s.countFrom}** : seuls les clips postés depuis rapportent.` : 'Tes clips détectés ont été **publiés avant ton inscription** : seuls les nouveaux clips rapportent.');
   if (s.counted && s.balance === 0) out.push(`Tes clips comptent ✅ mais il faut **1 000 vues pour ${s.pointsPer1000} coins** : continue, ça arrive !`);
   if (!out.length) out.push(`Tout est bon ✅ Tu as **${s.balance.toLocaleString('fr-FR')} coins** pour ${s.views.toLocaleString('fr-FR')} vues qui comptent.`);
   return out;

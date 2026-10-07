@@ -310,7 +310,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
   const fill = (t: string) => t.replaceAll('{creator}', creatorRole ? `${creatorRole}` : `**${c.creatorName}**`).replaceAll('{rate}', String(rate));
   const tag = `#${fans.clipKeywords()[0] ?? 'createur'}`;
   /** Rappel obligatoire du tag dans les règles personnalisées (l'autre rappel est dans le salon privé). */
-  const tagRule = `\n\n🏷️ **OBLIGATOIRE : mets ${tag} dans la légende de CHAQUE clip.** Sans ${tag}, le clip ne rapporte **aucun coin**.`;
+  const tagRule = !fans.settings().clipRule ? '' : `\n\n🏷️ **OBLIGATOIRE : mets ${tag} dans la légende de CHAQUE clip.** Sans ${tag}, le clip ne rapporte **aucun coin**.`;
   const steps = c.texts.steps.map((s, i) => `**${String(i + 1).padStart(2, '0')} · ${s.title}**\n${s.text}`).join('\n\n');
   const posts: Array<[string, () => { embeds: EmbedBuilder[]; components?: ActionRowBuilder<ButtonBuilder>[] }]> = [
     [
@@ -341,7 +341,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
               c.discord ? fill(c.discord.rules) + tagRule : [
                 `1. Tes clips doivent venir des contenus de ${c.creatorName}.`,
                 '2. Un compte TikTok, YouTube ou Instagram ne peut être relié qu’à une seule personne.',
-                `3. **Chaque clip doit citer ${c.creatorName} dans sa légende** (ex. ${tag}) : sinon il ne rapporte rien.`,
+                ...(fans.settings().clipRule ? [`3. **Chaque clip doit citer ${c.creatorName} dans sa légende** (ex. ${tag}) : sinon il ne rapporte rien.`] : []),
                 '4. Pas de faux comptes, pas de vidéos d’un autre créateur, pas de vues achetées : les coins gagnés ainsi sont retirés.',
                 '5. Respect de tout le monde, dans les salons comme en message privé.',
                 '6. Le staff peut retirer un compte ou des coins en cas d’abus.',

@@ -277,17 +277,17 @@ export class FanRepo {
     return r ? { ...(r as never as { clipperId: number; handle: string; platform: string; views: number; gained: number; publishedAt: number | null; accountCreatedAt: number; clipCheck: string | null }), verified: !!r.verified } : undefined;
   }
 
-  clips(clipperId: number, limit = 40, ruleSince: number | null = null): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null; counted: boolean }> {
+  clips(clipperId: number, limit = 40, ruleSince: number | null = null, countFrom: number | null = null): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null; counted: boolean }> {
     return (
       this.db
         .prepare(
-          `SELECT a.platform, v.url, v.title, v.thumbnail_url, v.views, MAX(v.views - v.baseline_views, 0) AS gained, COALESCE(v.published_at, v.first_seen_at) AS at,
-                  (a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND v.published_at >= a.created_at
+          `SELECT a.platform, v.url, v.title, v.thumbnail_url, v.views, MAX(v.views - CASE WHEN @countFrom IS NOT NULL AND v.published_at >= @countFrom THEN 0 ELSE v.baseline_views END, 0) AS gained, COALESCE(v.published_at, v.first_seen_at) AS at,
+                  (a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND (v.published_at >= a.created_at OR (@countFrom IS NOT NULL AND v.published_at >= @countFrom))
                     AND (@since IS NULL OR v.published_at < @since OR v.clip_check = 'ok')) AS counted
            FROM videos v JOIN accounts a ON a.id = v.account_id
            WHERE a.clipper_id = @clipperId AND a.active = 1 ORDER BY at DESC LIMIT @limit`,
         )
-        .all({ clipperId, limit, since: ruleSince }) as Row[]
+        .all({ clipperId, limit, since: ruleSince, countFrom }) as Row[]
     ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at, counted: !!r.counted }));
   }
 
@@ -296,34 +296,34 @@ export class FanRepo {
    * les vidéos déjà en ligne avant l'inscription ne rapportent rien, même si elles continuent de monter).
    * `from` : seulement les vues gagnées depuis cette date (classement de la semaine).
    */
-  freshClipViews(clientId: number, from = 0, ruleSince: number | null = null): Map<number, number> {
+  freshClipViews(clientId: number, from = 0, ruleSince: number | null = null, countFrom: number | null = null): Map<number, number> {
     const rows = this.db
       .prepare(
         `SELECT a.clipper_id AS id, SUM(MAX(v.views - COALESCE(
               (SELECT vs.views FROM video_snapshots vs WHERE vs.video_id = v.id AND vs.captured_at <= @from ORDER BY vs.captured_at DESC LIMIT 1),
-              v.baseline_views), 0)) AS views
+              CASE WHEN @countFrom IS NOT NULL AND v.published_at >= @countFrom THEN 0 ELSE v.baseline_views END), 0)) AS views
            FROM videos v
            JOIN accounts a ON a.id = v.account_id AND a.active = 1
            JOIN clippers c ON c.id = a.clipper_id
-          WHERE c.client_id = @clientId AND a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND v.published_at >= a.created_at
+          WHERE c.client_id = @clientId AND a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND (v.published_at >= a.created_at OR (@countFrom IS NOT NULL AND v.published_at >= @countFrom))
             AND (@since IS NULL OR v.published_at < @since OR v.clip_check = 'ok')
           GROUP BY a.clipper_id`,
       )
-      .all({ clientId, from, since: ruleSince }) as Array<{ id: number; views: number }>;
+      .all({ clientId, from, since: ruleSince, countFrom }) as Array<{ id: number; views: number }>;
     return new Map(rows.map((r) => [r.id, r.views]));
   }
 
   /** Discord des fans du client qui ont posté au moins un clip après avoir relié le compte (1er clip = accès au serveur). */
-  firstClipDiscordIds(clientId: number, ruleSince: number | null = null): Set<string> {
+  firstClipDiscordIds(clientId: number, ruleSince: number | null = null, countFrom: number | null = null): Set<string> {
     const rows = this.db
       .prepare(
         `SELECT DISTINCT c.discord_id AS id FROM clippers c
            JOIN accounts a ON a.clipper_id = c.id AND a.active = 1 AND a.verified_at IS NOT NULL
            JOIN videos v ON v.account_id = a.id
-         WHERE c.client_id = @clientId AND COALESCE(v.published_at, v.first_seen_at) >= a.created_at
+         WHERE c.client_id = @clientId AND (COALESCE(v.published_at, v.first_seen_at) >= a.created_at OR (@countFrom IS NOT NULL AND v.published_at >= @countFrom))
            AND (@since IS NULL OR v.published_at < @since OR v.clip_check = 'ok')`,
       )
-      .all({ clientId, since: ruleSince }) as Array<{ id: string }>;
+      .all({ clientId, since: ruleSince, countFrom }) as Array<{ id: string }>;
     return new Set(rows.map((r) => r.id));
   }
 

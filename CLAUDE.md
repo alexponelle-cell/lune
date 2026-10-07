@@ -82,7 +82,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 - **Site Loann** (style « ms », copie de ms-creators.com) : pour les clippeurs déjà inscrits, message « 1 M de vues = 1 mois de MS ». Boutons « Voir ma progression » → page `#/progression` (barre vers 1 M, stats, classement). Avis Trustpilot de MS en cartes HTML, conférenciers MS (`ms-*.webp`). Textes dans `loann.ts` (champ `ms`), rendu `pageHomeMs()` dans `fan-sober.html`.
 - **Liste de Lucas** : IA « clipper » (FAQ gratuite par défaut, il faut ses tutos / conférences / ateliers),
   améliorer le système avec sa data.
-- Josplay : trouver comment rémunérer les clippeurs. Loann : bot OK sur le nouveau serveur (/setup + FAQ ❓│aide testés), reste un test d’inscription complet. Railway : encore en **Trial** (crédit unique de 5 $, ~1 $ consommé en 2 semaines) → passer en Hobby (5 $/mois) avant la fin du crédit, sinon tout s’arrête.
+- Josplay : trouver comment rémunérer les clippeurs. Loann : bot OK sur le nouveau serveur (/setup + FAQ ❓│aide testés), reste un test d’inscription complet. Loann : **pas de #tag** (`clipRule: false`) et **tous les clips depuis le 1er août 2026 comptent** (`countViewsFrom`, rattrapage unique à 30 vidéos par compte). Railway : encore en **Trial** (crédit unique de 5 $, ~1 $ consommé en 2 semaines) → passer en Hobby (5 $/mois) avant la fin du crédit, sinon tout s’arrête.
 
 ## Ma façon de travailler (à garder)
 

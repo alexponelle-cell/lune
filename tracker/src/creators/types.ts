@@ -62,6 +62,13 @@ export interface CreatorConfig {
    * qui monte ou redescend chaque jour selon le mois glissant. Sans ce champ : pas de rôles de grade.
    */
   gradeWindowDays?: number;
+  /** false = pas de mot-clé (#tag) obligatoire dans la légende : tous les clips des comptes reliés comptent. */
+  clipRule?: false;
+  /**
+   * Date (AAAA-MM-JJ, heure de Paris) à partir de laquelle TOUS les clips des comptes reliés comptent, avec toutes leurs vues,
+   * même s'ils ont été postés avant l'inscription. Sans ce champ : seuls les clips postés après l'inscription comptent.
+   */
+  countViewsFrom?: string;
   /** Mots acceptés dans la légende d'un clip pour qu'il compte (en plus du nom et des chaînes YouTube). */
   clipKeywords?: string[];
   /** Libellés des statuts dans « Mes échanges ». */
