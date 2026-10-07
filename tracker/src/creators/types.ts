@@ -88,4 +88,34 @@ export interface CreatorConfig {
    * {rate} = coins pour 1 000 vues. Sans cette section, des textes génériques sont utilisés.
    */
   discord?: { welcome: string; rules: string };
+  /** Style « ms » : accueil sur le modèle de ms-creators.com. Visuels ms-*.webp dans src/web/app/fan/. */
+  ms?: {
+    /** Sous-titre du hero (sous heroTitle). */
+    heroLine: string;
+    /** Carte-stat de gauche (badge rond + texte) et de droite (gros chiffre + texte). */
+    statLeft: { badge: string; text: string };
+    statRight: { big: string; text: string };
+    /** Petite ligne sous le bouton du hero. */
+    ctaNote: string;
+    /** Bandeau sous le hero (façon « Seule l'offre à vie est disponible »). */
+    offer: { title: string; text: string; side: string };
+    /** Frise verticale « Le programme c'est… » : titre de section puis étapes. */
+    timelineTitle: string;
+    timeline: Array<{ title: string; text: string; emoji: string }>;
+    /** Avis qui défilent (source citée dans reviewsTitle). */
+    reviewsTitle: string;
+    reviews: Array<{ name: string; text: string }>;
+    /** Conférenciers : fichiers ms-speakerNN.webp. */
+    speakersTitle: string;
+    speakers: string[];
+    /** Paliers (niveaux du créateur) : fichiers ms-tier1..4.webp. */
+    tiersTitle: string;
+    /** Bandeau défilant jaune avec le logo (image de la récompense). */
+    band: string;
+    /** « Seul » vs « Avec … ». */
+    alone: { title: string; text: string };
+    withUs: { title: string; lines: string[] };
+    /** Carte à côté de la FAQ. */
+    faqAside: string;
+  };
 }

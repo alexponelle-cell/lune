@@ -199,6 +199,15 @@ export function createApp(deps: WebDeps): Hono {
         return c.notFound();
       }
     }
+    // Visuels du style « ms » (conférenciers, paliers) livrés dans src/web/app/fan/
+    if (/^ms-[\w-]+\.webp$/.test(name)) {
+      try {
+        const data = new Uint8Array(readFileSync(new URL(`./app/fan/${name}`, import.meta.url)));
+        return c.body(data, 200, { 'content-type': 'image/webp', 'cache-control': 'public, max-age=86400' });
+      } catch {
+        return c.notFound();
+      }
+    }
     const file = FAN_FILES[name];
     if (!file) return c.notFound();
     return c.body(file.data, 200, { 'content-type': file.type, 'cache-control': 'public, max-age=600' });

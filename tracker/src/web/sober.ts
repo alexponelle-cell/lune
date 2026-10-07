@@ -51,7 +51,7 @@ export function demoPage(template: string, slug: string, url: (file: string) => 
   const p = PROSPECTS[slug];
   if (!p) return undefined;
   const a = (f: string | undefined) => (f ? url(f) : '');
-  const cr: CreatorConfig = { ...p.config, images: { banner: p.banner, reward: p.config.style === 'sticker' ? p.reward : undefined } };
+  const cr: CreatorConfig = { ...p.config, images: { banner: p.banner, reward: p.config.style ? p.reward : undefined } };
   const data = JSON.stringify(demoPublic(cr, a(p.reward), p.items)).replace(/</g, '\\u003c');
   return soberPage(template, cr, cr.programName)
     .replaceAll('/fan/assets/creator.png', a(p.photo))
