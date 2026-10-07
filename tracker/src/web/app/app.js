@@ -451,11 +451,10 @@ function modal(title, bodyHtml, { confirm = 'Enregistrer', danger = false, onCon
 // Cadre : barre latérale + barre du haut
 // ---------------------------------------------------------------------------
 
+// Rémunération, Inspiration et Suivi retirés du menu (demande d'Alex : trop de pages inutiles)
 const NAV = [
   ['Pilotage', [['funnel', 'Funnel', 'funnel'], ['agence', 'Agence', 'grid'], ['clippers', 'Clippers', 'users'], ['classement', 'Classement', 'trophy']]],
-  ['Automatisations', [['suivi', 'Suivi', 'pulse']], true],
-  ['Découvrir', [['inspiration', 'Inspiration', 'spark']]],
-  ['Gestion', [['management', 'Management', 'sliders'], ['remuneration', 'Rémunération', 'coins'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
+  ['Gestion', [['management', 'Management', 'sliders'], ['boutique', 'Boutique fans', 'bag'], ['parametres', 'Paramètres', 'gear']]],
 ];
 
 const multi = () => META?.sites?.length > 1;
@@ -1915,12 +1914,9 @@ const ROUTES = {
   clippers: pageClippers,
   clipper: (id) => pageClipper(id),
   classement: pageClassement,
-  inspiration: pageInspiration,
   management: pageManagement,
-  remuneration: pageRemuneration,
   parametres: pageParametres,
   funnel: pageFunnel,
-  suivi: pageSuivi,
   boutique: pageBoutique,
   client: pageClient,
 };

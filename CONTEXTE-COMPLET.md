@@ -240,6 +240,7 @@ Commun aux deux :
   Les polices à graisse unique (Lilita One…) sont gérées dans `sober.ts`.
 
 ### Mars (dashboard staff, `index.html` + `app.js`)
+- **Retirées du menu (demande d'Alex)** : Rémunération, Inspiration, Suivi. Alex trouve Mars surchargé : rework en cours, page par page.
 - Pages : Vue Agence (KPI, dont « Clippeurs actifs » ; « CA généré » a été retiré), clippeurs, classement, inspiration, management,
   rémunération, paramètres, suivi du recrutement, et le programme fans (boutique, commandes, comptes à vérifier, réglages, ± coins).
 - **Classement** : colonne « Vues qui comptent », à côté des vues brutes.
