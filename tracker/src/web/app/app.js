@@ -529,7 +529,7 @@ function renderTopbar() {
     const PF = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
     results.innerHTML = hits.length || accounts.length
       ? hits.map((c) => `<a href="#/clipper/${c.id}">${avatar(c.username)}<div><b>${esc(c.username)}</b><div class="faint" style="font-size:12px">${esc(c.agency ?? 'Sans agence')}</div></div></a>`).join('') +
-        accounts.map((r) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px"><div style="flex:1;min-width:0"><b>${PF[r.platform] ?? r.platform} @${esc(r.handle)}</b><div class="faint" style="font-size:12px">relié à ${esc(r.username)}${r.active ? '' : ' · libéré'}</div></div>${r.active ? `<button class="btn sm danger" data-release="${r.id}" data-label="${esc(`${PF[r.platform] ?? r.platform} @${r.handle} de ${r.username}`)}">Libérer</button>` : ''}</div>`).join('')
+        accounts.map((r) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px"><a href="#/clipper/${r.clipperId}" style="flex:1;min-width:0;padding:0"><div><b>${PF[r.platform] ?? r.platform} @${esc(r.handle)}</b><div class="faint" style="font-size:12px">relié à ${esc(r.username)}${r.active ? '' : ' · libéré'}</div></div></a><a href="${esc(r.url)}" target="_blank" rel="noopener" class="btn sm" title="Ouvrir le compte" style="padding:4px 8px">↗</a>${r.active ? `<button class="btn sm danger" data-release="${r.id}" data-label="${esc(`${PF[r.platform] ?? r.platform} @${r.handle} de ${r.username}`)}">Libérer</button>` : ''}</div>`).join('')
       : '<div class="empty" style="padding:12px">Aucun résultat</div>';
     results.classList.add('open');
   });
@@ -543,7 +543,7 @@ function renderTopbar() {
     input.dispatchEvent(new Event('input'));
   });
   results.addEventListener('click', (e) => {
-    if (e.target.closest('[data-release]')) return;
+    if (e.target.closest('[data-release]') || e.target.closest('a[target="_blank"]')) return;
     results.classList.remove('open');
     input.value = '';
   });
