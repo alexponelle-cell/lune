@@ -89,7 +89,7 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
 | **BeOne** (@BeOnePourcent) | BEONE REWARDS | `playful` (clair, jaune), `fan.html` | objets / gamepass dans son jeu Roblox | automatique via l'API du jeu (`GAME_API_URL` / `GAME_API_TOKEN`), pseudo Roblox |
 | **SQUIDUU** | SQUIDUU | `sober` (noir #0B0A0C, jaune #FCD005, Montserrat) | 1 mois de Squiduuverse = 10 000 coins | automatique via l'API Squiduuverse (`SQUIDUU_API_URL` / `TOKEN`), e-mail Google, orderId anti-doublon |
 | **DEBO** (DEBO PLAYS) | DEBO PLAYS | `pop` (multicolore animé, Nunito) | 50 Robux pour 1 000 coins (100 000 vues) | Robux à la main, pseudo Roblox |
-| **Loann** (@LoannLV + 2ᵉ chaîne) | LOANN CLIPPING | `pop` + `sticker` (Baloo 2, contours noirs, bandeau défilant) | 1 mois de Merguez Superstar (ms-creators.com) = 10 000 coins | e-mail |
+| **Loann** (@LoannLV + 2ᵉ chaîne) | LOANN CLIPPING | style `ms` = charte de Merguez Superstar (ms-creators.com) : crème étoilé #FFF7E6, contours noirs #212121, jaune #FFD36E, vagues pêche/orange/corail, Passion One + Cal Sans + Inter | 1 mois de Merguez Superstar (ms-creators.com) = 10 000 coins | e-mail |
 
 ### Historique et état
 - **SQUIDUU** : campagne officiellement lancée. Le parcours complet a été testé de bout en bout. Les clippeurs sont arrivés.

@@ -16,7 +16,9 @@ export function soberPage(template: string, cr: CreatorConfig, title: string): s
     .replace('__BG__', k.bg)
     .replace('__FONTQ__', font.replace(/ /g, '+') + (SINGLE_WEIGHT.test(font) ? '' : ':wght@400;500;600;700;800'))
     .replace('__FONT__', font)
-    .replace('<body>', cr.theme === 'pop' ? `<body class="pop${cr.style === 'sticker' ? ' sticker' : ''}">` : '<body>');
+    .replace('<body>', cr.style === 'ms' ? '<body class="ms">' : cr.theme === 'pop' ? `<body class="pop${cr.style === 'sticker' ? ' sticker' : ''}">` : '<body>')
+    // Style « ms » : polices de titres de la charte Merguez Superstar
+    .replace('</head>', cr.style === 'ms' ? '<link href="https://fonts.googleapis.com/css2?family=Passion+One:wght@400;700&family=Cal+Sans&display=swap" rel="stylesheet">\n</head>' : '</head>');
 }
 
 const DEMO_NAMES = ['kenzo.clips', 'lea_edits', 'nathan.cut', 'ines.shorts', 'yanis_clipz', 'sarah.mp4', 'tom.reels', 'maelle_cut'];
