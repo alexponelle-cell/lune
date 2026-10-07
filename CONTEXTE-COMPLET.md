@@ -252,6 +252,7 @@ Commun aux deux :
 - **Un Mars par créateur** (un service Railway chacun). Le menu « Programme » bascule de l'un à l'autre sans se reconnecter, avec un lien signé.
   La variable `MARS_SITES` les liste.
 - Pour supprimer quelqu'un : page clippeurs, puis supprimer.
+- **« Déjà relié à quelqu'un d'autre »** : Mars → Fans → **🔎 Chercher un compte** (@ du compte ou pseudo Discord) → **Libérer**. Un compte libéré (inactif) est repris par le fan qui le relie ensuite (`registerAccount`), ses anciens clips ne comptent pas pour lui. « - » ou « . » ne sont plus acceptés comme comptes.
 - **Compte Discord perdu** : Mars → Fans → bouton 🔁 « Transférer » (ID Discord du nouveau compte) : comptes, vues, coins et achats passent sur le nouveau compte (`transferClipper`). Ensuite redonner ses rôles à la main. Ses jetons TikTok / Insta sont supprimés aussi (CASCADE).
 
 ### Serveur des monteurs (`bot/montage.ts`, commande `/setup-montage`)

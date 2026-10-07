@@ -1558,8 +1558,32 @@ async function loadFaqMisses(tries = 0) {
   box.querySelectorAll('[data-del-miss]').forEach((b) => (b.onclick = async () => { await api(`/api/fans/faq-misses/${b.dataset.delMiss}`, { method: 'DELETE' }); loadFaqMisses(40); }));
 }
 
+function bindAccountSearch(tries = 0) {
+  const input = document.getElementById('acc-search');
+  if (!input) { if (tries < 40) setTimeout(() => bindAccountSearch(tries + 1), 150); return; }
+  const box = document.getElementById('acc-results');
+  const PF = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+  let timer;
+  const run = async () => {
+    const q = input.value.trim();
+    if (q.length < 2) { box.innerHTML = ''; return; }
+    const { results } = await api(`/api/accounts/search?q=${encodeURIComponent(q)}`).catch(() => ({ results: [] }));
+    box.innerHTML = results.length
+      ? `<div class="table-wrap"><table><thead><tr><th>Compte</th><th>Relié à</th><th>ID Discord</th><th>État</th><th class="r"></th></tr></thead><tbody>${results.map((r) => `<tr><td><a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">${PF[r.platform] ?? r.platform} @${esc(r.handle)} ↗</a></td><td><b>${esc(r.username)}</b></td><td class="num faint">${esc(r.discordId)}</td><td>${r.active ? '<span class="pill">suivi</span>' : '<span class="pill wait">libéré</span>'}</td><td class="r">${r.active ? `<button class="btn sm danger" data-release="${r.id}">Libérer</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="empty">Aucun compte trouvé</div>';
+    box.querySelectorAll('[data-release]').forEach((b) => (b.onclick = async () => {
+      const r = results.find((x) => x.id === Number(b.dataset.release));
+      if (!confirm(`Retirer ${PF[r.platform] ?? r.platform} @${r.handle} de ${r.username} ? Il pourra être relié à un autre fan.`)) return;
+      await api(`/api/accounts/${r.id}/release`, { method: 'POST' });
+      toast(`@${r.handle} libéré ✅ Le fan peut le relier en refaisant S'inscrire`);
+      run();
+    }));
+  };
+  input.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 250); };
+}
+
 async function pageBoutique() {
-  setTimeout(() => loadFaqMisses(), 0);
+  setTimeout(() => { loadFaqMisses(); bindAccountSearch(); }, 0);
   loading();
   const d = await api('/api/fans');
   const s = d.settings;
@@ -1598,6 +1622,9 @@ async function pageBoutique() {
             <td class="r"><button class="btn sm dark" data-link-fan="${f.id}">Relier ses comptes</button></td></tr>`).join('')}</tbody></table></div>`
           : '<div class="empty">Tous les fans ont au moins un compte relié 🎉</div>'}</div>`;
       })()}
+
+      <div class="card"><div class="card-head"><div><h2>🔎 Chercher un compte</h2><p>Un fan dit « déjà relié à quelqu'un d'autre » ? Tape le @ de son compte (ou un pseudo Discord) : tu vois à qui il est relié. <b>Libérer</b> le retire de ce fan, il pourra le relier au bon compte en refaisant S'inscrire.</p></div></div>
+        <div class="card-pad" style="padding-top:0"><input class="input" id="acc-search" placeholder="@pseudo TikTok / Insta / YouTube, ou pseudo Discord" autocomplete="off"></div><div id="acc-results"></div></div>
 
       <div class="card" id="faq-misses"><div class="card-head"><div><h2>Questions sans réponse</h2><p>Ce que les clippeurs demandent dans ❓│aide et que le bot ne sait pas encore répondre. Envoie-les à Claude pour qu'il ajoute les réponses.</p></div></div><div class="empty">Chargement…</div></div>
 

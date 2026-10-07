@@ -243,7 +243,17 @@ export class Repo {
     const existing = this.getAccountByHandle(input.platform, input.handle);
     if (existing) {
       if (existing.clipperId !== input.clipperId) {
-        return { account: existing, created: false, conflict: this.getClipper(existing.clipperId) };
+        if (existing.active) return { account: existing, created: false, conflict: this.getClipper(existing.clipperId) };
+        // Compte libéré (retiré de l'ancien propriétaire) : repris par le nouveau, ses anciens clips ne comptent pas pour lui
+        const now = input.now ?? Date.now();
+        this.db.transaction(() => {
+          this.db.prepare('DELETE FROM tiktok_tokens WHERE account_id = ?').run(existing.id);
+          this.db.prepare('DELETE FROM instagram_tokens WHERE account_id = ?').run(existing.id);
+          this.db
+            .prepare('UPDATE accounts SET clipper_id = ?, client_id = COALESCE(?, client_id), url = ?, active = 1, created_at = ?, verified_at = ? WHERE id = ?')
+            .run(input.clipperId, input.clientId, input.url, now, now, existing.id);
+        })();
+        return { account: this.getAccountByHandle(input.platform, input.handle)!, created: true };
       }
       this.db
         .prepare('UPDATE accounts SET active = 1, client_id = COALESCE(?, client_id) WHERE id = ?')
@@ -257,6 +267,19 @@ export class Repo {
       )
       .get(input.clipperId, input.clientId, input.platform, input.handle, input.url, input.now ?? Date.now(), input.now ?? Date.now());
     return { account: toAccount(r as Row), created: true };
+  }
+
+  /** Recherche staff : comptes dont le pseudo (ou celui du clippeur) contient `q`. */
+  searchAccounts(q: string, limit = 30): Array<{ id: number; platform: string; handle: string; url: string; active: boolean; clipperId: number; username: string; discordId: string }> {
+    const like = `%${q.trim().replace(/^@/, '').toLowerCase()}%`;
+    return (this.db
+      .prepare(
+        `SELECT a.id, a.platform, a.handle, a.url, a.active, c.id AS clipperId, c.username, c.discord_id AS discordId
+           FROM accounts a JOIN clippers c ON c.id = a.clipper_id
+          WHERE lower(a.handle) LIKE ? OR lower(c.username) LIKE ?
+          ORDER BY a.active DESC, a.handle LIMIT ?`,
+      )
+      .all(like, like, limit) as Row[]).map((r) => ({ ...(r as never as { id: number; platform: string; handle: string; url: string; clipperId: number; username: string; discordId: string }), active: !!r.active }));
   }
 
   deactivateAccount(id: number): void {

@@ -90,6 +90,7 @@ export function parseAccountInput(platform: Platform, value: string): AccountLin
     return parsed && parsed.platform === platform ? parsed : null;
   }
   const handle = v.replace(/^@/, '').toLowerCase();
-  if (!/^[a-z0-9._-]{1,30}$/.test(handle)) return null;
+  // Au moins une lettre ou un chiffre : « - » ou « . » (« je n'ai pas de compte ») ne sont pas des comptes
+  if (!/^[a-z0-9._-]{1,30}$/.test(handle) || !/[a-z0-9]/.test(handle)) return null;
   return { platform, handle, url: canonicalUrl(platform, handle) };
 }
