@@ -19,10 +19,13 @@ export function soberPage(template: string, cr: CreatorConfig, title: string): s
     .replace('<body>', cr.theme === 'pop' ? `<body class="pop${cr.style === 'sticker' ? ' sticker' : ''}">` : '<body>');
 }
 
+/** Objet de boutique en plus de la récompense principale (maquettes). */
+type DemoItem = { ref: string; name: string; description: string; price: number };
+
 const DEMO_NAMES = ['kenzo.clips', 'lea_edits', 'nathan.cut', 'ines.shorts', 'yanis_clipz', 'sarah.mp4', 'tom.reels', 'maelle_cut'];
 
 /** Données d'exemple d'une maquette prospect (même forme que /api/fan/public). */
-export function demoPublic(cr: CreatorConfig, rewardImage: string) {
+export function demoPublic(cr: CreatorConfig, rewardImage: string, extra: DemoItem[] = []) {
   const views = [184_000, 142_500, 97_300, 71_800, 52_400, 38_900, 21_600, 12_300];
   return {
     creator: cr,
@@ -31,7 +34,10 @@ export function demoPublic(cr: CreatorConfig, rewardImage: string) {
     discordInviteUrl: null,
     clips: [],
     featured: [],
-    items: cr.reward ? [{ id: 1, ref: cr.reward.ref, name: cr.reward.name, description: cr.reward.description, price: cr.reward.price, stock: null, imageUrl: rewardImage || null }] : [],
+    items: [
+      ...(cr.reward ? [{ id: 1, ref: cr.reward.ref, name: cr.reward.name, description: cr.reward.description, price: cr.reward.price, stock: null, imageUrl: rewardImage || null }] : []),
+      ...extra.map((it, i) => ({ id: i + 2, ...it, stock: null, imageUrl: null })),
+    ],
     leaderboard: DEMO_NAMES.map((name, i) => ({ rank: i + 1, name, avatar: null, views: views[i]!, coins: Math.floor((views[i]! / 1000) * cr.pointsPer1000) })),
   };
 }
@@ -44,7 +50,7 @@ export function demoPage(template: string, slug: string, url: (file: string) => 
   if (!p) return undefined;
   const a = (f: string | undefined) => (f ? url(f) : '');
   const cr: CreatorConfig = { ...p.config, images: { banner: p.banner, reward: p.config.style === 'sticker' ? p.reward : undefined } };
-  const data = JSON.stringify(demoPublic(cr, a(p.reward))).replace(/</g, '\\u003c');
+  const data = JSON.stringify(demoPublic(cr, a(p.reward), p.items)).replace(/</g, '\\u003c');
   return soberPage(template, cr, cr.programName)
     .replaceAll('/fan/assets/creator.png', a(p.photo))
     .replaceAll('/fan/assets/hero-banner', a(p.banner))

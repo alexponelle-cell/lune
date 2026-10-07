@@ -10,6 +10,8 @@ export interface Prospect {
   photo: string;
   banner?: string;
   reward?: string;
+  /** Autres objets de la boutique (en plus de config.reward). */
+  items?: { ref: string; name: string; description: string; price: number }[];
 }
 
 const LEVELS = [
@@ -96,6 +98,11 @@ export const PROSPECTS: Record<string, Prospect> = {
   },
   josplay: {
     photo: 'josplay-pdp.png',
+    // Pistes de récompenses (pas encore fixées avec Josplay)
+    items: [
+      { ref: 'yt-member-1m', name: '1 mois de membre YouTube', description: 'Un mois d’abonnement payant à la chaîne de Josplay, offert.', price: 5_000 },
+      { ref: 'prime-1m', name: 'Prime 1 million de vues', description: 'Une prime en argent quand tes clips atteignent 1 million de vues.', price: 10_000 },
+    ],
     config: {
       ...base,
       id: 'josplay',
@@ -107,8 +114,8 @@ export const PROSPECTS: Record<string, Prospect> = {
       font: 'Fredoka',
       logoText: 'josplay',
       rewardAccount: EMAIL('Ta récompense', 'Ta récompense est envoyée sur cet e-mail.'),
-      reward: null,
-      texts: texts('Josplay', 'des récompenses'),
+      reward: { name: '1 mois de Patreon', description: 'Accès aux replays de Josplay sur son Patreon. Les mois s’additionnent.', price: 10_000, ref: 'patreon-1m', url: '#', linkLabel: 'Voir le Patreon' },
+      texts: texts('Josplay', 'son Patreon', { shopText: 'Échange tes coins contre le Patreon, un abonnement YouTube ou une prime.' }),
     },
   },
 };
