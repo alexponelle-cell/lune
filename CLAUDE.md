@@ -81,7 +81,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   Josplay : récompense à définir.
 - **Liste de Lucas** : IA « clipper » (FAQ gratuite par défaut, il faut ses tutos / conférences / ateliers),
   améliorer le système avec sa data.
-- Josplay : trouver comment rémunérer les clippeurs. Loann : test d'inscription à faire. Railway : plan Hobby.
+- Josplay : trouver comment rémunérer les clippeurs. Loann : test d'inscription à faire. Railway : encore en **Trial** (crédit unique de 5 $, ~1 $ consommé en 2 semaines) → passer en Hobby (5 $/mois) avant la fin du crédit, sinon tout s’arrête.
 
 ## Ma façon de travailler (à garder)
 

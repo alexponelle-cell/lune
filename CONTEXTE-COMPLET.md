@@ -340,7 +340,7 @@ Commun aux deux :
 - Chaque service a sa variable `CREATOR` et ses propres secrets.
 - Un push sur la branche déclenche le redéploiement. Sinon, bouton **Deploy** sur Railway.
 - Pour lire les logs : Railway, service, Deployments, View logs. Demander une capture à Alex, puisque l'agent n'a pas accès à Railway.
-- Plan Railway : Hobby, environ 5 $ par mois.
+- Plan Railway : **Trial** (crédit unique de 5 $, ~1 $ consommé du 25/09 au 08/10). À passer en Hobby (5 $/mois, consommation incluse) avant épuisement.
 - Le guide complet de la première mise en ligne est dans `tracker/DEPLOY.md`.
 
 ## 9. Outils de l'agent (environnement cloud)
