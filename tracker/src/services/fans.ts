@@ -308,10 +308,11 @@ export class FanService {
   // --- Automatisations du serveur Discord (rôles de niveau, classement, vidéos) ---------
 
   /** Niveau actuel de chaque fan relié à Discord. */
-  fanLevels(now = Date.now()): Array<{ clipperId: number; discordId: string; username: string; views: number; level: number }> {
+  fanLevels(now = Date.now(), windowDays?: number): Array<{ clipperId: number; discordId: string; username: string; views: number; level: number }> {
     const s = this.settings();
     if (!s.clientId) return [];
-    const views = this.viewsByClipper(now);
+    // windowDays : vues qui comptent des N derniers jours (grades du mois glissant), sinon depuis toujours
+    const views = windowDays ? this.fans.freshClipViews(s.clientId, now - windowDays * 86_400_000, this.clipRuleSince()) : this.viewsByClipper(now);
     return this.repo
       .listClippers({ clientId: s.clientId })
       .filter((c) => !c.discordId.startsWith('manual:'))

@@ -167,6 +167,7 @@ Le parcours du serveur monté par `/setup` (`fanServer.ts`) :
    Il reçoit le rôle `🎬 1er clip à poster`, puis `🎬 Clippeur` quand son 1er clip est détecté, ce qui débloque la communauté.
 4. Communauté : 📣 annonces, 💬 général, 🎥 mes-clips, ❓ aide.
    Plus : classement du lundi (top 10, rôle `🏆 Top 3 de la semaine`), level-up (paliers = objets de la boutique),
+   **grades du mois glissant** si `gradeWindowDays` dans la config (Loann : 30 j) : rôles 🌱 Débutant / ⚡ Confirmé (10 k) / 🔥 Pro (100 k) / 💎 Élite (1 M) selon les vues des 30 derniers jours, montent et redescendent tout seuls (`syncGradeRoles`, toutes les 15 min), montée annoncée dans #level-up,
    nouvelles vidéos (vidéos longues seulement, rôle `🔔 Alerte vidéos`).
 5. Côté staff : log des inscriptions, 💬 staff, rôles `🛡️ Staff` et `👑 Head of Clipping 👑`
    (il voit tous les salons staff et privés), plus un salon privé par clippeur.

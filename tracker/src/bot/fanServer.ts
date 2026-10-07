@@ -68,7 +68,8 @@ export async function ensureTierRoles(guild: Guild, fans: FanService): Promise<R
   // Comparaison souple (emoji, espaces, majuscules) : un rôle légèrement différent n'est jamais supprimé puis recréé
   const same = (a: string, b: string) => bare(a) === bare(b);
   for (const r of guild.roles.cache.values()) {
-    const oldLevel = fans.creator.levels.some((l) => sameName(r.name, levelRoleName(l)));
+    // Anciens rôles de niveau supprimés, sauf si le créateur utilise les grades du mois (mêmes noms)
+    const oldLevel = !fans.creator.gradeWindowDays && fans.creator.levels.some((l) => sameName(r.name, levelRoleName(l)));
     const oldTier = r.name.startsWith(TIER_PREFIX) && !wanted.some((w) => same(w, r.name));
     if ((oldLevel || oldTier) && r.editable) await r.delete('Paliers = objets de la boutique').catch(() => {});
   }

@@ -20,7 +20,7 @@ import {
 import { log } from '../log.js';
 import { FAQ_MENU, faqAnswer, type FaqIntent, looksLikeQuestion, matchFaq, PERSONAL_INTENTS } from '../domain/faq.js';
 import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
-import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
+import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -378,6 +378,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       await reportAccountsToReview(c, opts.fans).catch((err) => log.error('comptes à vérifier', err));
       await unlockFirstClips(c, opts.fans).catch((err) => log.error('1er clip', err));
       await syncTierRoles(c, opts.fans).catch((err) => log.error('rôles de palier', err));
+      await syncGradeRoles(c, opts.fans).catch((err) => log.error('grades du mois', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
       if (opts.youtubeApiKey) await announceNewVideos(c, opts.fans, opts.youtubeApiKey).catch((err) => log.error('nouvelles vidéos', err));
     };

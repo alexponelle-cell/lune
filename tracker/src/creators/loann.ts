@@ -34,6 +34,8 @@ export const loann: CreatorConfig = {
     url: 'https://ms-creators.com/',
     linkLabel: 'Découvrir Merguez Superstar',
   },
+  // Grades Discord du mois glissant : 100 k vues sur 30 jours = Pro ; s'il redescend sous 100 k le mois d'après → Confirmé
+  gradeWindowDays: 30,
   levels: [
     { name: 'Débutant', emoji: '🌱', min: 0 },
     { name: 'Confirmé', emoji: '⚡', min: 10_000 },

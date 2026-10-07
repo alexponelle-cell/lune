@@ -57,6 +57,11 @@ export interface CreatorConfig {
     linkLabel: string;
   };
   levels: Array<{ name: string; emoji: string; min: number }>;
+  /**
+   * Grades Discord selon les vues des N derniers jours (ex. 30) : un rôle par niveau (Débutant, Confirmé, Pro, Élite),
+   * qui monte ou redescend chaque jour selon le mois glissant. Sans ce champ : pas de rôles de grade.
+   */
+  gradeWindowDays?: number;
   /** Mots acceptés dans la légende d'un clip pour qu'il compte (en plus du nom et des chaînes YouTube). */
   clipKeywords?: string[];
   /** Libellés des statuts dans « Mes échanges ». */

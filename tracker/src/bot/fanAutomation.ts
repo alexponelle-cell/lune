@@ -1,7 +1,7 @@
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
-import { bare, ensureTierRoles, LEVELUP_CHANNEL, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
+import { bare, ensureTierRoles, LEVELUP_CHANNEL, levelRoleName, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
 
 /**
  * Automatisations des serveurs montés par /setup (sans effet ailleurs : rôles et salons introuvables).
@@ -155,6 +155,60 @@ export async function syncTierRoles(client: Client<true>, fans: FanService): Pro
         }
       } catch (err) {
         log.warn(`rôles de palier (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`);
+      }
+      await pause(300);
+    }
+  }
+  return changes;
+}
+
+/**
+ * Grades du mois glissant (créateur avec `gradeWindowDays`) : Débutant / Confirmé / Pro / Élite selon les vues des 30 derniers jours.
+ * Le rôle monte dès que le seuil est atteint et redescend quand le mois glissant repasse sous le seuil.
+ * Une montée est annoncée dans #level-up (une fois par grade et par mois).
+ */
+export async function syncGradeRoles(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
+  const days = fans.creator.gradeWindowDays;
+  if (!days) return 0;
+  const levels = fans.creator.levels;
+  const people = fans.fanLevels(now, days);
+  const month = new Date(now).toISOString().slice(0, 7);
+  let changes = 0;
+  for (const guild of setupGuilds(client, fans)) {
+    // Rôles des grades, du plus haut au plus bas (Discord place chaque nouveau rôle en bas)
+    const roles: Role[] = [];
+    try {
+      for (let i = levels.length - 1; i >= 0; i--) {
+        const name = levelRoleName(levels[i]!);
+        roles[i] = guild.roles.cache.find((r) => bare(r.name) === bare(name)) ?? (await guild.roles.create({ name, colors: { primaryColor: accent(fans) }, hoist: true, reason: 'Grade du mois' }));
+      }
+    } catch (err) {
+      log.warn(`grades (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`);
+      continue;
+    }
+    const levelUp = channel(guild, LEVELUP_CHANNEL);
+    for (const f of people) {
+      const member = await guild.members.fetch(f.discordId).catch(() => null);
+      if (!member) continue;
+      const current = roles.reduce((acc, r, i) => (member.roles.cache.has(r.id) ? i : acc), -1);
+      const extra = roles.filter((r, i) => i !== f.level && member.roles.cache.has(r.id));
+      if (current === f.level && extra.length === 0) continue;
+      try {
+        if (extra.length) await member.roles.remove(extra.map((r) => r.id));
+        if (!member.roles.cache.has(roles[f.level]!.id)) await member.roles.add(roles[f.level]!.id);
+        changes++;
+        const key = `grade:${guild.id}:${f.level}:${month}`;
+        if (f.level > current && current >= 0 && f.level > 0 && levelUp && !fans.fans.wasNotified(f.clipperId, key)) {
+          fans.fans.markNotified(f.clipperId, key);
+          const l = levels[f.level]!;
+          await levelUp.send({
+            content: `${member}`,
+            embeds: [new EmbedBuilder().setColor(accent(fans)).setDescription(`${l.emoji} ${member} passe **${l.name}** avec **${nf(f.views)} vues** sur les ${days} derniers jours ! 🔥`)],
+            allowedMentions: { users: [member.id] },
+          });
+        }
+      } catch (err) {
+        log.warn(`grades (${guild.name}) : ${err instanceof Error ? err.message : String(err)}`);
       }
       await pause(300);
     }

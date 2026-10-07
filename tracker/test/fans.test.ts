@@ -47,6 +47,13 @@ describe('programme fans (Neptune)', () => {
     return fan;
   }
 
+  it('grades du mois glissant : seules les vues de la période comptent', () => {
+    const fan = fanWithViews();
+    expect(fans.fanLevels(now, 30).find((f) => f.clipperId === fan.id)?.views).toBe(5000);
+    // Fenêtre qui commence après le dernier relevé : aucune vue gagnée dans la période → Débutant
+    expect(fans.fanLevels(now, 0.00001).find((f) => f.clipperId === fan.id)).toMatchObject({ views: 0, level: 0 });
+  });
+
   it('FAQ perso : solde, classement, clip qui compte et questions sans réponse', () => {
     const fan = fanWithViews();
     expect(fans.faqPersonal('balance', fan, '').join(' ')).toContain('50 coins');
