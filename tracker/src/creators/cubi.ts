@@ -1,7 +1,7 @@
 import type { CreatorConfig } from './types.js';
 
 /**
- * Cubi Game (Roblox) : même mise en page riche que Loann (style « ms »), à sa charte noir / blanc / orange (skin « cubi »).
+ * Cubi Game (Roblox) : même mise en page riche que Loann (style « ms »), à sa charte noir et blanc (skin « cubi »).
  * Récompense : 1 mois de Roblox Academy pour 100 k vues, livré sur l'e-mail du clippeur.
  */
 export const cubi: CreatorConfig = {
@@ -13,8 +13,8 @@ export const cubi: CreatorConfig = {
   theme: 'pop',
   style: 'ms',
   images: { reward: 'cubi-academy.webp' },
-  // Noir & blanc du cube + orange du logo Roblox Academy
-  colors: { bg: '#FFFFFF', card: '#FFFFFF', border: '#111111', text: '#111111', muted: '#555555', accent: '#FF9A1F', accentInk: '#111111', accent2: '#FFB547', accent3: '#333333', highlight: '#FF9A1F' },
+  // Full noir & blanc, comme le cube
+  colors: { bg: '#FFFFFF', card: '#FFFFFF', border: '#111111', text: '#111111', muted: '#555555', accent: '#111111', accentInk: '#FFFFFF', accent2: '#444444', accent3: '#333333', highlight: '#111111' },
   font: 'Space Grotesk',
   logoText: 'CUBI GAME',
   pointsPer1000: 10,
