@@ -241,6 +241,7 @@ Commun aux deux :
 
 ### Mars (dashboard staff, `index.html` + `app.js`)
 - **Retirées du menu (demande d'Alex)** : Rémunération, Inspiration, Suivi. Alex trouve Mars surchargé : rework en cours, page par page.
+- **Funnel** = parcours des fans (`pageOnboarding`, `/api/fans/onboarding`) : arrivés sur le serveur → lu la bienvenue → règles → formation → inscrits → 1er clip → gagnent des coins → ont échangé. Étapes Discord = photo du bot créateur (`snapshotOnboarding`, 1 fois / heure, exacte si « Server Members Intent » activé, sinon estimation). Plus grosse perte mise en évidence. L'ancien funnel de recrutement agence n'est plus dans le menu.
 - Pages : Vue Agence (KPI, dont « Clippeurs actifs » ; « CA généré » a été retiré), clippeurs, classement, inspiration, management,
   rémunération, paramètres, suivi du recrutement, et le programme fans (boutique, commandes, comptes à vérifier, réglages, ± coins).
 - **Classement** : colonne « Vues qui comptent », à côté des vues brutes.

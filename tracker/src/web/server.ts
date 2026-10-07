@@ -990,6 +990,8 @@ export function createApp(deps: WebDeps): Hono {
   // --- Programme fans : boutique (staff) ----------------------------------------------
 
   app.get('/api/fans', async (c) => c.json({ ...fans.overview(), notifications: fans.fans.notificationStats(Date.now() - 7 * 86_400_000), avatars: { urls: await fans.creatorAvatars(deps.youtubeApiKey), errors: fans.avatarErrors }, neptune: status.neptune, fansBot: !!deps.fansBotSends, neptuneKey: !!deps.neptuneApiKey, robloxKey: !!deps.robloxApiKey, gameApi: !!deps.game, emailApi: !!deps.emailApi, gameCheck: deps.game ? await deps.game.rateLimit().then((r) => ({ ok: true as const, remaining: r.remaining, limit: r.limit, windowSeconds: r.windowSeconds })).catch((err: unknown) => ({ ok: false as const, error: err instanceof Error ? err.message : String(err) })) : null }));
+  // Funnel d'onboarding des fans (où ils s'arrêtent : serveur → règles → formation → inscription → 1er clip → coins → échange)
+  app.get('/api/fans/onboarding', (c) => c.json(fans.onboardingFunnel()));
   // Recherche d'un compte (TikTok / Insta / YouTube) ou d'un pseudo, tous clippeurs confondus ; « Libérer » = le retirer de son propriétaire
   app.get('/api/accounts/search', (c) => {
     const q = (c.req.query('q') ?? '').trim();

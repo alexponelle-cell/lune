@@ -20,7 +20,7 @@ import {
 import { log } from '../log.js';
 import { FAQ_MENU, faqAnswer, type FaqIntent, looksLikeQuestion, matchFaq, PERSONAL_INTENTS } from '../domain/faq.js';
 import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
-import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
+import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -343,11 +343,12 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     }
   }
   // Lire le salon #mes-comptes demande « Message Content Intent » (portail Discord, onglet Bot).
-  const make = (withMessages: boolean) =>
+  // « Server Members Intent » (portail Discord) : liste complète des membres pour le funnel de Mars ; facultatif
+  const make = (withMessages: boolean, withMembers = false) =>
     new DiscordClient({
-      intents: [GatewayIntentBits.Guilds, ...(withMessages ? [GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] : [])],
+      intents: [GatewayIntentBits.Guilds, ...(withMessages ? [GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] : []), ...(withMembers ? [GatewayIntentBits.GuildMembers] : [])],
     });
-  let discord = make(true);
+  let discord = make(true, true);
   let readsMessages = true;
   let timer: NodeJS.Timeout | undefined;
   let autoTimer: NodeJS.Timeout | undefined;
@@ -379,6 +380,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       await unlockFirstClips(c, opts.fans).catch((err) => log.error('1er clip', err));
       await syncTierRoles(c, opts.fans).catch((err) => log.error('rôles de palier', err));
       await syncGradeRoles(c, opts.fans).catch((err) => log.error('grades du mois', err));
+      await snapshotOnboarding(c, opts.fans).catch((err) => log.error('funnel onboarding', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
       if (opts.youtubeApiKey) await announceNewVideos(c, opts.fans, opts.youtubeApiKey).catch((err) => log.error('nouvelles vidéos', err));
     };
@@ -432,17 +434,24 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     }
   }
 
-  wire(discord);
-  try {
-    await discord.login(opts.token);
-  } catch (err) {
-    if (!(err instanceof Error && /disallowed intents/i.test(err.message))) throw err;
-    log.warn('bot fans : « Message Content Intent » non activé, le salon #mes-comptes ne marche pas');
-    await discord.destroy();
-    readsMessages = false;
-    discord = make(false);
+  // Essais du plus complet au plus simple : messages + membres, puis messages seuls, puis rien
+  const attempts: Array<[boolean, boolean]> = [[true, true], [true, false], [false, false]];
+  for (let i = 0; ; i++) {
+    const [withMessages, withMembers] = attempts[i]!;
+    if (i > 0) {
+      discord = make(withMessages, withMembers);
+      readsMessages = withMessages;
+    }
     wire(discord);
-    await discord.login(opts.token);
+    try {
+      await discord.login(opts.token);
+      if (!withMembers) log.warn('bot fans : « Server Members Intent » non activé, le funnel de Mars est estimé');
+      if (!withMessages) log.warn('bot fans : « Message Content Intent » non activé, le salon #mes-comptes ne marche pas');
+      break;
+    } catch (err) {
+      if (!(err instanceof Error && /disallowed intents/i.test(err.message)) || i === attempts.length - 1) throw err;
+      await discord.destroy();
+    }
   }
   return async () => {
     if (timer) clearInterval(timer);

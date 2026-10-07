@@ -1380,6 +1380,41 @@ async function pageParametres() {
 
 // --- Recrutement --------------------------------------------------------------------------
 
+/** Funnel d'onboarding des fans : à quelle étape ils s'arrêtent (serveur Discord → échange d'une récompense). */
+async function pageOnboarding() {
+  loading();
+  const n = (x) => Number(x ?? 0).toLocaleString('fr-FR');
+  const d = await api('/api/fans/onboarding');
+  const steps = d.steps;
+  const top = steps.find((x) => x.count)?.count || 1;
+  // Plus grosse perte entre deux étapes connues
+  let worst = null;
+  for (let i = 1; i < steps.length; i++) {
+    const a = steps[i - 1].count, b = steps[i].count;
+    if (a == null || b == null || !a) continue;
+    const lost = a - b;
+    if (lost > 0 && (!worst || lost / a > worst.rate)) worst = { from: steps[i - 1], to: steps[i], lost, rate: lost / a };
+  }
+  const rows = steps.map((x, i) => {
+    const prev = steps[i - 1]?.count;
+    const keep = x.count != null && prev ? Math.round((x.count / prev) * 100) : null;
+    const isWorst = worst && worst.to.key === x.key;
+    const w = x.count == null ? 0 : Math.max(2, Math.round((x.count / top) * 100));
+    return `<div style="display:grid;grid-template-columns:minmax(150px,240px) 1fr 90px 80px;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)">
+      <b>${i + 1}. ${esc(x.label)}</b>
+      <div style="height:22px;background:var(--panel-2, rgba(255,255,255,.05));border-radius:6px;overflow:hidden"><div style="height:100%;width:${w}%;background:${isWorst ? 'var(--orange, #f59e0b)' : 'var(--accent)'};border-radius:6px"></div></div>
+      <span class="num" style="text-align:right;font-weight:700">${x.count == null ? '<span class="faint">—</span>' : n(x.count)}</span>
+      <span class="num faint" style="text-align:right">${keep == null ? '' : `${keep} %`}</span></div>`;
+  }).join('');
+  const discordNote = d.discordAt
+    ? `Étapes Discord : photo du ${new Date(d.discordAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${d.exact ? '' : ' · <b style="color:var(--orange)">estimation</b> : active « Server Members Intent » sur le bot du créateur (portail Discord → Bot) pour le compte exact'}`
+    : 'Étapes Discord : pas encore de données (le bot fait la photo au plus 1 fois par heure)';
+  main().innerHTML = `<div class="page-head"><div><h1>Funnel</h1><p>Où les fans s'arrêtent, de l'arrivée sur le serveur jusqu'à l'échange d'une récompense</p></div></div>
+    ${worst ? `<div class="card card-pad" style="border-color:var(--orange)">🔴 <b>Plus grosse perte</b> : « ${esc(worst.from.label)} » → « ${esc(worst.to.label)} » : <b>${n(worst.lost)}</b> personnes perdues (${Math.round(worst.rate * 100)} %). C'est l'étape à améliorer en priorité.</div>` : ''}
+    <div class="card card-pad"><div style="display:grid;grid-template-columns:minmax(150px,240px) 1fr 90px 80px;gap:12px" class="faint"><span>Étape</span><span></span><span style="text-align:right">Personnes</span><span style="text-align:right">Gardés</span></div>${rows}
+    <p class="faint" style="margin:12px 0 0;font-size:13px">${discordNote}. « Gardés » = part de l'étape précédente qui passe à celle-ci.</p></div>`;
+}
+
 async function pageFunnel() {
   loading();
   const d = await api(`/api/funnel?${qs({}, false)}`);
@@ -1916,7 +1951,7 @@ const ROUTES = {
   classement: pageClassement,
   management: pageManagement,
   parametres: pageParametres,
-  funnel: pageFunnel,
+  funnel: pageOnboarding,
   boutique: pageBoutique,
   client: pageClient,
 };

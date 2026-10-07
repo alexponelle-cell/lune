@@ -1,7 +1,7 @@
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
-import { bare, ensureTierRoles, LEVELUP_CHANNEL, levelRoleName, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
+import { bare, ensureTierRoles, LEVELUP_CHANNEL, levelRoleName, ROLE_READER, ROLE_RULES, ROLE_TRAINED, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
 
 /**
  * Automatisations des serveurs montés par /setup (sans effet ailleurs : rôles et salons introuvables).
@@ -214,6 +214,35 @@ export async function syncGradeRoles(client: Client<true>, fans: FanService, now
     }
   }
   return changes;
+}
+
+/**
+ * Funnel d'onboarding (Mars) : combien de membres du serveur ont franchi chaque étape Discord
+ * (lu la bienvenue → règles acceptées → formation validée). Mis à jour au plus 1 fois par heure.
+ * Compte exact si « Server Members Intent » est activé (liste de tous les membres), sinon estimation.
+ */
+export async function snapshotOnboarding(client: Client<true>, fans: FanService, now = Date.now()): Promise<void> {
+  const last = fans.botState<{ at?: number }>('onboarding', {}).at ?? 0;
+  if (now - last < 60 * 60_000) return;
+  const guild = setupGuilds(client, fans)[0];
+  if (!guild) return;
+  let exact = true;
+  const members = await guild.members.fetch().catch(() => {
+    exact = false;
+    return guild.members.cache;
+  });
+  const has = (m: { roles: { cache: { some: (f: (r: Role) => boolean) => boolean } } }, names: string[]) =>
+    m.roles.cache.some((r) => names.some((n) => bare(n) === bare(r.name)));
+  const humans = [...members.values()].filter((m) => !m.user.bot);
+  const after = [ROLE_RULES, ROLE_TRAINED, ROLE_PENDING, ROLE_CLIPPER];
+  fans.setBotState('onboarding', {
+    at: now,
+    exact,
+    members: exact ? humans.length : guild.memberCount,
+    reader: humans.filter((m) => has(m, [ROLE_READER, ...after])).length,
+    rules: humans.filter((m) => has(m, after)).length,
+    trained: humans.filter((m) => has(m, [ROLE_TRAINED, ROLE_PENDING, ROLE_CLIPPER])).length,
+  });
 }
 
 /** Heure de Paris : jour de la semaine (1 = lundi), heure, et date du jour (AAAA-MM-JJ). */

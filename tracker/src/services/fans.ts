@@ -322,6 +322,31 @@ export class FanService {
       });
   }
 
+  /**
+   * Funnel d'onboarding : où les fans s'arrêtent, du serveur Discord jusqu'à l'échange d'une récompense.
+   * Étapes Discord = photo prise par le bot (au plus 1 fois par heure) ; étapes suivantes = base de données.
+   */
+  onboardingFunnel(now = Date.now()) {
+    const s = this.settings();
+    const discord = this.botState<{ at?: number; exact?: boolean; members?: number; reader?: number; rules?: number; trained?: number }>('onboarding', {});
+    const fans = s.clientId ? this.repo.listClippers({ clientId: s.clientId }).filter((c) => !c.discordId.startsWith('manual:')) : [];
+    const registered = fans.filter((c) => this.repo.listAccountsForClipper(c.id).some((a) => a.active));
+    const firstClip = this.firstClipDone();
+    const views = this.viewsByClipper(now);
+    const buyers = new Set(this.fans.orders({ limit: 100_000 }).filter((o) => o.status !== 'refunded').map((o) => o.clipperId));
+    const steps = [
+      { key: 'members', label: 'Arrivés sur le serveur', count: discord.members ?? null },
+      { key: 'reader', label: 'Ont lu la bienvenue', count: discord.reader ?? null },
+      { key: 'rules', label: 'Ont accepté les règles', count: discord.rules ?? null },
+      { key: 'trained', label: 'Ont validé la formation', count: discord.trained ?? null },
+      { key: 'registered', label: 'Inscrits (comptes reliés)', count: registered.length },
+      { key: 'firstClip', label: '1er clip détecté', count: fans.filter((c) => firstClip.has(c.discordId)).length },
+      { key: 'earning', label: 'Gagnent des coins', count: fans.filter((c) => (views.get(c.id) ?? 0) > 0).length },
+      { key: 'bought', label: 'Ont échangé une récompense', count: fans.filter((c) => buyers.has(c.id)).length },
+    ];
+    return { steps, discordAt: discord.at ?? null, exact: discord.exact ?? false };
+  }
+
   /** Paliers Discord = les objets en vente, du moins cher au plus cher. */
   shopTiers(): Array<{ itemId: number; name: string; price: number }> {
     return this.fans
