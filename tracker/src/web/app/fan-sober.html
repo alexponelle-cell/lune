@@ -736,7 +736,7 @@ function pageHomeMs() {
     <h2 class="msh2 rv">${esc(M.speakersTitle)}</h2>
     <div class="spk-wrap" aria-hidden="true"><ul class="tp-row r" data-speed="82">${spk}${spk}${spk}${spk}</ul></div>
     <h2 class="msh2 rv" style="margin-top:56px">${esc(M.tiersTitle)}</h2>
-    <div class="tiers">${lv.slice(0, 4).map((l, i) => `<div class="tier rv"><img src="/fan/assets/ms-tier${i + 1}.webp" alt="">${esc(l.name)}<small>${i === 0 ? `&lt; ${compact(lv[1]?.min ?? 0)}` : `&gt; ${compact(l.min)}`} vues</small></div>`).join('')}</div>
+    <div class="tiers">${lv.slice(0, 4).map((l, i) => `<div class="tier rv"><img src="/fan/assets/ms-tier${i + 1}.webp" alt="">${esc(l.name)}<small>${i === 0 ? `&lt; ${compact(lv[1]?.min ?? 0)}` : `&gt; ${compact(l.min)}`} vues${C.gradeWindowDays ? '/mois' : ''}</small></div>`).join('')}</div>
   </section>
 
   <section class="msec orange">
