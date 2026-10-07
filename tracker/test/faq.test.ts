@@ -20,6 +20,8 @@ describe('FAQ du salon aide', () => {
       ['vous utilisez quel logiciel de montage ?', 'editing'],
       ['je peux poster le même clip sur plusieurs plateformes ?', 'repost'],
       ['c’est quoi le lien du site ?', 'site'],
+      ['Comment je peux faire + de vues ?', 'grow'],
+      ['des conseils pour percer ?', 'grow'],
     ];
     for (const [q, intent] of cases) expect(matchFaq(q), q).toBe(intent);
   });

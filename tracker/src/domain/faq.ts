@@ -3,7 +3,7 @@
  * et on répond avec les infos du programme (taux, récompense, #tag) et, pour « pourquoi j'ai 0 coins »,
  * avec le diagnostic du compte du fan. Si on ne reconnaît rien, on laisse le staff répondre.
  */
-export type FaqIntent = 'coins' | 'link' | 'tag' | 'when' | 'rate' | 'reward' | 'site' | 'connect' | 'followers' | 'editing' | 'repost';
+export type FaqIntent = 'coins' | 'link' | 'tag' | 'when' | 'rate' | 'reward' | 'site' | 'connect' | 'followers' | 'editing' | 'repost' | 'grow';
 
 export interface FaqInfo {
   creatorName: string;
@@ -18,7 +18,7 @@ export interface FaqInfo {
 
 /** Minuscules, sans accents ni ponctuation (sauf #). */
 export const normalize = (s: string) =>
-  ` ${s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’']/g, ' ').replace(/[^a-z0-9#?\s]/g, ' ').replace(/\s+/g, ' ').trim()} `;
+  ` ${s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’']/g, ' ').replace(/[^a-z0-9#?+\s]/g, ' ').replace(/\s+/g, ' ').trim()} `;
 
 const has = (t: string, ...words: string[]) => words.some((w) => t.includes(w));
 
@@ -34,6 +34,7 @@ const RULES: Array<{ intent: FaqIntent; test: (t: string) => boolean }> = [
   { intent: 'rate', test: (t) => has(t, 'combien') && has(t, 'coin', 'vue', 'gagne', 'rapporte') },
   { intent: 'followers', test: (t) => has(t, 'abonne', 'abo ', 'followers') && has(t, 'minimum', 'combien', 'faut', 'besoin', 'petit') },
   { intent: 'site', test: (t) => has(t, 'site', 'lien', 'connexion', 'me connecter', 'se connecter', 'login') },
+  { intent: 'grow', test: (t) => has(t, 'plus de vue', '+ de vue', 'plus de vues', 'faire des vues', 'faire + de', 'percer', 'viral', 'buzz', 'algo', 'conseil', 'astuce', 'tips', 'marche pas mes clips', 'flop') },
   { intent: 'editing', test: (t) => has(t, 'monter', 'montage', 'capcut', 'logiciel', 'edit', 'sous titre', 'sous-titre', 'faire un clip', 'faire des clips') },
   { intent: 'repost', test: (t) => has(t, 'meme clip', 'plusieurs compte', 'plusieurs plateforme', 'repost', 'reposter', 'poster partout') },
 ];
@@ -80,6 +81,8 @@ export function faqAnswer(intent: FaqIntent, info: FaqInfo, diagnosis: string[] 
       return `**Aucun minimum d'abonnés** 🙌 Un compte qui démarre peut gagner des coins dès son premier clip.`;
     case 'editing':
       return `Tout est expliqué dans **🎓│tutos** (formation Neptune Academy) 🎬 CapCut (gratuit) suffit largement : un moment fort, une accroche dans les 2 premières secondes, des sous-titres.`;
+    case 'grow':
+      return `Les clips qui font des vues 🚀 :\n• **Accroche dans les 2 premières secondes** (le moment le plus fort en premier, pas d'intro)\n• **Court** : 15 à 40 secondes, coupe tous les blancs\n• **Sous-titres** gros et lisibles + un titre qui donne envie\n• **Régularité** : 1 à 3 clips par jour, sur TikTok, Insta **et** Shorts\n• Choisis les moments **drôles, choquants ou impressionnants** de ${info.creatorName}\nTout est détaillé dans **🎓│tutos** 🎬`;
     case 'repost':
       return `Oui ✅ Tu peux poster le même clip sur TikTok, Insta **et** YouTube Shorts : chaque plateforme compte, tant que le compte est relié et que la légende contient **${info.tag}**.`;
   }
