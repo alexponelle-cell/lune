@@ -1607,7 +1607,7 @@ async function pageBoutique() {
       <div class="card"><div class="card-head"><div><h2>Fans</h2><p>${d.fans.length} fan(s) · vues des clips publiés après l'inscription${d.clipRule ? ` · ✅ seuls les clips qui citent le créateur dans la légende comptent (${esc(d.clipKeywords.join(', '))})` : ' · <span style="color:var(--orange)">règle « légende » coupée : tous les clips comptent</span>'}${d.fans.some((f) => f.review?.status === 'pending') ? ` · <b style="color:var(--orange)">⚠️ ${d.fans.filter((f) => f.review?.status === 'pending').length} à vérifier (achats bloqués)</b>` : ''}</p></div></div>
         <div class="table-wrap"><table><thead><tr><th>Fan</th><th>Comptes</th><th>${esc(d.accountLabel ?? 'Roblox')}</th><th class="r">Vues</th><th class="r">Gagnés</th><th class="r">Dépensés</th><th class="r">Solde</th><th class="r"></th></tr></thead><tbody>
         ${d.fans.map((f) => `<tr><td><div class="who">${avatar(f.username)}<b>${esc(f.username)}</b></div>${f.review?.status === 'pending' ? `<small style="display:block;color:var(--orange);white-space:normal;max-width:260px">⚠️ À vérifier : ${esc(f.review.reason ?? '')}</small>` : ''}${f.refused?.length ? `<small style="display:block;color:var(--orange);white-space:normal;max-width:260px" title="${esc(f.refused.slice(0, 5).map((r) => `${r.title ?? 'clip'} : ${r.reason ?? ''}`).join('\n'))}">🚫 ${f.refused.length} clip${f.refused.length > 1 ? 's' : ''} refusé${f.refused.length > 1 ? 's' : ''} (légende sans le créateur)</small>` : ''}</td><td class="faint">${f.accounts.map((a) => `${a.verified ? '' : '<span title="Pas encore vérifié (code pas trouvé dans la bio) : ses vues ne comptent pas">🔐</span>'}${a.connected ? '<span title="Connecté officiellement : le compte est prouvé à lui, vues lues gratuitement">🔗</span>' : ''}${{ tiktok: 'TT', instagram: 'IG', youtube: 'YT' }[a.platform]} @${esc(a.handle)}${a.followers ? ` <small>(${n(a.followers)} ab.)</small>` : ''}`).join(' · ') || '<span class="pill wait">à relier</span>'}</td><td>${esc(f.roblox ?? '—')}</td><td class="r num">${n(f.views)}</td><td class="r num">${n(f.earned)}</td><td class="r num">${n(f.spent)}</td><td class="r num"><b>${n(f.balance)}</b></td>
-          <td class="r">${f.review?.status === 'pending' ? `<button class="btn sm green" data-approve="${f.id}" title="Le compte est bien à lui : débloque ses achats">✅ Valider</button> ` : ''}<button class="btn sm" data-bonus="${f.id}" title="Ajouter ou retirer des coins">± coins</button> <button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
+          <td class="r">${f.review?.status === 'pending' ? `<button class="btn sm green" data-approve="${f.id}" title="Le compte est bien à lui : débloque ses achats">✅ Valider</button> ` : ''}<button class="btn sm" data-bonus="${f.id}" title="Ajouter ou retirer des coins">± coins</button> <button class="icon-btn" data-link-fan="${f.id}" style="display:inline-grid" title="Comptes">${icon('edit')}</button> <button class="btn sm" data-transfer-fan="${f.id}" title="Compte Discord perdu : tout passer sur son nouveau compte">🔁</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">${s.clientId ? 'Aucun fan : ils apparaissent dès qu’ils se connectent à la boutique avec Discord.' : 'Choisis d’abord l’agence des fans dans les réglages.'}</td></tr>`}
         </tbody></table></div></div>
     </div>`;
   const root = main();
@@ -1758,6 +1758,21 @@ async function pageBoutique() {
         danger: true,
         onConfirm: async () => { await api(`/api/shop/items/${i.id}`, { method: 'DELETE' }); pageBoutique(); },
       });
+    }
+    const tr = e.target.closest('[data-transfer-fan]');
+    if (tr) {
+      const f = d.fans.find((x) => x.id === Number(tr.dataset.transferFan));
+      modal(`Transférer ${f.username}`, `<p class="faint" style="margin:0;font-size:13px">Compte Discord perdu ? Ses comptes, vues, coins et achats passent sur son nouveau compte.<br>ID du nouveau compte : Discord → Paramètres → Avancés → Mode développeur, puis clic droit sur le membre → <b>Copier l’identifiant</b>.</p>
+        <label class="field"><span>ID Discord du nouveau compte</span><input class="input" name="discordId" placeholder="123456789012345678" required></label>
+        <label class="field"><span>Nouveau pseudo (optionnel)</span><input class="input" name="username" placeholder="${esc(f.username)}"></label>`, {
+        confirm: 'Transférer',
+        onConfirm: async (fd) => {
+          await api(`/api/clippers/${f.id}/transfer`, { method: 'POST', body: { discordId: fd.get('discordId'), username: fd.get('username') || undefined } });
+          toast('Transféré ✅ Donne-lui ses rôles sur le serveur (🎬 Clippeur…)');
+          pageBoutique();
+        },
+      });
+      return;
     }
     const lk = e.target.closest('[data-link-fan]');
     if (lk) {

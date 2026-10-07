@@ -494,6 +494,27 @@ export class Repo {
     return this.getClipper(id);
   }
 
+  /**
+   * Compte Discord perdu : rattache le clippeur (comptes, vues, coins, achats) à un nouveau compte Discord.
+   * Si le nouveau compte a déjà une fiche vide (créée en se connectant), elle est supprimée ; si elle a déjà des comptes ou des achats, on refuse.
+   */
+  transferClipper(id: number, discordId: string, username?: string): Clipper {
+    return this.db.transaction(() => {
+      const clipper = this.getClipper(id);
+      if (!clipper) throw new Error('Clippeur introuvable');
+      const other = this.getClipperByDiscordId(discordId);
+      if (other && other.id !== id) {
+        const n = (sql: string) => (this.db.prepare(sql).get(other.id) as { n: number }).n;
+        if (n('SELECT COUNT(*) AS n FROM accounts WHERE clipper_id = ?') || n('SELECT COUNT(*) AS n FROM shop_orders WHERE clipper_id = ?')) {
+          throw new Error(`Le nouveau compte Discord a déjà sa propre fiche (${other.username}) avec des comptes ou des achats : supprime-la d’abord`);
+        }
+        this.deleteClipper(other.id);
+      }
+      this.db.prepare('UPDATE clippers SET discord_id = ?, username = COALESCE(?, username) WHERE id = ?').run(discordId, username?.trim() || null, id);
+      return this.getClipper(id)!;
+    })();
+  }
+
   deleteClipper(id: number): void {
     this.db.transaction(() => {
       this.db.prepare("DELETE FROM reward_rules WHERE scope = 'clipper' AND scope_id = ?").run(id);

@@ -724,6 +724,14 @@ export function createApp(deps: WebDeps): Hono {
     return c.json({ clipper: repo.getClipper(id), warnings });
   });
 
+  // Compte Discord perdu : tout l'historique passe sur le nouveau compte (ID Discord, ou mention <@id>)
+  app.post('/api/clippers/:id/transfer', async (c) => {
+    const body = z.object({ discordId: z.string().trim(), username: z.string().trim().max(64).optional() }).parse(await c.req.json());
+    const discordId = body.discordId.match(/\d{15,22}/)?.[0];
+    if (!discordId) return c.json({ error: 'ID Discord invalide (clic droit sur le membre → Copier l’identifiant)' }, 400);
+    return c.json({ clipper: repo.transferClipper(Number(c.req.param('id')), discordId, body.username) });
+  });
+
   app.delete('/api/clippers/:id', (c) => {
     repo.deleteClipper(Number(c.req.param('id')));
     return c.json({ ok: true });
