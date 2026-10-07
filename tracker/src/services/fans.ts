@@ -5,7 +5,7 @@ import type { FetcherRegistry } from '../platforms/types.js';
 import { citesCreator, clipKeywords } from './clipCheck.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
 import type { AgencyService } from './agency.js';
-import { type CoinsState, type FaqInfo, fanAccountError } from '../domain/faq.js';
+import { type CoinsState, coinsDiagnosis, type FaqInfo, type FaqIntent, fanAccountError, videoKey } from '../domain/faq.js';
 import { beone } from '../creators/beone.js';
 import type { CreatorConfig } from '../creators/types.js';
 
@@ -467,6 +467,58 @@ export class FanService {
       tag: `#${this.clipKeywords()[0] ?? 'createur'}`,
       pointsPer1000: this.settings().pointsPer1000,
     };
+  }
+
+  /** Réponse perso de la FAQ automatique (solde, ce qu'il manque, classement, un clip précis). */
+  faqPersonal(intent: FaqIntent, clipper: Clipper, text: string, now = Date.now()): string[] {
+    const fmt = (n: number) => Math.round(n).toLocaleString('fr-FR');
+    const s = this.settings();
+    if (intent === 'coins') return coinsDiagnosis(this.coinsState(clipper, now));
+    const b = this.balance(clipper.id, now);
+    const info = this.faqInfo('');
+    if (intent === 'balance') {
+      const lines = [`🪙 Tu as **${fmt(b.balance)} coins** (${fmt(b.views)} vues qui comptent).`];
+      if (info.reward) lines.push(b.balance >= info.reward.price ? `✅ Assez pour **${info.reward.name}** : échange-le sur le site !` : `Il t'en manque **${fmt(info.reward.price - b.balance)}** pour **${info.reward.name}**.`);
+      if (!b.balance) lines.push(...coinsDiagnosis(this.coinsState(clipper, now)).map((l) => `• ${l}`));
+      return lines;
+    }
+    if (intent === 'missing') {
+      if (!info.reward) return [`🪙 Tu as **${fmt(b.balance)} coins**. Les récompenses sont dans la boutique du site.`];
+      if (b.balance >= info.reward.price) return [`✅ Tu as **${fmt(b.balance)} coins** : c'est assez pour **${info.reward.name}** ! Échange-le sur le site, onglet **Récompenses** 🎁`];
+      const left = info.reward.price - b.balance;
+      return [`🎯 Il te manque **${fmt(left)} coins** pour **${info.reward.name}** (tu en as ${fmt(b.balance)} / ${fmt(info.reward.price)}).`, `Ça fait environ **${fmt((left / Math.max(s.pointsPer1000, 1)) * 1000)} vues** en plus sur des clips qui comptent 💪`];
+    }
+    if (intent === 'rank') {
+      const row = this.leaderboard(now, 1000).find((r) => r.id === clipper.id);
+      return row
+        ? [`🏆 Tu es **${row.rank}${row.rank === 1 ? 'er' : 'e'}** du classement de la semaine avec **${fmt(row.views)} vues** qui comptent.`, row.rank > 3 ? 'Le top 3 du lundi gagne un rôle spécial, accroche-toi ! 🔥' : 'Tu es dans le top 3, garde le rythme ! 🔥']
+        : ['Tu n\'es pas encore dans le classement de cette semaine : il faut des vues sur des clips qui comptent (postés depuis l\'inscription, avec le #tag) 💪'];
+    }
+    if (intent === 'clip') {
+      const key = videoKey(text);
+      const clip = key ? this.fans.findClip(key) : undefined;
+      const tag = info.tag;
+      if (!clip) {
+        return [
+          '🔎 Je ne trouve pas ce clip dans nos relevés. Raisons possibles :',
+          '• il a été posté **après le dernier relevé** (les vues sont relevées chaque nuit 🌙) ;',
+          '• il est sur un compte **pas relié** à ton inscription (vérifie dans 📝│inscription).',
+        ];
+      }
+      if (clip.clipperId !== clipper.id) return ['⚠️ Ce clip est sur un compte relié à **un autre membre**. Si c\'est ton compte, préviens le staff.'];
+      const ruleSince = this.clipRuleSince();
+      const reasons: string[] = [];
+      if (!clip.verified) reasons.push(`le compte @${clip.handle} est **en vérification par le staff** (gros compte)`);
+      if (clip.publishedAt !== null && clip.publishedAt < clip.accountCreatedAt) reasons.push('il a été publié **avant ton inscription** (seuls les nouveaux clips rapportent)');
+      if (ruleSince && clip.publishedAt !== null && clip.publishedAt >= ruleSince && clip.clipCheck !== 'ok') reasons.push(`sa légende ne contient pas **${tag}** (ajoute-le, il sera repris au prochain relevé)`);
+      if (!reasons.length) return [`✅ Ce clip compte ! **${fmt(clip.views)} vues** dont ${fmt(clip.gained)} depuis le suivi → **+${fmt(this.points(clip.gained))} coins** 🪙`];
+      return [`❌ Ce clip (${fmt(clip.views)} vues) ne rapporte pas de coins parce que :`, ...reasons.map((r) => `• ${r}`)];
+    }
+    return [];
+  }
+
+  logFaqMiss(discordId: string, username: string, text: string): void {
+    this.fans.addFaqMiss(discordId, username, text);
   }
 
   addAccounts(clipper: Clipper, text: string) {

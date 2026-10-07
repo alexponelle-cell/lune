@@ -17,7 +17,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { log } from '../log.js';
-import { coinsDiagnosis, faqAnswer, matchFaq } from '../domain/faq.js';
+import { faqAnswer, looksLikeQuestion, matchFaq } from '../domain/faq.js';
 import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
 import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, syncTierRoles, unlockFirstClips, weeklyRanking } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
@@ -274,17 +274,20 @@ export function attachHelpChannel(discord: DiscordClient, fans: FanService, site
     // Le staff discute librement ; une réponse auto par personne et par minute au plus
     if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) return;
     const intent = matchFaq(message.content);
-    if (!intent) return;
+    if (!intent) {
+      // Question que la FAQ ne connaît pas : notée dans Mars pour ajouter la réponse
+      if (looksLikeQuestion(message.content)) {
+        try { fans.logFaqMiss(message.author.id, message.member?.displayName ?? message.author.username, message.content); } catch (err) { log.error('questions sans réponse', err); }
+      }
+      return;
+    }
     const last = lastAnswer.get(message.author.id) ?? 0;
     if (Date.now() - last < 60_000) return;
     lastAnswer.set(message.author.id, Date.now());
     try {
       const info = fans.faqInfo(siteUrl);
-      let diagnosis: string[] = [];
-      if (intent === 'coins') {
-        const clipper = fans.ensureFan(message.author.id, message.member?.displayName ?? message.author.username);
-        diagnosis = coinsDiagnosis(fans.coinsState(clipper));
-      }
+      const personal = ['coins', 'balance', 'missing', 'rank', 'clip'].includes(intent);
+      const diagnosis = personal ? fans.faqPersonal(intent, fans.ensureFan(message.author.id, message.member?.displayName ?? message.author.username), message.content) : [];
       const content = `${faqAnswer(intent, info, diagnosis)}\n-# 🤖 Réponse automatique. Pas la bonne réponse ? Le staff passe bientôt.`;
       await message
         .reply({ content, allowedMentions: { repliedUser: false } })

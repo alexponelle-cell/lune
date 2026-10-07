@@ -434,4 +434,15 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   DROP TABLE instagram_tokens;
   ALTER TABLE instagram_tokens_new RENAME TO instagram_tokens;
   `,
+
+  // v18 : questions du salon ❓│aide que la FAQ automatique n'a pas reconnues (à lire dans Mars)
+  `
+  CREATE TABLE faq_misses (
+    id         INTEGER PRIMARY KEY,
+    discord_id TEXT    NOT NULL,
+    username   TEXT    NOT NULL,
+    text       TEXT    NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  `,
 ];
