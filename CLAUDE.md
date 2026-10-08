@@ -74,7 +74,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 - **TikTok officiel** : testé en Sandbox (OK), **demande de validation envoyée**. Quand c'est validé :
   remettre les clés Production sur les 4 services, ajouter les Redirect URIs des 3 autres sites, puis `TIKTOK_APIFY_FALLBACK=0`.
 - **Instagram officiel (Meta)** : testé (OK, démo filmée). Bloqué par la **vérification d'entreprise** : Alex est mineur,
-  il crée une **micro-entreprise avec ses parents** (prévu ce week-end si son père est d’accord, statut « mineur autorisé ») (la micro de Lucas est peut-être inutilisable). Ensuite : vérif d'entreprise Meta,
+  Alex a **15 ans** (micro à son nom impossible avant 16 ans) → **un parent crée la micro à son nom** (gratuit, ce week-end si son père est d’accord), titulaire légal et du compte Meta ; SAS à 3 plus tard (la micro de Lucas est peut-être inutilisable). Ensuite : vérif d'entreprise Meta,
   demande de validation avec la démo (il manque l'icône de l'app), puis clés sur Railway et `INSTAGRAM_APIFY_FALLBACK=0`.
   Les clés TikTok et Instagram ont été **retirées de Railway** en attendant.
 - **Maquettes prospects** : Cubi Game, Croshoot, Josplay faites. **Nighting** en pause (pas 100 % intéressé).
