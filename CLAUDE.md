@@ -64,7 +64,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 ## Déploiement
 
 - **Railway** : un service par créateur (`lune` = BeOne + agence + Mars, puis `squiduu`, `Debo`, `loann`), tous déployés depuis ce repo.
-  URL publique de lune : https://lune-production-dbd1.up.railway.app · loann : https://loann-production.up.railway.app/fan
+  URL publique de lune : https://lune-production-dbd1.up.railway.app · loann : https://loann-production.up.railway.app/fan · cubi : https://cubi-production.up.railway.app/fan
 - Les secrets (token Discord, clés API, TikTok, Instagram, Apify…) sont dans les Variables Railway de chaque service.
 - Détails : `tracker/DEPLOY.md`, `tracker/README.md`.
 
@@ -80,6 +80,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 - **Maquettes prospects** : Cubi Game, Croshoot, Josplay faites. **Nighting** en pause (pas 100 % intéressé).
   Josplay : récompense à définir.
 - **Site Loann** (style « ms », copie de ms-creators.com) : pour les clippeurs déjà inscrits, message « 1 M de vues = 1 mois de MS ». Boutons « Voir ma progression » → page `#/progression` (barre vers 1 M, stats, classement). Avis Trustpilot de MS en cartes HTML, conférenciers MS (`ms-*.webp`). Textes dans `loann.ts` (champ `ms`), rendu `pageHomeMs()` dans `fan-sober.html`.
+- **Cubi Game** (signé) : vrai site `creators/cubi.ts` (CREATOR=cubi), même mise en page que Loann en skin « cubi » (noir et blanc, police Bungee, bords en blocs, paliers en cubes chocolat / bronze / argent / or, aucune mention de MS). Récompense : 100 k vues (1 000 coins) = 1 mois de Roblox Academy. Service Railway **Cubi** = l'ancien service Debo recyclé (Trial : pas de nouveau service possible), `DATABASE_PATH=./data/cubi.db`, bot de Debo renommé « Cubi Game Clipping », serveur Discord de Debo repris pour Cubi.
 - **Liste de Lucas** : IA « clipper » (FAQ gratuite par défaut, il faut ses tutos / conférences / ateliers),
   améliorer le système avec sa data.
 - Josplay : trouver comment rémunérer les clippeurs. Loann : bot OK sur le nouveau serveur (/setup + FAQ ❓│aide testés), reste un test d’inscription complet. Loann : **pas de #tag** (`clipRule: false`) et **tous les clips depuis le 1er août 2026 comptent** (`countViewsFrom`, rattrapage unique : TOUS les clips depuis le 1er août, jusqu’à 500 par compte ; comptes de confiance `trustAccounts`, pas de vérif staff ni de validation des achats). **Podium du mois** (`monthlyPrize: 3`) : le 1er du mois à 10 h, le top 3 du mois écoulé reçoit 1 mois de MS offert (commande à 0 coin, annonce dans #classement ; `monthLeaderboard` dans `/api/fan/public` pour le site). **Livraison auto MS** : prête (`GRANT_API_URL` / `GRANT_API_TOKEN`, même format que Squiduuverse : POST /grant {email, months, orderId}), il faut que MS fournisse l’API. **/inscription2** : 2ᵉ compte par réseau (colonne `accounts.slot`, v19). Railway : encore en **Trial** (crédit unique de 5 $, ~1 $ consommé en 2 semaines) → passer en Hobby (5 $/mois) avant la fin du crédit, sinon tout s’arrête.
