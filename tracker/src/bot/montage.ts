@@ -20,6 +20,7 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { log } from '../log.js';
+import { MEMBER_FORBIDDEN } from './fanServer.js';
 
 /**
  * Serveur des monteurs (/setup-montage, bot de l'agence) :
@@ -144,9 +145,11 @@ export async function scaffoldMontageServer(guild: Guild): Promise<string[]> {
   await ensureRole(guild, ROLE_HOC, 0xffc21a, true);
   await ensureRole(guild, ROLE_EDITOR, 0x7b4dff, true);
   for (const c of MONTAGE_CREATORS) await ensureRole(guild, creatorRole(c), 0x29e7ff, false);
-  // Personne ne peut pinguer @everyone (sauf staff / Head of Content / admins)
+  // Les membres ne peuvent ni pinguer @everyone, ni créer d'événements, ni créer de fils (sauf staff / Head of Content / admins)
   const everyone = guild.roles.everyone;
-  if (everyone.permissions.has(V.MentionEveryone)) await everyone.setPermissions(everyone.permissions.remove(V.MentionEveryone)).catch(() => {});
+  for (const r of [everyone, ...guild.roles.cache.filter((x) => sameName(x.name, ROLE_EDITOR) || MONTAGE_CREATORS.some((c) => sameName(x.name, creatorRole(c)))).values()]) {
+    if (r.permissions.any(MEMBER_FORBIDDEN)) await r.setPermissions(r.permissions.remove(MEMBER_FORBIDDEN), 'Membres : pas de @everyone, d’événements ni de fils').catch(() => {});
+  }
 
   await guild.channels.fetch();
   const me = guild.members.me!.id;

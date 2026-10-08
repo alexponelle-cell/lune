@@ -29,6 +29,16 @@ const HELP_TITLE = '❓ Questions fréquentes';
  * Serveur Discord d'un programme fans, monté par le bot du créateur avec /setup (admins).
  * Tout vient de la config du créateur (nom, couleur, étapes). Relancer /setup ne crée jamais de doublons.
  */
+/** Retiré à @everyone et aux rôles des membres : ping @everyone, événements, fils. */
+export const MEMBER_FORBIDDEN = [
+  PermissionFlagsBits.MentionEveryone,
+  PermissionFlagsBits.CreateEvents,
+  PermissionFlagsBits.ManageEvents,
+  PermissionFlagsBits.CreatePublicThreads,
+  PermissionFlagsBits.CreatePrivateThreads,
+  PermissionFlagsBits.ManageThreads,
+];
+
 export const setupCommand = new SlashCommandBuilder()
   .setName('setup')
   .setDescription('Construit ou répare le serveur des clippeurs (salons, rôles, messages)')
@@ -273,9 +283,9 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
       await ch.permissionOverwrites.edit(headRole.id, { ViewChannel: true, SendMessages: true, ManageMessages: true }).catch(() => {});
     }
   }
-  // Personne ne peut mentionner @everyone / @here sauf les admins (permission retirée de @everyone et des rôles des fans)
+  // Les membres ne peuvent ni mentionner @everyone / @here, ni créer d'événements, ni créer de fils (seuls staff et admins)
   for (const r of [guild.roles.everyone, ...guild.roles.cache.filter((x) => [ROLE_CLIPPER, ROLE_PENDING, ROLE_TRAINED, ROLE_RULES, ROLE_READER, ROLE_ALERTS, ROLE_TOP].some((n) => sameName(x.name, n)) || x.name.startsWith(TIER_PREFIX)).values()]) {
-    if (r.permissions.has(V.MentionEveryone)) await r.setPermissions(r.permissions.remove(V.MentionEveryone), 'Pas de ping @everyone').catch(() => {});
+    if (r.permissions.any(MEMBER_FORBIDDEN)) await r.setPermissions(r.permissions.remove(MEMBER_FORBIDDEN), 'Membres : pas de @everyone, d’événements ni de fils').catch(() => {});
   }
   // Messages d'arrivée de Discord (« X a bondi dans le serveur ») : envoyés dans le log staff, plus dans #général
   const logCh = channels.get(bare(LOG_CHANNEL));
