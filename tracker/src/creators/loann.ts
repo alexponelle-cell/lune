@@ -1,7 +1,7 @@
 import type { CreatorConfig } from './types.js';
 
 /**
- * Loann (youtube.com/@LoannLV + @netabonnepas-el2vd) : site au style « ms » (charte de Merguez Superstar, ms-creators.com).
+ * Loann (youtube.com/@LoannLV + @netabonnepas-el2vd + @Loann-etude-cas + @VosgesFM-h9g) : site au style « ms » (charte de Merguez Superstar, ms-creators.com).
  * Récompense : 1 mois de Merguez Superstar (sa formation YouTube) pour 1 M de vues, livré sur l'e-mail du clippeur.
  */
 export const loann: CreatorConfig = {
@@ -16,7 +16,8 @@ export const loann: CreatorConfig = {
   // Classement du mois : le top 3 gagne 1 mois de Merguez Superstar (offert le 1er du mois suivant)
   monthlyPrize: 3,
   countViewsFrom: '2026-08-01',
-  youtube: 'LoannLV,netabonnepas-el2vd',
+  // Chaînes : principale, « Ne t'abonne pas », « Loann - Études de cas », « Vosges FM »
+  youtube: 'LoannLV,netabonnepas-el2vd,Loann-etude-cas,VosgesFM-h9g',
   theme: 'pop',
   style: 'ms',
   images: { banner: 'loann-banner.webp', reward: 'loann-reward.webp' },
