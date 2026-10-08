@@ -114,6 +114,9 @@ export class FanService {
     const c = this.creator;
     const defaults = { ...DEFAULT_FANS, programName: c.programName, pointsPer1000: c.pointsPer1000, creatorYoutube: c.youtube, creatorRoblox: c.robloxUsername ?? '' };
     const stored = { ...defaults, ...this.repo.getSetting<Partial<FanSettings>>('fans', {}) };
+    // Les chaînes de la config sont toujours suivies, même si Mars a enregistré une liste plus ancienne
+    const handles = new Set([...stored.creatorYoutube.split(','), ...c.youtube.split(',')].map((h) => h.trim().replace(/^@/, '')).filter(Boolean));
+    stored.creatorYoutube = [...handles].join(',');
     if (c.clipRule === false) stored.clipRule = false;
     if (c.trustAccounts) Object.assign(stored, { accountReview: false, orderReview: false });
     return stored;
