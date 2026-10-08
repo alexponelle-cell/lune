@@ -826,7 +826,7 @@ function pageHomeMs() {
     <h1 class="load">${hl(C.texts.heroTitle)}</h1><p class="line load">${esc(M.heroLine)}</p>
     <div class="msstage load">
       <div class="scard rays"><span class="bdg">${esc(M.statLeft.badge)}</span><div class="ol t">${esc(M.statLeft.text)}</div><div class="ic">🏆</div></div>
-      <div class="frame"><img src="/fan/assets/${esc(M.heroImage ?? 'creator.png')}" alt="">${logo ? `<img class="logo-ms" src="${logo}" alt="">` : ''}</div>
+      <div class="frame"><img src="${M.heroImage ? `/fan/assets/${esc(M.heroImage)}` : '/fan/assets/creator.png'}" alt="">${logo ? `<img class="logo-ms" src="${logo}" alt="">` : ''}</div>
       <div class="scard rays"><span class="bdg">✦</span><div class="ol big">${esc(M.statRight.big)}</div><div class="ol t">${esc(M.statRight.text)}</div></div>
     </div>
     <div class="mscta load">${joinBtn()}<small>${ctaNoteMs()}</small></div>
