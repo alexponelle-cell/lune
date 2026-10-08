@@ -121,6 +121,7 @@ export const PROSPECTS: Record<string, Prospect> = {
         rewardShort: 'Patreon',
         tierEmoji: true,
         heroLine: 'tes vues te paient les replays de Josplay',
+        heroImage: 'ms-hero-josplay.webp',
         statLeft: { badge: '🎮', text: 'Les replays de Josplay sur son Patreon' },
         statRight: { big: '10', text: 'coins pour 1 000 vues' },
         ctaNote: 'Connecte-toi avec Discord pour voir où tu en es',
