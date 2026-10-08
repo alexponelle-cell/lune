@@ -110,7 +110,8 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         await interaction.showModal(modal);
         return;
       }
-      if (interaction.isChatInputCommand() && interaction.commandName === 'inscription2') {
+      if ((interaction.isChatInputCommand() && interaction.commandName === 'inscription2') || (interaction.isButton() && interaction.customId === 'fans:signup2')) {
+        if (!interaction.isChatInputCommand() && !interaction.isButton()) return;
         const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
         const fan = fans.ensureFan(interaction.user.id, name);
         const second = fans.accountsOf(fan.id).filter((a) => a.slot === 2);

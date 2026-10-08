@@ -301,6 +301,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
 
   const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('fans:signup').setStyle(ButtonStyle.Primary).setLabel('S’inscrire').setEmoji('📝'),
+    new ButtonBuilder().setCustomId('fans:signup2').setStyle(ButtonStyle.Secondary).setLabel('2e compte').setEmoji('➕'),
     new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Ouvrir le site').setURL(siteUrl),
   );
   const row = (id: string, label: string, emoji: string) =>
@@ -401,7 +402,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('Inscris-toi')
             .setDescription(
-              `Clique sur **S’inscrire** et renseigne **tes 3 comptes** TikTok, YouTube et Instagram, plus ton ${c.rewardAccount.label.charAt(0).toLowerCase()}${c.rewardAccount.label.slice(1)}.\n\nEnsuite, **poste ton 1er clip** de ${c.creatorName} : dès qu’il est détecté, toute la communauté se débloque.\n\nTu peux recliquer à tout moment pour modifier tes comptes. Seules les vues faites après ton inscription comptent.`,
+              `Clique sur **S’inscrire** et renseigne **tes 3 comptes** TikTok, YouTube et Instagram, plus ton ${c.rewardAccount.label.charAt(0).toLowerCase()}${c.rewardAccount.label.slice(1)}.\n\nEnsuite, **poste ton 1er clip** de ${c.creatorName} : dès qu’il est détecté, toute la communauté se débloque.\n\nTu peux recliquer à tout moment pour modifier tes comptes. ${fans.countFromLabel() ? `Tous tes clips postés depuis le ${fans.countFromLabel()} comptent.` : 'Seules les vues faites après ton inscription comptent.'}\n➕ Tu as **un 2e compte** TikTok, YouTube ou Instagram ? Clique sur **2e compte** (ou fais \`/inscription2\`) : ses vues s’ajoutent à ton profil.`,
             ),
         ],
         components: [buttons],
