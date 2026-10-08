@@ -80,6 +80,29 @@ export const squiduu: CreatorConfig = {
       '⚠️ Le non-respect des règles peut entraîner un avertissement, un mute ou un bannissement.',
     ].join('\n'),
   },
+  // Accueil riche (même mise en page que Loann / Cubi) dans la DA sobre de SQUIDUU (classe « rich », pas de style « ms »)
+  ms: {
+    rewardShort: 'Squiduuverse',
+    tierEmoji: true,
+    heroLine: 'tes vues te paient ton accès au Squiduuverse',
+    statLeft: { badge: '🎮', text: 'Le Squiduuverse, l’univers de SQUIDUU' },
+    statRight: { big: '10', text: 'coins pour 1 000 vues' },
+    ctaNote: 'Connecte-toi avec Discord pour voir où tu en es',
+    offer: { title: 'Les mois de Squiduuverse s’additionnent', text: '10 000 coins = 1 mois de Squiduuverse, sans limite !', side: 'Livré automatiquement' },
+    timelineTitle: 'Clipper SQUIDUU c’est',
+    timeline: [
+      { emoji: '✂️', title: 'Des clips', text: 'Tu choisis un passage de SQUIDUU qui mérite d’être vu, et tu le montes à ta façon.' },
+      { emoji: '📱', title: 'Tes comptes', text: 'Tu postes sur TikTok, Instagram ou YouTube Shorts. Toutes tes vues sont additionnées.' },
+      { emoji: '🪙', title: 'Des coins', text: '10 coins pour 1 000 vues, comptés chaque nuit, automatiquement.' },
+      { emoji: '🏆', title: 'Un classement', text: 'Chaque semaine, le top 3 des clippeurs est mis en avant sur le Discord.' },
+      { emoji: '🎁', title: 'Le Squiduuverse', text: 'Tu échanges tes coins contre des mois de Squiduuverse, ajoutés tout seuls sur ton compte Google.' },
+    ],
+    tiersTitle: 'Et toi, quel clippeur deviendras-tu ?',
+    band: '1 M DE VUES = 1 MOIS DE SQUIDUUVERSE',
+    alone: { title: 'Seul', text: 'Des clips postés pour rien : pas de récompense, pas de suivi, personne pour t’aider…' },
+    withUs: { title: 'Avec SQUIDUU', lines: ['Tes vues paient.', 'Des mois de Squiduuverse offerts', 'Un classement chaque semaine', 'Un Discord pour t’aider', 'Une commu de clippeurs'] },
+    faqAside: 'Tu as encore des questions ? Pose-les sur le Discord !',
+  },
   levels: [
     { name: 'Débutant', emoji: '🌱', min: 0 },
     { name: 'Confirmé', emoji: '⚡', min: 10_000 },
@@ -88,9 +111,9 @@ export const squiduu: CreatorConfig = {
   ],
   statuses: { pending: 'En attente', delivered: 'Livrée', refunded: 'Remboursée' },
   texts: {
-    heroTitle: 'Clippe SQUIDUU. **Gagne des coins.**',
+    heroTitle: '**1 M de vues** = 1 mois de Squiduuverse',
     heroText: 'Poste des clips de SQUIDUU sur TikTok, Instagram ou YouTube. Chaque vue te rapporte des coins, que tu échanges ensuite dans la boutique.',
-    heroCta: 'Commencer à clipper',
+    heroCta: 'Voir ma progression',
     steps: [
       { title: 'Crée ton clip', text: 'Un passage de SQUIDUU qui mérite d’être vu.' },
       { title: 'Poste-le', text: 'Sur TikTok, Instagram ou YouTube.' },
