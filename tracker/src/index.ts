@@ -215,7 +215,8 @@ const stopCollect = every('collecte', config.COLLECT_INTERVAL_MINUTES, async () 
   if (countFrom !== null) {
     const done = new Set(fans.botState<number[]>('backfill-all', []));
     const startedAt = Date.now();
-    rattrapage = await collectAll(repo, backfillFetchers(countFrom), Date.now, (account) => account.clientId !== fanClient || done.has(account.id));
+    // Rattrapage seulement sur les comptes GRATUITS (YouTube, TikTok / Insta connectés) : sur Apify il a vidé le budget
+    rattrapage = await collectAll(repo, backfillFetchers(countFrom), Date.now, (account) => account.clientId !== fanClient || done.has(account.id) || paidAccount(account, connected));
     for (const a of repo.listActiveAccounts()) if (a.clientId === fanClient && a.lastCheckedAt !== null && a.lastCheckedAt >= startedAt) done.add(a.id);
     fans.setBotState('backfill-all', [...done]);
   }
