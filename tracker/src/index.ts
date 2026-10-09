@@ -10,6 +10,7 @@ import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
+import { apifyUsage } from './platforms/apify.js';
 import { FanRepo } from './db/fans.js';
 import { RecruitmentRepo } from './db/recruitment.js';
 import { startFansBot } from './bot/fans.js';
@@ -113,6 +114,7 @@ const stopWeb = startWeb(
       .map(([name, url]) => ({ name: name!.trim(), url: url!.trim().replace(/\/+$/, '') })),
     selfUrl: dashboardUrl.replace(/\/+$/, ''),
     game,
+    apifyUsage: config.APIFY_TOKEN && config.FETCHER_MODE === 'live' ? () => apifyUsage(config.APIFY_TOKEN!) : undefined,
     emailApi: !!((config.GRANT_API_URL ?? config.SQUIDUU_API_URL) && (config.GRANT_API_TOKEN ?? config.SQUIDUU_API_TOKEN)),
     youtubeApiKey: config.YOUTUBE_API_KEY,
     discordOAuth:

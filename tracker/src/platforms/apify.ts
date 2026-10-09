@@ -116,3 +116,20 @@ export class InstagramApifyFetcher implements PlatformFetcher {
     };
   }
 }
+
+/** Conso Apify du mois (gratuit à lire) : dépensé, plafond et date de remise à zéro. Mise en cache 30 min. */
+export interface ApifyUsage { used: number; limit: number | null; resetAt: number | null }
+let usageCache: { at: number; value: ApifyUsage } | null = null;
+export async function apifyUsage(token: string, fetchFn: typeof fetch = fetch, now = Date.now()): Promise<ApifyUsage> {
+  if (usageCache && now - usageCache.at < 30 * 60_000) return usageCache.value;
+  const res = await fetchFn(`https://api.apify.com/v2/users/me/limits?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`Apify ${res.status}`);
+  const d = ((await res.json()) as { data?: Record<string, any> }).data ?? {};
+  const value: ApifyUsage = {
+    used: num(d.current?.monthlyUsageUsd) ?? 0,
+    limit: num(d.limits?.maxMonthlyUsageUsd) ?? null,
+    resetAt: d.monthlyUsageCycle?.endAt ? Date.parse(d.monthlyUsageCycle.endAt) : null,
+  };
+  usageCache = { at: now, value };
+  return value;
+}
