@@ -152,7 +152,7 @@ export function coinsDiagnosis(s: CoinsState): string[] {
 
 /** Erreur de relevé d'un compte, expliquée au fan. */
 export function fanAccountError(err: string): string {
-  if (/apify|quota|hard limit/i.test(err)) return 'relevé en pause de notre côté, il reprend tout seul (rien à faire) ⏳';
+  if (/hard limit|usage limit|quota|platform-feature-disabled|\b402\b/i.test(err)) return 'relevé en pause de notre côté, il reprend tout seul (rien à faire) ⏳';
   if (/pas connecté/i.test(err)) return '**connecte ce compte sur le site** (onglet Clipper) pour que ses vues comptent';
   if (/introuvable|not found|404/i.test(err)) return '**compte introuvable** : pseudo faux, compte privé ou supprimé. Vérifie-le (il doit être public)';
   if (/expirée/i.test(err)) return '**connexion expirée** : reconnecte ce compte sur le site (onglet Clipper)';
