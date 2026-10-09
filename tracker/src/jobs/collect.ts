@@ -67,9 +67,11 @@ const DAY = 86_400_000;
  * Compte de fan payant : relu toutes les 2 nuits ; sans nouvelle vidéo depuis 14 jours, 1 fois par semaine ;
  * sans aucune vidéo, toutes les 2 semaines. Gratuit : chaque nuit. Jamais relu : tout de suite.
  */
-export function fanAccountDue(account: { platform: string; lastCheckedAt: number | null }, lastPublished: number | null | undefined, since: number, now: number, free = false): boolean {
+export function fanAccountDue(account: { platform: string; lastCheckedAt: number | null; lastError?: string | null }, lastPublished: number | null | undefined, since: number, now: number, free = false): boolean {
   if (account.lastCheckedAt === null) return true;
   if (account.lastCheckedAt >= since) return false;
+  // Relevé raté à cause du quota Apify : on réessaie dès la nuit suivante (sinon il attendrait 2 nuits de plus)
+  if (account.lastError && /hard limit|usage limit|platform-feature-disabled/i.test(account.lastError)) return true;
   if (free || account.platform === 'youtube') return true;
   const age = now - account.lastCheckedAt + 3_600_000; // 1 h de marge (le relevé ne tombe pas pile à la même heure)
   if (lastPublished == null) return age >= 14 * DAY;
