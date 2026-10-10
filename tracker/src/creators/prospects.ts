@@ -113,7 +113,7 @@ export const PROSPECTS: Record<string, Prospect> = {
       reward: { name: '1 mois de JosplayMax', description: 'Toutes les rediffusions des lives de Josplay, rangées comme sur une plateforme de streaming. Les mois s’additionnent.', price: 5_000, ref: 'josplaymax-1m', url: '#/max', linkLabel: 'Voir JosplayMax' },
       texts: texts('Josplay', 'JosplayMax', {
         shopText: 'Échange tes coins contre des mois de JosplayMax : toutes les rediffusions des lives de Josplay.',
-        heroTitle: 'Clippe Josplay. **Fais 300-400 € / mois.**',
+        heroTitle: 'Clippe Josplay. **Fais de l’argent.**',
         heroCta: 'Voir ma progression',
         faq: [
           { q: 'Comment je gagne de l’argent avec TikTok ?', a: 'Avec le programme de récompenses des créateurs de TikTok : tes clips d’1 minute et plus sont payés aux vues. Il faut avoir 18 ans, 10 000 abonnés et 100 000 vues sur les 30 derniers jours. Les meilleurs clippeurs en tirent 300-400 € par mois.' },
