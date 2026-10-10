@@ -88,17 +88,18 @@ on en est, avec la même façon de penser. Il complète `CLAUDE.md`, qui le char
 | --- | --- | --- | --- | --- |
 | **BeOne** (@BeOnePourcent) | BEONE REWARDS | `playful` (clair, jaune), `fan.html` | objets / gamepass dans son jeu Roblox | automatique via l'API du jeu (`GAME_API_URL` / `GAME_API_TOKEN`), pseudo Roblox |
 | **SQUIDUU** | SQUIDUU | `sober` (noir #0B0A0C, jaune #FCD005, Montserrat) | 1 mois de Squiduuverse = 10 000 coins | automatique via l'API Squiduuverse (`SQUIDUU_API_URL` / `TOKEN`), e-mail Google, orderId anti-doublon |
-| **DEBO** (DEBO PLAYS) | DEBO PLAYS | `pop` (multicolore animé, Nunito) | 50 Robux pour 1 000 coins (100 000 vues) | Robux à la main, pseudo Roblox |
+| **Cubi Game** (signé, oct. 2026) | CUBI GAME CLIPPING | mise en page Loann, skin `cubi` (noir et blanc, Bungee, blocs, paliers en cubes) | 1 mois de Roblox Academy = 1 000 coins (100 k vues) | à la main pour l'instant |
 | **Loann** (@LoannLV + 2ᵉ chaîne) | LOANN CLIPPING | style `ms` = charte de Merguez Superstar (ms-creators.com) : crème étoilé #FFF7E6, contours noirs #212121, jaune #FFD36E, vagues pêche/orange/corail, Passion One + Cal Sans + Inter | 1 mois de Merguez Superstar (ms-creators.com) = 10 000 coins | e-mail |
 
 ### Historique et état
 - **SQUIDUU** : campagne officiellement lancée. Le parcours complet a été testé de bout en bout. Les clippeurs sont arrivés.
 - **Loann** : « on met les bouchées doubles ». Test d'inscription à faire.
-- **DEBO** : ne répond plus, mis de côté (ne plus rien développer pour lui).
+- **DEBO** : ne répond plus, abandonné. Son service Railway et son bot ont été **recyclés pour Cubi**.
+- **Loann** (règles spéciales, voir `creators/loann.ts`) : pas de #tag obligatoire (`clipRule: false`) ; tous les clips depuis le **1er août 2026** comptent (`countViewsFrom`) ; comptes de confiance (`trustAccounts` : pas de vérif staff, achats sans validation) ; **podium du mois** (`monthlyPrize: 3` : le 1er du mois, le top 3 reçoit 1 mois de MS offert) ; `/inscription2` + bouton « ➕ 2e compte » (2ᵉ compte par réseau, `accounts.slot`, v19). Livraison MS **manuelle** tant que MS n'a pas fourni l'API (spec envoyée au dev de Loann : `POST /grant {email, months, orderId}` + Bearer ; variables `GRANT_API_URL` / `GRANT_API_TOKEN`).
 - **Josplay** : un call a eu lieu. Il reste à trouver comment rémunérer ses clippeurs (récompense non définie).
 
 ### Prospects
-- **Cubi Game** (Roblox, noir et blanc). Récompense envisagée : Roblox Academy.
+- **Cubi Game** : **signé** → créateur actif (voir plus haut).
 - **Croshoot** (boutique croshop.fr, peluche Bob à 29,99 €).
 - **Josplay** (Mii, bleu #7BC7EA). Ses chaînes : @josplay012 (573 k), @JosplayGaming, @Josplay2.
 - **Nighting** : maquette pas encore faite. Attendre son prompt de DA et ses captures.
@@ -342,7 +343,9 @@ Commun aux deux :
 
 - Un **service par créateur**, tous depuis ce repo et cette branche :
   - `lune` : BeOne, l'agence et Mars, https://lune-production-dbd1.up.railway.app ;
-  - `squiduu`, `Debo`, `loann`.
+  - `squiduu` (https://squiduu-production.up.railway.app), `loann` (https://loann-production.up.railway.app), `Cubi` (https://cubi-production.up.railway.app, ancien service Debo), plus `lune-dev` (pas touché).
+- `MARS_SITES` (sur chaque service) = `BeOne=…lune…,SQUIDUU=…,Loann=…,Cubi=…` : le menu Programme de Mars. Le sélecteur « Client affiché » liste aussi les **agences locales** de la base (une vieille agence « Loann » vide sur lune a été supprimée le 10 oct).
+- L'accueil de lune (`/`) affiche la **vitrine publique « Neptune Clipping »** (`src/web/neptune.ts`) aux visiteurs non connectés ; le staff connecté voit Mars, lien « Staff login ».
 - Chaque service a sa variable `CREATOR` et ses propres secrets.
 - Un push sur la branche déclenche le redéploiement. Sinon, bouton **Deploy** sur Railway.
 - Pour lire les logs : Railway, service, Deployments, View logs. Demander une capture à Alex, puisque l'agent n'a pas accès à Railway.
@@ -384,6 +387,11 @@ Commun aux deux :
 - **Erreur dans developers.tiktok** : provoquée par un point final dans un champ.
 - **Short YouTube « ne rapporte pas » alors que #squiduu est dans la description** : le relevé YouTube ne gardait que le titre. Corrigé : titre + début de la description + tags (`withDescription`, `platforms/youtube.ts`). Repris au relevé suivant.
 - **Compteur « clips sans #tag » toujours à 0** : la requête cherchait `clip_check = 'refused'` au lieu de `'no'`. Corrigé.
+- **Plafond Apify atteint le 9 oct** (« Monthly usage hard limit exceeded » alors que le compteur affichait 16,46 / 19 $) : le **rattrapage Loann** (relire tous les clips depuis le 1er août, jusqu'à 500 par compte) avait vidé le budget. Corrigé : le rattrapage ne tourne plus que sur les comptes gratuits ; un compte bloqué par le quota est relu dès la nuit suivante (`fanAccountDue`) ; la FAQ ne dit « relevé en pause » que pour une vraie erreur de quota. Alex a créé un **nouveau compte Apify** (plafond 15 $) et changé `APIFY_TOKEN` (fait sur lune, à faire / vérifier sur squiduu, loann, Cubi). Je l'ai déconseillé (contraire aux règles d'Apify, risque de ban) ; ne pas aider à contourner leurs contrôles.
+- **Jauge Apify** dans Mars → Fans (dépensé / plafond / remise à zéro, orange à 80 %) via `apifyUsage()` (`/v2/users/me/limits`).
+- **Funnel Mars : % au-dessus de 100** : plafonné à 100, étape « Ont assez de coins » ajoutée avant l'échange.
+- **Doublon Loann dans Mars** : agence locale vide sur lune → supprimée ; Paramètres affiche maintenant le nombre de clippeurs par agence ; `MARS_SITES` dédoublonné dans le code.
+- **Membres qui créent des fils / événements** : `/setup` et `/setup-montage` retirent `CreateEvents`, `ManageEvents`, `Create*Threads`, `ManageThreads` et `MentionEveryone` à @everyone et aux rôles des membres (`MEMBER_FORBIDDEN`). Fait sur les 5 serveurs.
 
 ---
 
@@ -392,7 +400,7 @@ Commun aux deux :
 - **TikTok for Developers** :
   - app créée (catégorie, URL du site, pages légales, site vérifié) ;
   - testée en Sandbox avec kzom4 : vidéos et vues remontent ;
-  - **demande de validation Production envoyée** avec une vidéo de démo ;
+  - 1re demande **refusée le 10 oct** : le nom de l'app doit être affiché sur le site et le Website URL ne doit pas être une page de connexion. Corrigé (vitrine Neptune Clipping) et **renvoyée le 10 oct** : Website `https://lune-production-dbd1.up.railway.app/`, Privacy `/legal/privacy`, Terms `/legal/terms`, même domaine ; vidéo de démo filmée sur lune `/fan` (sandbox, compte kzom4). Si nouveau refus à cause du domaine : acheter un domaine (ex. neptuneclipping.fr, quelques €/an) ;
   - quand c'est validé : clés Production sur les 4 services, Redirect URIs des 3 autres sites, puis `TIKTOK_APIFY_FALLBACK=0`.
 - **Meta (Instagram)** :
   - app créée, testée avec alexponelle (reels et vues remontent), démo filmée ;
@@ -403,24 +411,32 @@ Commun aux deux :
 
 ## 12. Administratif et argent
 
-- Alex n'a pas d'entreprise. Il est mineur et crée une **micro-entreprise avec ses parents**
-  (guichet unique INPI, ses parents comme représentants ou avec leur autorisation). C'est la priorité, pour Meta.
+- Alex a **15 ans** : impossible d'avoir sa propre micro avant 16 ans. Solution retenue : **sa mère crée la micro à son nom**
+  (entrepreneur individuel, statut micro-entrepreneur, gratuit). Elle est titulaire légale et sera titulaire du compte Meta. SAS à 3 associés plus tard (coûte ~200-300 € + comptable).
+- **En cours le 10 oct 2026** : compte **INPI Connect** créé (pas FranceConnect+, qui exige la nouvelle carte d'identité / France Identité ; le passeport suffit en pièce jointe), démarche « Créer une entreprise » lancée, brouillon « Neptune Clipping », étape Identité / volet social. Pièces prêtes en PDF : pièce d'identité + facture de box internet < 3 mois. Activité à déclarer : agence de marketing digital / gestion de créateurs de contenu (clipping vidéo). Ensuite : SIRET (1 à 4 semaines) → vérification d'entreprise Meta → App Review Instagram.
+- ⚠️ Ne jamais demander ni répéter les données perso de la mère (adresse, téléphone, n° de sécu…) ; si Alex en envoie, lui dire de les masquer.
 - Lucas a une micro-entreprise, mais elle est peut-être inutilisable (« s'est fait bz »). Alex préfère créer la sienne.
 - **Coûts actuels** :
-  - Apify Starter : 19 $/mois, plafonné à 19 $ ;
-  - Railway Hobby : environ 5 $/mois ;
+  - Apify Starter : 19 $/mois, plafonné à 19 $ (+ nouveau compte plafonné à 15 $, voir section 10) ;
+  - Railway : **Trial** (crédit 5 $, ~1 $ / 2 semaines), passer en Hobby (5 $/mois) vers mi-novembre avec les parents ;
   - YouTube API : gratuit.
 - **Objectif** : 0 € de relevés grâce aux connexions officielles, puis couper Apify.
 
 ## 13. À faire (priorités)
 
-1. **Micro-entreprise** (Alex et ses parents), puis vérification d'entreprise Meta, puis validation Instagram (avec l'icône de l'app).
-2. **Validation TikTok** à surveiller. Ensuite : clés Production, Redirect URIs, coupure d'Apify.
-3. **Maquette Nighting** : attendre son prompt et ses captures.
-4. **Josplay** : définir la récompense et la rémunération des clippeurs. Remplir la boutique de la maquette.
-5. **IA « clipper »** : la FAQ auto gratuite du salon ❓│aide est faite (`domain/faq.ts`). Prochaine étape : y ajouter les contenus de Lucas (tutos, conférences, ateliers).
-6. Améliorer le système avec la data de Lucas.
-7. Loann : test d'inscription complet.
-8. Idée en attente : voir qui n'est pas en ligne sur Discord, dans tous les salons
-   (« faut que on voit ceux qui sont pas en ligne sur discord dans tous les cahnelles »). À clarifier avec Alex.
-9. Prix des maquettes à confirmer : peluche Bob à 30 000 coins, Roblox Academy à 10 000.
+1. **Micro-entreprise** (mère d'Alex, en cours sur le guichet INPI) → SIRET → vérification d'entreprise Meta → App Review Instagram (icône 1024 px prête, démo filmée).
+2. **Validation TikTok** (renvoyée le 10 oct) : si validée → clés Production sur les 4 services, Redirect URIs des 3 autres sites, `TIKTOK_APIFY_FALLBACK=0`. Si refus domaine → acheter un domaine.
+3. **Apify** : vérifier que le nouveau `APIFY_TOKEN` est sur squiduu, loann et Cubi ; surveiller la jauge dans Mars.
+4. **Loann** : API MS pour livrer les mois automatiquement (attendre le dev de Loann) ; afficher le classement du mois sur le site (`monthLeaderboard`, côté Claude Design).
+5. **Railway Trial → Hobby** vers mi-novembre.
+6. **Rework de Mars** page par page (Rémunération, Inspiration, Suivi déjà retirés) : attendre ce qu'Alex veut retirer / fusionner.
+7. **IA « clipper »** : ajouter les tutos / conférences / ateliers de Lucas aux réponses du bot (`domain/faq.ts`).
+8. **Josplay** : définir la récompense. **Nighting** en pause.
+
+## 14. Démarrer une nouvelle session Claude (2 sessions en parallèle)
+
+- Toute session sur ce repo lit `CLAUDE.md` (qui importe ce fichier) : elle a tout le contexte. **Mettre ces deux fichiers à jour** après chaque étape importante.
+- Répartition habituelle :
+  - **« Moteur et bots »** : `src/bot/`, `src/jobs/`, `src/services/`, `src/platforms/`, `src/db/`, Mars (`src/web/app/app.js`, `server.ts`), administratif / comptes développeurs.
+  - **« Design et prospects »** : `src/web/app/fan-sober.html`, `fan.html`, `src/web/sober.ts`, `src/creators/*.ts` (textes, couleurs), maquettes prospects, sites Loann / Cubi.
+- Les deux poussent sur la même branche : `git pull --no-rebase` avant de commencer et avant chaque push, éviter de toucher les mêmes fichiers en même temps.

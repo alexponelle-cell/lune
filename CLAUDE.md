@@ -30,7 +30,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   sur TikTok / Instagram / YouTube Shorts, les vues leur rapportent des **coins**, échangés contre une **récompense**
   (abonnement à la formation / commu du créateur, etc.) dans une boutique.
 - Pour chaque créateur : **un site fans**, **un serveur Discord** (monté par la commande `/setup` du bot), et ses clippeurs.
-- **Créateurs actifs** : BeOne, SQUIDUU, Loann. **DEBO** : ne répond plus, mis de côté. **Prospects** : Cubi Game, Croshoot, Josplay, Nighting.
+- **Créateurs actifs** : BeOne, SQUIDUU, Loann, **Cubi Game** (signé). **DEBO** : abandonné (service recyclé pour Cubi). **Prospects** : Croshoot, Josplay, Nighting (en pause).
 - **Mars** = dashboard staff (classement, comptes à vérifier, coaching des clippeurs…).
 - **Serveur des monteurs** (« Agence PersonalBrand360 ») : 📦 ressources communes en lecture seule, puis par créateur
   📣annonces / 👱ressource / 💬général, + salon privé. Monté par `/setup-montage` (`src/bot/montage.ts`, bouton 🧹 pour nettoyer).
@@ -63,18 +63,18 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 
 ## Déploiement
 
-- **Railway** : un service par créateur (`lune` = BeOne + agence + Mars, puis `squiduu`, `Debo`, `loann`), tous déployés depuis ce repo.
+- **Railway** : un service par créateur (`lune` = BeOne + agence + Mars + vitrine Neptune Clipping, puis `squiduu`, `loann`, `Cubi`), tous déployés depuis ce repo.
   URL publique de lune : https://lune-production-dbd1.up.railway.app · loann : https://loann-production.up.railway.app/fan · cubi : https://cubi-production.up.railway.app/fan
 - Les secrets (token Discord, clés API, TikTok, Instagram, Apify…) sont dans les Variables Railway de chaque service.
 - Détails : `tracker/DEPLOY.md`, `tracker/README.md`.
 
 ## Où on en est (à mettre à jour)
 
-- **Apify** : plan Starter à 19 $/mois, **plafonné à 19 $** en attendant les validations TikTok / Meta. Objectif : ne plus en dépendre.
+- **Apify** : plan Starter à 19 $/mois plafonné à 19 $ ; plafond atteint le 9 oct (rattrapage Loann) → nouveau compte Apify (plafond 15 $, `APIFY_TOKEN` changé sur lune, à vérifier sur les 3 autres). Jauge dans Mars → Fans. Objectif : ne plus en dépendre.
 - **TikTok officiel** : testé en Sandbox (OK). 1re demande **refusée** (10 oct : nom de l’app pas affiché sur le site + Website URL = page de connexion). Corrigé : vitrine publique « Neptune Clipping » sur l’accueil de lune (`src/web/neptune.ts`, visiteurs non connectés), Website / Privacy / Terms tous sur lune-production-dbd1 ; **renvoyée le 10 oct**. Si refus pour le domaine : acheter un domaine type neptuneclipping.fr. Quand c'est validé :
   remettre les clés Production sur les 4 services, ajouter les Redirect URIs des 3 autres sites, puis `TIKTOK_APIFY_FALLBACK=0`.
 - **Instagram officiel (Meta)** : testé (OK, démo filmée). Bloqué par la **vérification d'entreprise** : Alex est mineur,
-  Alex a **15 ans** (micro à son nom impossible avant 16 ans) → **un parent crée la micro à son nom** (gratuit, ce week-end si son père est d’accord), titulaire légal et du compte Meta ; SAS à 3 plus tard (la micro de Lucas est peut-être inutilisable). Ensuite : vérif d'entreprise Meta,
+  Alex a **15 ans** (micro à son nom impossible avant 16 ans) → **sa mère crée la micro à son nom** (en cours le 10 oct sur le guichet INPI, compte INPI Connect, brouillon « Neptune Clipping »), titulaire légale et du compte Meta ; SAS à 3 plus tard (la micro de Lucas est peut-être inutilisable). Ensuite : vérif d'entreprise Meta,
   demande de validation avec la démo (il manque l'icône de l'app), puis clés sur Railway et `INSTAGRAM_APIFY_FALLBACK=0`.
   Les clés TikTok et Instagram ont été **retirées de Railway** en attendant.
 - **Maquettes prospects** : Cubi Game, Croshoot, Josplay faites. **Nighting** en pause (pas 100 % intéressé).
