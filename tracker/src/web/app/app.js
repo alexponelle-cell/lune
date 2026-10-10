@@ -1293,10 +1293,10 @@ async function pageParametres() {
         <div class="actions">${chans ? `<select class="select" id="cand-channel">${ofType('text').map((c) => `<option value="${c.id}" ${c.id === rs.candidatureChannelId ? 'selected' : ''}>#${esc(c.name)}</option>`).join('')}</select>
           <button class="btn dark" data-publish-cand>${icon('discord')} Publier le message</button>` : '<span class="faint">Bot hors ligne</span>'}</div></div>
       <div class="card"><div class="card-head"><div><h2>Agences</h2><p>Chaque agence (client) a son salon COMPTES, son forfait et son barème</p></div><button class="btn dark" data-add-client>${icon('plus')} Nouvelle agence</button></div>
-        <div class="table-wrap"><table><thead><tr><th>Agence</th><th>Salon COMPTES (ID)</th><th class="r">Forfait mensuel</th><th class="r">Actions</th></tr></thead><tbody>
+        <div class="table-wrap"><table><thead><tr><th>Agence</th><th class="r">Clippeurs</th><th>Salon COMPTES (ID)</th><th class="r">Forfait mensuel</th><th class="r">Actions</th></tr></thead><tbody>
         ${META.clients.map((c) => `<tr><td><div class="who">${avatar(c.name)}<div><b>${esc(c.name)}</b><small class="faint">${esc(c.slug)}</small></div></div></td>
-          <td class="num">${c.discordChannelId ? esc(c.discordChannelId) : '<span class="faint">—</span>'}</td><td class="r num">${euro(c.monthlyFee)}</td>
-          <td class="r"><button class="icon-btn" data-edit-client="${c.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-client="${c.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Aucune agence. Crée-en une ici ou avec /client sur Discord.</td></tr>'}
+          <td class="r num">${c.clippers ?? '—'}</td><td class="num">${c.discordChannelId ? esc(c.discordChannelId) : '<span class="faint">—</span>'}</td><td class="r num">${euro(c.monthlyFee)}</td>
+          <td class="r"><button class="icon-btn" data-edit-client="${c.id}" style="display:inline-grid">${icon('edit')}</button> <button class="icon-btn" data-del-client="${c.id}" style="display:inline-grid">${icon('trash')}</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Aucune agence. Crée-en une ici ou avec /client sur Discord.</td></tr>'}
         </tbody></table></div></div>
       <div class="card card-pad"><h2 style="margin:0 0 8px;font-size:15px">Bot Discord</h2>
         <div class="muted">État : <b>${{ ready: 'connecté', error: 'erreur', connecting: 'connexion…', disabled: 'désactivé' }[b.state]}</b>${b.tag ? ` · ${esc(b.tag)}` : ''}${b.error ? `<div style="color:var(--red)">${esc(b.error)}</div>` : ''}

@@ -619,6 +619,7 @@ export function createApp(deps: WebDeps): Hono {
         slug: cl.slug,
         discordChannelId: cl.discordChannelId,
         monthlyFee: cl.monthlyFeeCents / 100,
+        clippers: repo.listClippers({ clientId: cl.id, includeInactive: true }).length,
       })),
       sites: (deps.marsSites ?? []).map((s) => ({ ...s, current: s.url === deps.selfUrl })),
     }),
