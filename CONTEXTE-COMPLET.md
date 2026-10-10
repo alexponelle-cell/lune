@@ -422,6 +422,19 @@ Commun aux deux :
   - YouTube API : gratuit.
 - **Objectif** : 0 € de relevés grâce aux connexions officielles, puis couper Apify.
 
+## 12 bis. Offre et vente (call avec Lilo, coach, 10 oct 2026)
+
+- Détail complet et scripts : **`vente/kit-vente.md`** (message de prospection, Loom, trame du R1, checklist).
+- Problème : prospects qui disent « trop cher » (300-500 €/mois), annonces sans réponse, R2 où le prospect ne vient plus. Diagnostic : manque de clarté, on parle de l'outil au lieu du résultat du créateur.
+- Décisions proposées par Lilo :
+  - **2 formules** : A = mise en place 1 000-1 500 € + maintien 200 €/mois ; B = 350 €/mois tout compris.
+  - **Garantie** de résultat (ex. 200 k vues en 30 jours ou remboursement du mois), à valider par Alex et Lucas.
+  - **Acompte remboursable dès le R1**, ne jamais commencer sans (leçon DEBO). Le R2 devient l'onboarding.
+  - **Maquette prête avant le R1** (site à la charte du prospect, emplacements de récompenses vides acceptés).
+  - Prospection : message humain axé résultat + **vidéo Loom**, témoignages BeOne (250 k vues en 6 j) et Loann avec le lien de leur site, captures de Mars.
+  - Si le client part : le serveur Discord et ses clippeurs lui restent ; le tracker / Mars restent à nous.
+- Lilo doit récupérer les tarifs des concurrents (Gabriel / Ismaël).
+
 ## 13. À faire (priorités)
 
 1. **Micro-entreprise** (mère d'Alex, en cours sur le guichet INPI) → SIRET → vérification d'entreprise Meta → App Review Instagram (icône 1024 px prête, démo filmée).
