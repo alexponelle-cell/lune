@@ -111,7 +111,9 @@ const stopWeb = startWeb(
       .split(',')
       .map((x) => x.split('='))
       .filter((p) => p.length === 2 && /^https?:\/\//.test(p[1]!.trim()))
-      .map(([name, url]) => ({ name: name!.trim(), url: url!.trim().replace(/\/+$/, '') })),
+      .map(([name, url]) => ({ name: name!.trim(), url: url!.trim().replace(/\/+$/, '') }))
+      // Même site ou même nom listé 2 fois dans MARS_SITES : un seul bouton dans le menu Programme
+      .filter((s, i, all) => all.findIndex((o) => o.url === s.url || o.name.toLowerCase() === s.name.toLowerCase()) === i),
     selfUrl: dashboardUrl.replace(/\/+$/, ''),
     game,
     apifyUsage: config.APIFY_TOKEN && config.FETCHER_MODE === 'live' ? () => apifyUsage(config.APIFY_TOKEN!) : undefined,
