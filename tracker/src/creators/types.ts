@@ -111,6 +111,16 @@ export interface CreatorConfig {
    */
   discord?: { welcome: string; rules: string };
   /** Style « ms » : accueil sur le modèle de ms-creators.com. Visuels ms-*.webp dans src/web/app/fan/. */
+  /**
+   * Espace vidéo réservé (ex. « JosplayMax ») : rediffusions de lives en rangées façon plateforme de streaming.
+   * Visible dans le menu et accessible seulement pour les fans qui ont un accès en cours (récompense échangée).
+   */
+  vault?: {
+    name: string;
+    route: string;
+    tagline: string;
+    rows: Array<{ title: string; progress?: boolean; items: Array<{ title: string; date: string; duration: string; image?: string; hue?: number; progress?: number; url?: string }> }>;
+  };
   ms?: {
     /** Nom court de la récompense dans les phrases (« ton mois de … »), ex. « MS », « Roblox Academy ». */
     rewardShort?: string;

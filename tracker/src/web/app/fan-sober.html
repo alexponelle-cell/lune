@@ -398,6 +398,24 @@
   .goal-bar i[data-w="0"] { display: none; }
   body.ms .goal-top > b { font-family: 'Passion One', sans-serif; }
   body.ms .prog h1 { font-size: clamp(38px, 6vw, 72px); }
+  /* Espace vidéo réservé (JosplayMax…) : fond sombre, rangées défilantes de rediffusions */
+  .vault { position: relative; margin: 24px 0 0; padding: 40px 0 60px; isolation: isolate; }
+  .vault::before { content: ''; position: absolute; z-index: -1; inset: 0 calc(50% - 50vw); background: radial-gradient(80% 60% at 50% 0%, color-mix(in srgb, var(--accent) 30%, #0B1118), #0B1118 70%); }
+  .vault, .vault h1, .vault h2 { color: #fff; }
+  .vhead { text-align: center; margin-bottom: 40px; } .vhead h1 { font-size: clamp(44px, 7vw, 84px); margin: 0; letter-spacing: -.03em; }
+  .vhead p { color: #B9C6D2; font-weight: 600; margin: 8px 0 14px; }
+  .vtag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-weight: 800; border-radius: 99px; padding: 6px 14px; font-size: 14px; }
+  .vrow { margin: 0 0 44px; } .vrow h2 { font-size: clamp(22px, 2.6vw, 32px); margin: 0 0 16px; text-transform: uppercase; letter-spacing: .02em; }
+  .vscroll { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(250px, 1fr); gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 10px; scrollbar-width: thin; }
+  .vc { scroll-snap-align: start; display: grid; gap: 8px; }
+  .vth { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; border: 2px solid rgba(255,255,255,.12); background: linear-gradient(135deg, hsl(var(--h, 200) 70% 45%), hsl(calc(var(--h, 200) + 40) 70% 22%)); display: grid; place-items: center; transition: transform .25s, border-color .25s; }
+  .vth img { width: 100%; height: 100%; object-fit: cover; }
+  .vth > b { font-size: 20px; font-weight: 800; text-align: center; padding: 0 16px; text-shadow: 0 2px 10px rgba(0,0,0,.5); }
+  .vth .vd { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.75); font-size: 12px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
+  .vth .vp { position: absolute; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.92); color: #0B1118; display: grid; place-items: center; font-size: 20px; opacity: 0; transform: scale(.8); transition: .25s; }
+  .vth i { position: absolute; left: 0; bottom: 0; height: 5px; background: var(--accent); }
+  .vc:hover .vth { transform: translateY(-4px) scale(1.02); border-color: var(--accent); } .vc:hover .vp { opacity: 1; transform: none; }
+  .vm b { display: block; font-size: 15px; font-weight: 700; color: #fff; } .vm small { color: #8FA0B0; font-weight: 600; }
   /* ---------- Accueil riche dans une DA sobre (body.rich, ex. SQUIDUU) : mêmes blocs que le style « ms », couleurs du créateur ---------- */
   body.rich .ol { font-weight: 800; letter-spacing: -.02em; line-height: 1.08; color: var(--text); }
   body.rich .rays { background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 22%, var(--card)), var(--card) 70%); }
@@ -734,11 +752,14 @@ function observe(root) {
 
 // ---------- Cadre ----------
 const ROUTES = [['', 'Accueil'], ['recompenses', 'Récompenses'], ['clipper', 'Clipper'], ['classement', 'Classement'], ['profil', 'Profil']];
+/** Espace vidéo réservé : accès en cours (maquette = débloqué pour la démo). */
+const vaultOpen = () => !!C?.vault && (!!window.__DEMO__ || !!ME?.vaultUntil);
+const routes = () => vaultOpen() ? [...ROUTES.slice(0, 2), [C.vault.route, C.vault.name], ...ROUTES.slice(2)] : ROUTES;
 const logoHtml = () => `${creatorPic('pp')}<span>${esc(C.logoText || C.creatorName)}</span>`;
 function renderChrome(route) {
   $('#logo').innerHTML = logoHtml();
-  $('#menu').innerHTML = ROUTES.slice(1).map(([r, l]) => `<a href="#/${r}" class="${r === route ? 'on' : ''}">${l}</a>`).join('');
-  $('#tabbar').innerHTML = ROUTES.map(([r, l]) => `<a href="#/${r}" class="${r === route ? 'on' : ''}">${icon(r)}${l}</a>`).join('');
+  $('#menu').innerHTML = routes().slice(1).map(([r, l]) => `<a href="#/${r}" class="${r === route ? 'on' : ''}">${l}</a>`).join('');
+  $('#tabbar').innerHTML = routes().filter(([r]) => !(vaultOpen() && r === 'clipper')).map(([r, l]) => `<a href="#/${r}" class="${r === route ? 'on' : ''}">${icon(ICONS[r] ? r : 'clipper')}${l}</a>`).join('');
   $('#me-slot').innerHTML = ME
     ? `<a class="pill" href="#/profil" title="Ton solde">${COIN}<span>${fmt(ME.balance)}</span><small>coins</small></a>`
     : `<a class="btn" href="/fan/auth/discord">Connexion</a>`;
@@ -1019,15 +1040,28 @@ function pageProgress() {
   </section>`;
 }
 
+/** Espace vidéo réservé (ex. JosplayMax) : rangées de rediffusions, façon plateforme de streaming. */
+function pageVault() {
+  const V = C.vault;
+  if (!vaultOpen()) return `<section style="margin-top:56px">${loginCard(`**${V.name}** est verrouillé`, `Échange tes coins contre 1 mois de ${V.name} dans les récompenses pour débloquer toutes les rediffusions.`)}</section>`;
+  const card = (it, prog) => `<a class="vc rv" ${it.url ? `href="${esc(it.url)}" target="_blank" rel="noopener"` : ''}>
+    <div class="vth" style="${it.image ? '' : `--h:${it.hue ?? 200}`}">${it.image ? `<img src="/fan/assets/${esc(it.image)}" alt="" loading="lazy">` : `<b>${esc(it.title)}</b>`}<span class="vd">${esc(it.duration)}</span><span class="vp">▶</span>${prog && it.progress ? `<i style="width:${it.progress}%"></i>` : ''}</div>
+    <div class="vm"><b>${esc(it.title)}</b><small>${esc(it.date)}</small></div></a>`;
+  return `<section class="vault">
+    <div class="vhead rv"><h1>${hl(`**${V.name}**`)}</h1><p>${esc(V.tagline)}</p>${ME?.vaultUntil ? `<span class="vtag">Accès jusqu’au ${new Date(ME.vaultUntil).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</span>` : window.__DEMO__ ? '<span class="vtag">Accès débloqué (démo)</span>' : ''}</div>
+    ${V.rows.map((r) => `<div class="vrow"><h2 class="rv">${esc(r.title)}</h2><div class="vscroll">${r.items.map((it) => card(it, r.progress)).join('')}</div></div>`).join('')}
+  </section>`;
+}
+
 // ---------- Routeur ----------
 async function refresh() { await loadMe(); route(); }
 function route() {
   const r = location.hash.replace(/^#\/?/, '').split('/')[0];
   if (r === 'comment') return; // ancre de l'accueil
-  const known = ROUTES.some(([k]) => k === r) || r === 'progression' ? r : '';
+  const known = routes().some(([k]) => k === r) || r === 'progression' ? r : '';
   renderChrome(known);
   const app = $('#app');
-  app.innerHTML = `<div class="page">${{ '': pageHome, recompenses: pageShop, clipper: pageClip, classement: pageRanking, profil: pageProfile, progression: pageProgress }[known]()}</div>`;
+  app.innerHTML = `<div class="page">${(known && C.vault && known === C.vault.route ? pageVault : { '': pageHome, recompenses: pageShop, clipper: pageClip, classement: pageRanking, profil: pageProfile, progression: pageProgress }[known])()}</div>`;
   observe(app);
   tickers(app);
   bindBuy(app);

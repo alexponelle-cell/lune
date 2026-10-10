@@ -98,12 +98,6 @@ export const PROSPECTS: Record<string, Prospect> = {
   },
   josplay: {
     photo: 'josplay-pdp.png',
-    // Récompenses = les grades de membre de sa chaîne YouTube (noms et paliers à confirmer avec Josplay) + prime 1 M
-    items: [
-      { ref: 'yt-grade-2', name: '1 mois membre YouTube · Grade 2', description: 'Le grade au-dessus : plus d’avantages sur la chaîne de Josplay.', price: 600 },
-      { ref: 'yt-grade-3', name: '1 mois membre YouTube · Grade 3', description: 'Le grade max de la chaîne de Josplay, offert.', price: 1_000 },
-      { ref: 'prime-1m', name: 'Prime 1 million de vues', description: 'Une prime en argent quand tes clips atteignent 1 million de vues.', price: 10_000 },
-    ],
     config: {
       ...base,
       id: 'josplay',
@@ -115,40 +109,67 @@ export const PROSPECTS: Record<string, Prospect> = {
       font: 'Fredoka',
       logoText: 'josplay',
       rewardAccount: EMAIL('Ta récompense', 'Ta récompense est envoyée sur cet e-mail.'),
-      reward: { name: '1 mois membre YouTube · Grade 1', description: 'Rejoins les membres de la chaîne de Josplay, offert. Les mois s’additionnent.', price: 300, ref: 'yt-grade-1', url: '#', linkLabel: 'Voir la chaîne' },
-      texts: texts('Josplay', 'des grades de membre YouTube', {
-        shopText: 'Échange tes coins contre les grades de membre de la chaîne de Josplay, ou la prime à 1 M de vues.',
+      // Seule récompense : JosplayMax (nom provisoire), toutes les rediffusions de ses lives, 1 mois = 5 000 coins
+      reward: { name: '1 mois de JosplayMax', description: 'Toutes les rediffusions des lives de Josplay, rangées comme sur une plateforme de streaming. Les mois s’additionnent.', price: 5_000, ref: 'josplaymax-1m', url: '#/max', linkLabel: 'Voir JosplayMax' },
+      texts: texts('Josplay', 'JosplayMax', {
+        shopText: 'Échange tes coins contre des mois de JosplayMax : toutes les rediffusions des lives de Josplay.',
         heroTitle: 'Clippe Josplay. **Fais 300-400 € / mois.**',
         heroCta: 'Voir ma progression',
         faq: [
           { q: 'Comment je gagne de l’argent avec TikTok ?', a: 'Avec le programme de récompenses des créateurs de TikTok : tes clips d’1 minute et plus sont payés aux vues. Il faut avoir 18 ans, 10 000 abonnés et 100 000 vues sur les 30 derniers jours. Les meilleurs clippeurs en tirent 300-400 € par mois.' },
-          { q: 'Et les coins, c’est en plus ?', a: 'Oui : 1 000 vues = 10 coins, tous comptes confondus. Dès 30 000 vues, tu prends 1 mois de membre YouTube offert, et ça se cumule.' },
+          { q: 'Et les coins, c’est en plus ?', a: 'Oui : 1 000 vues = 10 coins, tous comptes confondus. 5 000 coins = 1 mois de JosplayMax, et ça se cumule.' },
+          { q: 'C’est quoi JosplayMax ?', a: 'L’espace réservé aux clippeurs : toutes les rediffusions des lives de Josplay, triées (plus récentes, à reprendre, plus vues). Il apparaît dans ton menu dès que tu as échangé ton mois.' },
           { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, clique sur « S’inscrire » et connecte tes comptes TikTok, Instagram et YouTube.' },
           { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum pour les coins. Un compte qui démarre peut en gagner dès son premier clip.' },
         ],
       }),
+      // JosplayMax : rediffusions de lives (exemples pour la maquette ; ensuite ajoutées à la main ou via son Twitch)
+      vault: {
+        name: 'JosplayMax',
+        route: 'max',
+        tagline: 'Tous les lives de Josplay en replay. Réservé aux clippeurs.',
+        rows: [
+          { title: 'Plus récentes', items: [
+            { title: 'Elden Ring : 651 morts', date: 'Live du 8 oct.', duration: '4:12:06', image: 'ms-hero-josplay.webp' },
+            { title: 'Mario Kart avec la commu', date: 'Live du 6 oct.', duration: '3:05:41', hue: 205 },
+            { title: 'Nuit horreur', date: 'Live du 4 oct.', duration: '5:20:13', hue: 280 },
+            { title: 'Réaction à vos clips', date: 'Live du 2 oct.', duration: '2:48:30', hue: 20 },
+          ] },
+          { title: 'Reprendre', progress: true, items: [
+            { title: 'Speedrun Zelda', date: 'Live du 29 sept.', duration: '3:58:02', hue: 140, progress: 62 },
+            { title: 'Smash avec les abonnés', date: 'Live du 27 sept.', duration: '4:01:19', hue: 350, progress: 28 },
+            { title: 'Draw my life', date: 'Live du 25 sept.', duration: '1:52:44', hue: 45, progress: 85 },
+            { title: 'Minecraft hardcore', date: 'Live du 22 sept.', duration: '6:10:55', hue: 100, progress: 12 },
+          ] },
+          { title: 'Les plus vues', items: [
+            { title: 'Le rage quit légendaire', date: 'Live du 12 sept.', duration: '3:33:33', hue: 0 },
+            { title: '24 h de stream', date: 'Live du 1er sept.', duration: '24:00:00', hue: 190 },
+            { title: 'Mii party avec vous', date: 'Live du 20 août', duration: '2:40:18', hue: 220 },
+            { title: 'Pokémon nuzlocke', date: 'Live du 14 août', duration: '5:02:27', hue: 60 },
+          ] },
+        ],
+      },
       // Accueil riche (mise en page Loann / Cubi) dans la DA de Josplay
       ms: {
-        rewardShort: 'membre YouTube',
+        rewardShort: 'JosplayMax',
         tierEmoji: true,
-        heroLine: 'avec la monétisation TikTok. Et en plus, Josplay t’offre ses grades de membre YouTube dès 30 k vues 🔥',
+        heroLine: 'avec la monétisation TikTok. Et en plus, tes vues te débloquent JosplayMax : tous ses lives en replay 🔥',
         heroImage: 'ms-hero-josplay.webp',
         statLeft: { badge: '💸', text: 'Tes clips sont monétisables sur TikTok' },
-        statRight: { big: '30 k', text: 'vues = 1 mois de membre offert' },
+        statRight: { big: '500 k', text: 'vues = 1 mois de JosplayMax' },
         ctaNote: 'Connecte-toi avec Discord pour voir où tu en es',
-        offer: { title: 'Double gain : TikTok + Josplay', text: 'TikTok te paie tes vues, Josplay t’offre ses grades de membre YouTube et une prime à 1 M.', side: 'Jusqu’à 300-400 € / mois' },
+        offer: { title: 'Double gain : TikTok + JosplayMax', text: 'TikTok te paie tes vues, Josplay t’ouvre JosplayMax : tous ses lives en replay.', side: 'Jusqu’à 300-400 € / mois' },
         timelineTitle: 'Clipper Josplay c’est',
         timeline: [
           { emoji: '✂️', title: 'Des clips qui cartonnent', text: 'Josplay sort des vidéos ultra regardées : tu prends le meilleur passage, tu le montes, ça part.' },
           { emoji: '💸', title: 'De l’argent', text: 'Tes clips d’1 min et plus sont monétisables sur TikTok : les meilleurs clippeurs en tirent 300-400 € par mois.' },
-          { emoji: '🎖️', title: 'Les grades YouTube', text: 'Dès 30 k vues, 1 mois de membre offert. Plus tu clippes, plus tu montes en grade.' },
-          { emoji: '💰', title: 'La prime à 1 M', text: 'Tu passes le million de vues ? Tu touches une prime en plus.' },
+          { emoji: '🎬', title: 'JosplayMax', text: 'Tous les lives de Josplay en replay, rangés comme sur Netflix. 5 000 coins = 1 mois, ça se cumule.' },
           { emoji: '🏆', title: 'La gloire', text: 'Chaque semaine, le top 3 des clippeurs est mis en avant sur le Discord, devant toute la commu.' },
         ],
         tiersTitle: 'Et toi, jusqu’où tu montes ?',
-        band: 'CLIPPE JOSPLAY ✦ 300-400 € / MOIS AVEC TIKTOK ✦ GRADES YOUTUBE OFFERTS',
+        band: 'CLIPPE JOSPLAY ✦ 300-400 € / MOIS AVEC TIKTOK ✦ DÉBLOQUE JOSPLAYMAX',
         alone: { title: 'Seul', text: 'Des clips postés pour rien : pas d’argent, pas de récompense, personne pour t’aider…' },
-        withUs: { title: 'Avec Josplay', lines: ['Jusqu’à 300-400 € / mois', 'Ses grades YouTube offerts', 'Une prime à 1 M de vues', 'Le top 3 mis en avant', 'Une commu qui te pousse'] },
+        withUs: { title: 'Avec Josplay', lines: ['Jusqu’à 300-400 € / mois', 'Tous ses lives sur JosplayMax', 'Le top 3 mis en avant', 'Une commu qui te pousse'] },
         faqAside: 'Tu as encore des questions ? Pose-les sur le Discord !',
       },
     },
