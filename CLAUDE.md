@@ -71,7 +71,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 ## Où on en est (à mettre à jour)
 
 - **Apify** : plan Starter à 19 $/mois, **plafonné à 19 $** en attendant les validations TikTok / Meta. Objectif : ne plus en dépendre.
-- **TikTok officiel** : testé en Sandbox (OK), **demande de validation envoyée**. Quand c'est validé :
+- **TikTok officiel** : testé en Sandbox (OK). 1re demande **refusée** (10 oct : nom de l’app pas affiché sur le site + Website URL = page de connexion). Corrigé : vitrine publique « Neptune Clipping » sur l’accueil de lune (`src/web/neptune.ts`, visiteurs non connectés), Website / Privacy / Terms tous sur lune-production-dbd1 ; **renvoyée le 10 oct**. Si refus pour le domaine : acheter un domaine type neptuneclipping.fr. Quand c'est validé :
   remettre les clés Production sur les 4 services, ajouter les Redirect URIs des 3 autres sites, puis `TIKTOK_APIFY_FALLBACK=0`.
 - **Instagram officiel (Meta)** : testé (OK, démo filmée). Bloqué par la **vérification d'entreprise** : Alex est mineur,
   Alex a **15 ans** (micro à son nom impossible avant 16 ans) → **un parent crée la micro à son nom** (gratuit, ce week-end si son père est d’accord), titulaire légal et du compte Meta ; SAS à 3 plus tard (la micro de Lucas est peut-être inutilisable). Ensuite : vérif d'entreprise Meta,
