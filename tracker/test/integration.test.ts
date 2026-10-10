@@ -206,7 +206,11 @@ describe('parcours complet', () => {
     const app = createApp({ repo, agency: new AgencyService(repo), recruitment: recruitmentOf(repo, new AgencyService(repo)), bot: {}, password: 'secret' });
     const denied = await app.request('/api/meta');
     expect(denied.status).toBe(401);
-    expect((await app.request('/')).headers.get('location')).toBe('/login');
+    // Accueil sans connexion : vitrine publique Neptune Clipping (pas Mars), le reste redirige vers /login
+    const home = await app.request('/');
+    expect(home.status).toBe(200);
+    expect(await home.text()).toContain('<title>Neptune Clipping</title>');
+    expect((await app.request('/logout-nope')).headers.get('location')).toBe('/login');
     const bad = await app.request('/login', { method: 'POST', body: new URLSearchParams({ password: 'nope' }) });
     expect(bad.headers.get('location')).toBe('/login?e=1');
     const ok = await app.request('/login', { method: 'POST', body: new URLSearchParams({ password: 'secret' }) });

@@ -1,14 +1,15 @@
 /** Pages légales du programme de clipping (demandées par TikTok pour valider la connexion « Login Kit »). */
 export const legalPage = (title: string, body: string) => `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title>
+<title>${title} · Neptune Clipping</title>
+<link rel="icon" href="/neptune-logo.png">
 <style>
   :root { color-scheme: light dark; }
   body { margin: 0; background: #111; color: #eee; font: 16px/1.6 system-ui, sans-serif; }
   main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
   h1 { font-size: 26px; } h2 { font-size: 18px; margin-top: 28px; } a { color: #ff7a59; }
 </style></head>
-<body><main><h1>${title}</h1>${body}<p style="margin-top:40px;opacity:.6">Neptune · programme de clipping</p></main></body></html>`;
+<body><main><p><a href="/" style="display:inline-flex;align-items:center;gap:10px;color:inherit;text-decoration:none;font-weight:800"><img src="/neptune-logo.png" alt="" width="32" height="32" style="border-radius:8px">Neptune Clipping</a></p><h1>${title}</h1>${body}<p style="margin-top:40px;opacity:.6">Neptune Clipping · programme de clipping</p></main></body></html>`;
 
 export const PRIVACY_HTML = `
 <p>Ce site permet aux clippeurs de suivre les vues de leurs clips et d'échanger les coins gagnés contre des récompenses.</p>

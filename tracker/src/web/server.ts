@@ -1,3 +1,4 @@
+import { NEPTUNE_HOME } from './neptune.js';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { serve } from '@hono/node-server';
@@ -327,6 +328,7 @@ export function createApp(deps: WebDeps): Hono {
   });
 
   // Pages légales (exigées par TikTok pour valider l'app)
+  app.get('/neptune', (c) => c.html(NEPTUNE_HOME));
   app.get('/legal/privacy', (c) => c.html(legalPage('Politique de confidentialité', PRIVACY_HTML)));
   app.get('/legal/terms', (c) => c.html(legalPage('Conditions d’utilisation', TERMS_HTML)));
 
@@ -499,6 +501,8 @@ export function createApp(deps: WebDeps): Hono {
         await new Promise((r) => setTimeout(r, 600));
       }
       if (c.req.path.startsWith('/api/')) return c.json({ error: 'Non connecté' }, 401);
+      // Visiteur non connecté sur l'accueil : vitrine publique Neptune Clipping (exigée par TikTok), le staff passe par /login
+      if (c.req.path === '/') return c.html(NEPTUNE_HOME);
       return c.redirect('/login', 302);
     });
   }
