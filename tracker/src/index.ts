@@ -10,6 +10,7 @@ import { runRelances } from './jobs/relance.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
+import { YouTubeFetcher } from './platforms/youtube.js';
 import { apifyUsage } from './platforms/apify.js';
 import { FanRepo } from './db/fans.js';
 import { RecruitmentRepo } from './db/recruitment.js';
@@ -35,6 +36,8 @@ const analytics = new Analytics(repo);
 // Apify facture chaque vidéo lue : 10 vidéos par compte pour l'agence, 5 pour les fans
 const fetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(10, config.VIDEOS_PER_ACCOUNT) });
 const fanFetchers = createFetchers({ ...config, VIDEOS_PER_ACCOUNT: Math.min(5, config.VIDEOS_PER_ACCOUNT) });
+// YouTube est gratuit (quota large) : 50 vidéos par compte fan, pour que les clips plus anciens continuent d'être suivis
+if (config.YOUTUBE_API_KEY && config.FETCHER_MODE === 'live') fanFetchers.youtube = new YouTubeFetcher(config.YOUTUBE_API_KEY, 50);
 const dashboardUrl = config.PUBLIC_URL ?? `http://localhost:${config.WEB_PORT}`;
 // TikTok connecté par le clippeur (API officielle gratuite) ; les autres comptes TikTok restent sur Apify
 const tiktokCreds = config.TIKTOK_CLIENT_KEY && config.TIKTOK_CLIENT_SECRET ? { clientKey: config.TIKTOK_CLIENT_KEY, clientSecret: config.TIKTOK_CLIENT_SECRET } : undefined;
