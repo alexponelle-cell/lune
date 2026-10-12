@@ -29,15 +29,33 @@ export function viewsAt(snapshots: readonly Snapshot[], t: number): number | nul
 }
 
 /**
+ * Total estimé à l'instant `t` : entre deux relevés, les vues gagnées sont réparties au prorata du temps.
+ * (Un compte relu toutes les 2 nuits ne met donc plus 2 jours de vues sur un seul jour.) Après le dernier relevé : sa valeur.
+ */
+export function viewsAtSmooth(snapshots: readonly Snapshot[], t: number): number | null {
+  let prev: Snapshot | undefined;
+  for (const s of snapshots) {
+    if (s.capturedAt > t) {
+      if (!prev) return null;
+      const span = s.capturedAt - prev.capturedAt;
+      return span > 0 ? prev.totalViews + ((s.totalViews - prev.totalViews) * (t - prev.capturedAt)) / span : prev.totalViews;
+    }
+    prev = s;
+  }
+  return prev ? prev.totalViews : null;
+}
+
+/**
  * Vues gagnées entre `from` et `to`. `snapshots` doit être trié par date croissante.
  * La première capture sert de référence : ce qui existait avant le suivi ne compte pas.
+ * Les vues entre deux relevés sont réparties au prorata du temps (courbes jour par jour sans yo-yo).
  */
 export function viewsGained(snapshots: readonly Snapshot[], from: number, to: number): number {
   const first = snapshots[0];
   if (!first || to < first.capturedAt) return 0;
-  const end = viewsAt(snapshots, to) ?? first.totalViews;
-  const start = viewsAt(snapshots, from) ?? first.totalViews;
-  return end - start;
+  const end = viewsAtSmooth(snapshots, to) ?? first.totalViews;
+  const start = viewsAtSmooth(snapshots, from) ?? first.totalViews;
+  return Math.round(end - start);
 }
 
 export type Trend = 'up' | 'down' | 'flat';
