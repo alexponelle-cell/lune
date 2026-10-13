@@ -27,8 +27,11 @@ type DemoItem = { ref: string; name: string; description: string; price: number 
 const DEMO_NAMES = ['kenzo.clips', 'lea_edits', 'nathan.cut', 'ines.shorts', 'yanis_clipz', 'sarah.mp4', 'tom.reels', 'maelle_cut'];
 
 /** Données d'exemple d'une maquette prospect (même forme que /api/fan/public). */
-export function demoPublic(cr: CreatorConfig, rewardImage: string, extra: DemoItem[] = []) {
+export function demoPublic(cr: CreatorConfig, rewardImage: string, extra: DemoItem[] = [], top: Array<{ name: string; views: number }> = []) {
   const views = [184_000, 142_500, 97_300, 71_800, 52_400, 38_900, 21_600, 12_300];
+  // Les premières places peuvent être de vrais clippeurs (champ top du prospect), le reste est inventé
+  const k = top.length ? Math.min(1, (Math.min(...top.map((t) => t.views)) * .9) / views[0]!) : 1;
+  const rows = [...top, ...DEMO_NAMES.map((name, i) => ({ name, views: Math.round(views[i]! * k / 100) * 100 }))].slice(0, DEMO_NAMES.length).sort((a, b) => b.views - a.views);
   return {
     creator: cr,
     programName: cr.programName,
@@ -40,7 +43,7 @@ export function demoPublic(cr: CreatorConfig, rewardImage: string, extra: DemoIt
       ...(cr.reward ? [{ id: 1, ref: cr.reward.ref, name: cr.reward.name, description: cr.reward.description, price: cr.reward.price, stock: null, imageUrl: rewardImage || null }] : []),
       ...extra.map((it, i) => ({ id: i + 2, ...it, stock: null, imageUrl: null })),
     ],
-    leaderboard: DEMO_NAMES.map((name, i) => ({ rank: i + 1, name, avatar: null, views: views[i]!, coins: Math.floor((views[i]! / 1000) * cr.pointsPer1000) })),
+    leaderboard: rows.map((r, i) => ({ rank: i + 1, name: r.name, avatar: null, views: r.views, coins: Math.floor((r.views / 1000) * cr.pointsPer1000) })),
   };
 }
 
@@ -52,7 +55,7 @@ export function demoPage(template: string, slug: string, url: (file: string) => 
   if (!p) return undefined;
   const a = (f: string | undefined) => (f ? url(f) : '');
   const cr: CreatorConfig = { ...p.config, images: { banner: p.banner, reward: p.config.style ? p.reward : undefined } };
-  const data = JSON.stringify(demoPublic(cr, a(p.reward), p.items)).replace(/</g, '\\u003c');
+  const data = JSON.stringify(demoPublic(cr, a(p.reward), p.items, p.top)).replace(/</g, '\\u003c');
   return soberPage(template, cr, cr.programName)
     .replaceAll('/fan/assets/creator.png', a(p.photo))
     .replaceAll('/fan/assets/hero-banner', a(p.banner))

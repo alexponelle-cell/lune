@@ -10,6 +10,8 @@ export interface Prospect {
   photo: string;
   banner?: string;
   reward?: string;
+  /** Vrais clippeurs en tête du classement d'exemple (le reste est inventé). */
+  top?: Array<{ name: string; views: number }>;
   /** Autres objets de la boutique (en plus de config.reward). */
   items?: { ref: string; name: string; description: string; price: number }[];
 }
@@ -60,6 +62,7 @@ const base = { pointsPer1000: 10, levels: LEVELS, statuses: STATUSES, youtube: '
 export const PROSPECTS: Record<string, Prospect> = {
   micka: {
     photo: 'micka-pdp.png',
+    top: [{ name: 'sharyar clipping', views: 670_000 }, { name: 'Titou.mp4', views: 137_000 }],
     config: {
       ...base,
       id: 'micka',
