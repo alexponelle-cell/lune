@@ -542,9 +542,10 @@ export function createApp(deps: WebDeps): Hono {
     }
   });
   // Un client = une ligne (un Mars peut porter plusieurs clients, ex. BeOne + Loann)
-  const marsClients = () => {
+  // preset : période des vues / posts (7d par défaut) ; series : vues et posts par jour, pour la courbe de « Tous les clients »
+  const marsClients = (preset = '7d') => {
     const o = fans.overview();
-    const week = agency.range({ preset: '7d' });
+    const week = agency.range({ preset });
     return repo.listClients().map((cl) => {
       const w = agency.overview(week, cl.id);
       const isFans = cl.id === o.settings.clientId;
@@ -562,11 +563,12 @@ export function createApp(deps: WebDeps): Hono {
         posts7d: w.kpis.posts.value,
         clippers: w.kpis.views.clippers,
         alerts: w.alerts.length,
+        series: w.series.map((d) => ({ day: d.day, views: d.views, posts: d.posts })),
       };
     });
   };
   const fansClientId = () => fans.settings().clientId;
-  app.get('/api/mars/summary', (c) => c.json(marsClients()));
+  app.get('/api/mars/summary', (c) => c.json(marsClients(c.req.query('preset'))));
   app.get('/api/mars/local-clients', (c) => c.json(repo.listClients().map((cl) => ({ id: cl.id, name: cl.name, fans: cl.id === fansClientId() }))));
   const remoteJson = async (site: { name: string; url: string }, path: string) => {
     try {
@@ -597,13 +599,14 @@ export function createApp(deps: WebDeps): Hono {
     return c.json({ ok: true });
   });
   app.get('/api/mars/overview', async (c) => {
+    const preset = c.req.query('preset') ?? '7d';
     const others = await Promise.all(
       remotes.map(async (x) => {
-        const r = await remoteJson(x, '/api/mars/summary');
+        const r = await remoteJson(x, `/api/mars/summary?preset=${encodeURIComponent(preset)}`);
         return r.data ? r.data.map((row) => ({ ...(row as object), site: x.name })) : [{ site: x.name, name: x.name, error: r.error }];
       }),
     );
-    return c.json([...marsClients().map((row) => ({ ...row, site: selfName })), ...others.flat()]);
+    return c.json([...marsClients(preset).map((row) => ({ ...row, site: selfName })), ...others.flat()]);
   });
 
   const rangeOf = (c: { req: { query: (k: string) => string | undefined } }) =>

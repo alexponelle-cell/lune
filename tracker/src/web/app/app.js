@@ -180,7 +180,7 @@ function qs(extra = {}, withClient = true) {
   for (const [k, v] of Object.entries(extra)) if (v !== undefined && v !== null && v !== '') p.set(k, v);
   return p.toString();
 }
-const PRESETS = { today: "Aujourd'hui", '7d': '7 derniers jours', '30d': '30 derniers jours', all: 'All-time' };
+const PRESETS = { today: "Aujourd'hui", '7d': '7 derniers jours', '30d': '30 derniers jours', '90d': '3 derniers mois', '180d': '6 derniers mois', '365d': '12 derniers mois', all: 'All-time' };
 const periodLabel = () =>
   store.preset === 'custom' && store.from ? `${dm(+store.from)} – ${dm(+store.to - 1)}` : PRESETS[store.preset] ?? PRESETS['7d'];
 
@@ -1907,23 +1907,46 @@ async function openClient(site, clientId, hash = '#/agence') {
   else location.hash = hash;
 }
 
+/** Période de la page « Tous les clients » (gardée pendant la session). */
+const CLIENT_PERIODS = [['7d', '7 j'], ['30d', '1 mois'], ['90d', '3 mois'], ['180d', '6 mois'], ['365d', '1 an'], ['all', 'Tout']];
+let clientsPreset = '7d';
+
+/** Additionne les courbes de plusieurs clients jour par jour. */
+function sumSeries(list) {
+  const byDay = new Map();
+  for (const series of list) for (const d of series ?? []) {
+    const cur = byDay.get(d.day) ?? { day: d.day, views: 0, posts: 0 };
+    cur.views += d.views;
+    cur.posts += d.posts;
+    byDay.set(d.day, cur);
+  }
+  return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
+
 async function pageClients() {
   loading();
-  const rows = await api('/api/mars/overview');
+  const rows = await api(`/api/mars/overview?preset=${clientsPreset}`);
   const n = (x) => Number(x ?? 0).toLocaleString('fr-FR');
   const ok = rows.filter((r) => !r.error);
   const tot = (k) => ok.reduce((a, r) => a + (r[k] ?? 0), 0);
   const dash = '<span class="faint">—</span>';
+  const per = CLIENT_PERIODS.find(([k]) => k === clientsPreset)?.[1] ?? '7 j';
+  const chartRows = ok.filter((r) => r.series?.length);
+  let chartWho = 'all';
+  let chartMode = 'views';
   main().innerHTML = `<div class="page-head"><div><h1>Tous les clients</h1><p>${ok.length} client(s) · clique sur un client pour ouvrir son tableau de bord</p></div>
-      <div class="actions"><button class="btn" data-refresh>${icon('refresh')} Actualiser</button></div></div>
+      <div class="actions">${segTabs('period', CLIENT_PERIODS, clientsPreset)}<button class="btn" data-refresh>${icon('refresh')} Actualiser</button></div></div>
     <div class="stack">
       <div class="kpis">
-        <div class="card kpi"><div class="k-label">Vues (7 j)</div><div class="k-value num">${fmtK(tot('views7d'))}</div><div class="k-foot"><span>${n(tot('clippers'))} clippers</span></div></div>
-        <div class="card kpi"><div class="k-label">Posts (7 j)</div><div class="k-value num">${n(tot('posts7d'))}</div><div class="k-foot"><span>tous clients</span></div></div>
+        <div class="card kpi"><div class="k-label">Vues (${per})</div><div class="k-value num">${fmtK(tot('views7d'))}</div><div class="k-foot"><span>${n(tot('clippers'))} clippers</span></div></div>
+        <div class="card kpi"><div class="k-label">Posts (${per})</div><div class="k-value num">${n(tot('posts7d'))}</div><div class="k-foot"><span>tous clients</span></div></div>
         <div class="card kpi"><div class="k-label">Fans inscrits</div><div class="k-value num">${n(tot('fanCount'))}</div><div class="k-foot"><span>${n(ok.filter((r) => r.fans).length)} programme(s) fans</span></div></div>
         <div class="card kpi"><div class="k-label">Commandes à livrer</div><div class="k-value num">${n(tot('pendingOrders'))}</div><div class="k-foot"><span>boutiques fans</span></div></div>
       </div>
-      <div class="card"><div class="table-wrap"><table><thead><tr><th>Client</th><th class="r">Vues 7 j</th><th class="r">Posts 7 j</th><th class="r">Clippers</th><th class="r">Fans</th><th class="r">Coins en circulation</th><th class="r">À livrer</th><th class="r">Alertes</th><th class="r"></th></tr></thead><tbody>
+      <div class="card"><div class="card-head"><div><h2>Évolution (${per})</h2><p>Vues gagnées et posts par jour${chartRows.length > 1 ? ', tous clients ou un seul' : ''}</p></div>
+        <div class="actions">${chartRows.length > 1 ? segTabs('who', [['all', 'Tous'], ...chartRows.map((r, i) => [String(i), r.name])], 'all') : ''}${segTabs('chart', [['views', 'Vues'], ['posts', 'Posts'], ['both', 'Tout']], 'views')}</div></div>
+        <div class="chart" id="chart"></div></div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Client</th><th class="r">Vues ${per}</th><th class="r">Posts ${per}</th><th class="r">Clippers</th><th class="r">Fans</th><th class="r">Coins en circulation</th><th class="r">À livrer</th><th class="r">Alertes</th><th class="r"></th></tr></thead><tbody>
       ${rows.map((r) => r.error
         ? `<tr><td><b>${esc(r.name)}</b></td><td colspan="7"><span class="pill ko">${esc(r.site)} : ${esc(r.error)}</span></td><td></td></tr>`
         : `<tr><td><div class="who" data-open="${esc(r.site)}|${r.clientId}" style="cursor:pointer"><span class="dot" style="color:${esc(r.accent ?? 'var(--muted)')}"></span><div><b>${esc(r.name)}</b><small class="faint" style="display:block">${esc(r.program ?? 'Agence')}</small></div></div></td>
@@ -1934,6 +1957,11 @@ async function pageClients() {
       </tbody></table></div></div>
     </div>`;
   const root = main();
+  const drawChart = () => mountChart($('#chart', root), chartWho === 'all' ? sumSeries(chartRows.map((r) => r.series)) : chartRows[+chartWho].series, chartMode);
+  drawChart();
+  onSeg(root, 'who', (v) => { chartWho = v; drawChart(); });
+  onSeg(root, 'chart', (v) => { chartMode = v; drawChart(); });
+  onSeg(root, 'period', (v) => { clientsPreset = v; pageClients().catch((err) => toast(err.message, true)); });
   $('[data-refresh]', root).addEventListener('click', pageClients);
   root.querySelectorAll('[data-open]').forEach((b) =>
     b.addEventListener('click', () => {

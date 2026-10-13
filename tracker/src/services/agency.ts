@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: AgencySettings = {
   dropMinPreviousViews: 1_000,
 };
 
-export type Preset = 'today' | '7d' | '30d' | 'all' | 'custom';
+export type Preset = 'today' | '7d' | '30d' | '90d' | '180d' | '365d' | 'all' | 'custom';
 
 export interface Range {
   from: number;
@@ -120,7 +120,10 @@ export class AgencyService {
       case 'today':
         return make(startOfDay(now), now, 'today');
       case '30d':
-        return make(now - 30 * DAY, now, '30d');
+      case '90d':
+      case '180d':
+      case '365d':
+        return make(now - Number.parseInt(q.preset, 10) * DAY, now, q.preset);
       case 'all': {
         const first = this.repo.firstSnapshotAt() ?? now - DAY;
         return make(Math.min(first, now - DAY), now, 'all', false);

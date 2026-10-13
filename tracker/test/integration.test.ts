@@ -187,6 +187,11 @@ describe('parcours complet', () => {
     expect(all.map((r: { site: string; name: string }) => `${r.site}/${r.name}`)).toEqual(['BeOne/Loann', 'SQUIDUU/Client de B']);
     expect(all[0]).toMatchObject({ fans: false, clippers: 0 });
     expect(all[1]).toMatchObject({ fans: false, views7d: 0 });
+    // Période choisie (3 mois) transmise aux autres Mars, avec la courbe jour par jour
+    const q = await (await a.request('/api/mars/overview?preset=90d', { headers: auth })).json();
+    expect(q[0].series.length).toBeGreaterThanOrEqual(90);
+    expect(q[1].series.length).toBeGreaterThanOrEqual(90);
+    expect(q[1].series[0]).toMatchObject({ views: 0, posts: 0 });
 
     expect((await a.request('/api/mars/site', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Inconnu' }) })).status).toBe(404);
     const sw = await a.request('/api/mars/site', { method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'SQUIDUU' }) });
