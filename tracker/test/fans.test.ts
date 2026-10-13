@@ -682,6 +682,18 @@ describe('créateur configurable (SQUIDUU)', () => {
     expect(() => creatorConfig('inconnu')).toThrow(/inconnu/);
     expect(creatorConfig(undefined).id).toBe('beone');
   });
+
+  it('Mickaël Wu : vrai site = la maquette, avec sa chaîne, le mot-clé #micka et son Discord', async () => {
+    const { soberPage } = await import('../src/web/sober.js');
+    const { readFileSync } = await import('node:fs');
+    const cr = creatorConfig('micka');
+    expect(cr.youtube).toBe('mickaelwu');
+    expect(cr.clipKeywords).toContain('micka');
+    expect(cr.reward?.price).toBe(100_000);
+    expect(cr.discord?.welcome).toContain('{creator}');
+    const html = soberPage(readFileSync('src/web/app/fan-sober.html', 'utf8'), cr, cr.programName);
+    expect(html).toContain('class="rich micka"');
+  });
 });
 
 
