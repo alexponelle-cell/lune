@@ -95,6 +95,16 @@ export const PROSPECTS: Record<string, Prospect> = {
         joinText: '10 M de vues = ta place !',
         tierEmoji: true,
         reel: ['ms-micka-v0.webp', 'ms-micka-v1.webp', 'ms-micka-v2.webp', 'ms-micka-v3.webp', 'ms-micka-v4.webp', 'ms-micka-v5.webp'],
+        // Vidéos lues directement depuis son site (pas copiées chez nous)
+        reelVideos: ['t-younes', 't-alban', 't-01', 't-02', 't-03', 't-gopro'].map((n) => `https://mickael-bay.vercel.app/testimonials/${n}.mp4`),
+        finalVideo: 'https://mickael-bay.vercel.app/loaders/micka-scrolle.mp4',
+        showcaseTitle: 'Ils ont percé avec l’accompagnement',
+        showcase: [
+          { name: 'Lucas', niche: 'Volley-ball', stats: ['170k vues sur ce reel', '8 054 abonnés au compte'], video: 'https://mickael-bay.vercel.app/clients/c1.mp4', poster: 'https://mickael-bay.vercel.app/clients/c1.jpg', url: 'https://www.instagram.com/reels/DX4kROOoQN_/' },
+          { name: 'Keran & Lauriane', niche: 'Relations amoureuses', stats: ['21,3k vues sur ce reel', '3 494 abonnés au compte'], video: 'https://mickael-bay.vercel.app/clients/c2.mp4', poster: 'https://mickael-bay.vercel.app/clients/c2.jpg', url: 'https://www.instagram.com/reel/DZvE424sBnj/' },
+          { name: 'The Elo Climb', niche: 'Échecs', stats: ['14,6k vues sur ce reel', '17,3k abonnés au compte'], video: 'https://mickael-bay.vercel.app/clients/c3.mp4', poster: 'https://mickael-bay.vercel.app/clients/c3.jpg', url: 'https://www.instagram.com/reel/DV9KTpaEXJ9/' },
+          { name: 'Calvin', niche: 'Santé et Acné', stats: ['1,7M vues sur ce reel', '11,1k abonnés au compte'], video: 'https://mickael-bay.vercel.app/clients/c4.mp4', poster: 'https://mickael-bay.vercel.app/clients/c4.jpg', url: 'https://www.instagram.com/reel/DY_dQBvNbXz/' },
+        ],
         heroLine: 'L’accès gratuit à l’accompagnement de Mickaël Wu',
         punch: 'À la performance.',
         kicker: 'Important',

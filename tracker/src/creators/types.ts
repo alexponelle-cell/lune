@@ -132,6 +132,13 @@ export interface CreatorConfig {
     skin?: 'cubi' | 'micka';
     /** Carrousel de vidéos verticales (fichiers ms-*.webp) à la place du cadre du hero : le hero devient titre + carrousel + heroLine en petites capitales + punch, et un CTA final sur fond flouté s'ajoute. */
     reel?: string[];
+    /** Vidéos du carrousel (URL .mp4, même ordre que reel) : lues en boucle, l'image de reel sert d'affiche si la vidéo ne charge pas. */
+    reelVideos?: string[];
+    /** Vidéo de fond du CTA final (URL .mp4). */
+    finalVideo?: string;
+    /** Témoignages vidéo (format vertical, alternés gauche / droite) : nom, domaine, stats, lien vers le post. */
+    showcaseTitle?: string;
+    showcase?: Array<{ name: string; niche: string; stats: string[]; video: string; poster?: string; url?: string }>;
     /** Grosse phrase sous le carrousel (ex. « Au plus vite. »). */
     punch?: string;
     /** Objectif en toutes lettres quand la récompense n'est pas « un mois » (ex. « ta place dans l’accompagnement »). */
