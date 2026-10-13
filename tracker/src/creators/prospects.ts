@@ -58,6 +58,58 @@ function texts(n: string, r: string, extra: Partial<CreatorConfig['texts']> = {}
 const base = { pointsPer1000: 10, levels: LEVELS, statuses: STATUSES, youtube: '' };
 
 export const PROSPECTS: Record<string, Prospect> = {
+  micka: {
+    photo: 'micka-pdp.png',
+    config: {
+      ...base,
+      id: 'micka',
+      programName: 'MICKA CLIPPING',
+      creatorName: 'Micka',
+      theme: 'sober',
+      // DA de son site (« Ton dossier business ») : crème, noir, orange, boutons en dégradé orange → rose
+      colors: { bg: '#F5F2EC', card: '#FFFFFF', border: '#E6E1D8', text: '#111111', muted: '#6E6A64', accent: '#F07A1A', accentInk: '#111111', highlight: '#F07A1A' },
+      font: 'Inter Tight',
+      logoText: 'micka',
+      rewardAccount: EMAIL('Ton accès', 'Ton accès est envoyé sur cet e-mail.'),
+      reward: { name: '1 mois du Dossier Business', description: 'Le programme de Micka : domaine, avatar, profil, contenu, vente. Les mois s’additionnent.', price: 10_000, ref: 'dossier-1m', url: '#', linkLabel: 'Découvrir le Dossier Business' },
+      texts: texts('Micka', 'des mois du Dossier Business', {
+        heroTitle: 'Ton **dossier** business',
+        heroCta: 'Voir ma progression',
+        finalTitle: 'Prêt·e ? On lance ton **premier clip** ensemble.',
+        faq: [
+          { q: 'Comment je gagne des coins ?', a: 'Tu postes des clips de Micka sur TikTok, Instagram ou YouTube. 1 000 vues = 10 coins, tous comptes confondus.' },
+          { q: 'C’est quoi le Dossier Business ?', a: 'Le programme de Micka pour te lancer : choisir ton domaine, ton avatar, optimiser ton profil, créer ton contenu et vendre. 10 000 coins = 1 mois, ça se cumule.' },
+          { q: 'Comment je relie mes comptes ?', a: 'Sur le Discord, clique sur « S’inscrire » et connecte tes comptes TikTok, Instagram et YouTube.' },
+          { q: 'Il faut combien d’abonnés ?', a: 'Aucun minimum. Un compte qui démarre peut gagner des coins dès son premier clip.' },
+        ],
+      }),
+      ms: {
+        skin: 'micka',
+        rewardShort: 'Dossier Business',
+        tierEmoji: true,
+        reel: ['ms-micka-v0.webp', 'ms-micka-v1.webp', 'ms-micka-v2.webp', 'ms-micka-v3.webp', 'ms-micka-v4.webp', 'ms-micka-v5.webp'],
+        heroLine: 'Conçu pour que tu postes ton premier clip viral',
+        punch: 'Au plus vite.',
+        kicker: 'À toi de jouer',
+        statLeft: { badge: '📈', text: 'Tes vues te paient le programme de Micka' },
+        statRight: { big: '1 M', text: 'vues = 1 mois du Dossier Business' },
+        ctaNote: 'Connecte-toi avec Discord pour voir où tu en es',
+        offer: { title: '1 M de vues = 1 mois du Dossier Business', text: 'Domaine, avatar, profil, contenu, vente : tout le programme de Micka, payé par tes clips.', side: 'Les mois s’additionnent' },
+        timelineTitle: 'Clippe Micka',
+        timeline: [
+          { emoji: '✂️', title: 'Choisis ton clip', text: 'Un passage de Micka qui mérite d’être vu : tu le montes à ta façon.' },
+          { emoji: '📱', title: 'Poste partout', text: 'TikTok, Instagram, YouTube Shorts : toutes tes vues sont additionnées.' },
+          { emoji: '🪙', title: 'Gagne des coins', text: '10 coins pour 1 000 vues, comptés chaque nuit, automatiquement.' },
+          { emoji: '📂', title: 'Ouvre ton dossier', text: 'Tes coins débloquent des mois du Dossier Business : ton plan pour te lancer.' },
+        ],
+        tiersTitle: 'Jusqu’où tu montes ?',
+        band: 'TON DOSSIER BUSINESS ✦ PAYÉ PAR TES VUES ✦ CLIPPE MICKA',
+        alone: { title: 'Seul', text: 'Des clips postés pour rien : pas de plan, pas de récompense, personne pour t’aider…' },
+        withUs: { title: 'Avec Micka', lines: ['Tes vues te paient', 'Le Dossier Business offert', 'Le top 3 mis en avant', 'Une commu qui te pousse'] },
+        faqAside: 'Une question ? Pose-la sur le Discord !',
+      },
+    },
+  },
   'cubi-game': {
     photo: 'cubi-pdp.png',
     reward: 'cubi-academy.png',

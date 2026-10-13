@@ -129,7 +129,13 @@ export interface CreatorConfig {
     /** Paliers dessinés en cubes (couleurs du dessus / gauche / droite), à la place des étoiles ms-tier*.webp. */
     tierCubes?: Array<{ top: string; left: string; right: string }>;
     /** Variante de charte sur la même mise en page (classe CSS sur <body>), ex. « cubi » = noir, blanc et orange. */
-    skin?: 'cubi';
+    skin?: 'cubi' | 'micka';
+    /** Carrousel de vidéos verticales (fichiers ms-*.webp) à la place du cadre du hero : le hero devient titre + carrousel + heroLine en petites capitales + punch, et un CTA final sur fond flouté s'ajoute. */
+    reel?: string[];
+    /** Grosse phrase sous le carrousel (ex. « Au plus vite. »). */
+    punch?: string;
+    /** Petit sur-titre au-dessus de la frise (ex. « À toi de jouer »). */
+    kicker?: string;
     /** Sous-titre du hero (sous heroTitle). */
     heroLine: string;
     /** Image du cadre central du hero (fichier ms-*.webp), sinon la photo du créateur. */
