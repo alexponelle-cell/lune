@@ -134,6 +134,10 @@ export interface CreatorConfig {
     reel?: string[];
     /** Grosse phrase sous le carrousel (ex. « Au plus vite. »). */
     punch?: string;
+    /** Objectif en toutes lettres quand la récompense n'est pas « un mois » (ex. « ta place dans l’accompagnement »). */
+    goal?: string;
+    /** Texte de la carte au bout de la frise (défaut « 1 M vues = 1 mois ! »). */
+    joinText?: string;
     /** Petit sur-titre au-dessus de la frise (ex. « À toi de jouer »). */
     kicker?: string;
     /** Sous-titre du hero (sous heroTitle). */
