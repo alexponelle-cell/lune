@@ -62,7 +62,7 @@ const base = { pointsPer1000: 10, levels: LEVELS, statuses: STATUSES, youtube: '
 export const PROSPECTS: Record<string, Prospect> = {
   micka: {
     photo: 'micka-pdp.png',
-    top: [{ name: 'sharyar clipping', views: 670_000 }, { name: 'Titou.mp4', views: 137_000 }],
+    top: [{ name: 'shahryar clipping', views: 670_000 }, { name: 'Titou.mp4', views: 137_000 }],
     config: {
       ...base,
       id: 'micka',
