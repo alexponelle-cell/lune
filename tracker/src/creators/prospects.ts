@@ -93,6 +93,7 @@ export const PROSPECTS: Record<string, Prospect> = {
         rewardShort: 'l’accompagnement',
         goal: 'ta place dans l’accompagnement',
         joinText: '10 M de vues = ta place !',
+        joinImage: 'ms-micka-business.webp',
         tierEmoji: true,
         reel: ['ms-micka-v0.webp', 'ms-micka-v1.webp', 'ms-micka-v2.webp', 'ms-micka-v3.webp', 'ms-micka-v4.webp', 'ms-micka-v5.webp'],
         // Vidéos lues directement depuis son site (pas copiées chez nous)

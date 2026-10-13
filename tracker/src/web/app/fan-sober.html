@@ -704,6 +704,8 @@
   body.micka .tl .box .e { border: 0; background: var(--bg); border-radius: 50%; }
   body.micka .tl .join { border: 1px solid rgba(255,255,255,.5); background: var(--grad); box-shadow: 0 26px 58px -18px rgba(249,119,9,.55); }
   body.micka .tl .join span { color: #111; }
+  .tl .join-img { display: block; width: min(460px, 100%); border-radius: 22px; overflow: hidden; border: 6px solid #fff; box-shadow: 0 40px 90px -34px rgba(17,17,17,.45); transition: transform .4s cubic-bezier(.76,0,.16,1); }
+  .tl .join-img:hover { transform: translateY(-4px) rotate(-.6deg); } .tl .join-img img { width: 100%; display: block; }
   body.micka .tier:last-child { box-shadow: 0 0 0 2px var(--accent), var(--soft); }
   body.micka .band { background: #111; color: #fff; } body.micka .band span { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; } body.micka .band span::after { color: var(--accent); }
   body.micka .vs { border: 0; border-radius: 24px; box-shadow: var(--soft); }
@@ -953,7 +955,7 @@ function pageHomeMs() {
   <section class="msec peach" id="comment">
     ${M.kicker ? `<p class="kick rv">${esc(M.kicker)}</p>` : ''}<h2 class="msh ol rv">${esc(M.timelineTitle)}</h2>
     <div class="tl">${M.timeline.map((t) => `<div class="step rv"><h3 class="ol">${esc(t.title)}</h3><div class="box"><span class="e rays">${t.emoji}</span><span>${esc(t.text)}</span></div></div>`).join('')}
-      <div class="step rv"><a class="join rays" href="#/recompenses">${logo ? `<img src="${logo}" alt="">` : ''}<span class="ol">${esc(M.joinText ?? `${compact((C.reward?.price ?? 0) * 1000 / PUB.pointsPer1000)} vues = 1 mois !`)}</span></a></div></div>
+      <div class="step rv">${M.joinImage ? `<a class="join-img" href="#/recompenses"><img src="/fan/assets/${esc(M.joinImage)}" alt="${esc(M.joinText ?? rewardShort())}"></a>` : `<a class="join rays" href="#/recompenses">${logo ? `<img src="${logo}" alt="">` : ''}<span class="ol">${esc(M.joinText ?? `${compact((C.reward?.price ?? 0) * 1000 / PUB.pointsPer1000)} vues = 1 mois !`)}</span></a>`}</div></div>
   </section>
 
 ${M.reviews ? `  <section class="msec orange">

@@ -145,6 +145,8 @@ export interface CreatorConfig {
     goal?: string;
     /** Texte de la carte au bout de la frise (défaut « 1 M vues = 1 mois ! »). */
     joinText?: string;
+    /** Visuel (fichier ms-*.webp) à la place de la carte au bout de la frise. */
+    joinImage?: string;
     /** Petit sur-titre au-dessus de la frise (ex. « À toi de jouer »). */
     kicker?: string;
     /** Sous-titre du hero (sous heroTitle). */
