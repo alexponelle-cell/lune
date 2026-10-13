@@ -67,8 +67,8 @@ export const PROSPECTS: Record<string, Prospect> = {
       creatorName: 'Mickaël Wu',
       theme: 'sober',
       // DA de son site (« Ton dossier business ») : crème, noir, orange, boutons en dégradé orange → rose
-      colors: { bg: '#F5F2EC', card: '#FFFFFF', border: '#E6E1D8', text: '#111111', muted: '#6E6A64', accent: '#F07A1A', accentInk: '#111111', highlight: '#F07A1A' },
-      font: 'Inter Tight',
+      colors: { bg: '#F7F3ED', card: '#FFFFFF', border: '#E8E2D8', text: '#111111', muted: '#4A4A47', accent: '#F97709', accentInk: '#111111', highlight: '#F97709' },
+      font: 'Bricolage Grotesque',
       logoText: 'micka',
       rewardAccount: EMAIL('Ton accès', 'Ton accès à l’accompagnement est envoyé sur cet e-mail.'),
       // Ses règles : pas d'argent pour les vues, la récompense finale = l'accès GRATUIT à son accompagnement.
