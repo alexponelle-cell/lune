@@ -151,6 +151,27 @@
   .rank .v { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; white-space: nowrap; }
   .rank .v .up { color: var(--green); }
   .rank.me { border-color: var(--accent); }
+  /* Podium du mois */
+  .podium { display: grid; grid-template-columns: repeat(3, minmax(0, 220px)); justify-content: center; align-items: end; gap: 16px; max-width: 860px; margin: 0 auto; }
+  .pod { position: relative; display: grid; justify-items: center; gap: 4px; padding: 20px 12px 0; text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; overflow: hidden; }
+  .pod .medal { font-size: 34px; line-height: 1; }
+  .pod .pp { width: 64px; height: 64px; font-size: 24px; margin: 6px 0 4px; }
+  .pod.p1 .pp { width: 84px; height: 84px; font-size: 30px; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .pod b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+  .pod small { color: var(--muted); font-weight: 600; }
+  .pod .gift { margin-top: 6px; padding: 5px 10px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 16%, transparent); font-size: 12.5px; font-weight: 800; }
+  .pod .step { display: grid; place-items: center; width: calc(100% + 24px); margin-top: 14px; font-style: normal; font-weight: 800; font-size: 34px; color: var(--accent-ink); background: var(--accent); }
+  .pod.p1 .step { height: 110px; } .pod.p2 .step { height: 74px; } .pod.p3 .step { height: 52px; }
+  .rank .v.gap { display: grid; justify-items: end; gap: 0; line-height: 1.2; } .rank .v.gap small { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .pod.free { opacity: .6; } .pod.free .pp { border-style: dashed; }
+  .pod.me { border-color: var(--accent); }
+  .pod-sub { text-align: center; color: var(--muted); margin: -16px 0 30px; font-weight: 600; }
+  @media (max-width: 600px) { .ranks .rank { grid-template-columns: 26px 36px minmax(0, 1fr) auto; gap: 10px; padding: 12px; } .podium { gap: 8px; } .pod { padding: 14px 6px 0; } .pod .pp { width: 48px; height: 48px; } .pod.p1 .pp { width: 60px; height: 60px; } .pod b { font-size: 14px; } .pod .gift { font-size: 10.5px; padding: 4px 7px; } .pod .step { width: calc(100% + 12px); } }
+  /* style « ms » (Loann) : contours noirs et ombres dures */
+  body.ms .pod { border: 2.5px solid var(--ink); border-bottom: 0; box-shadow: 0 5px 0 var(--ink); background: #fff; }
+  body.ms .pod .step { background: var(--yel, var(--accent)); color: var(--ink); border-top: 2.5px solid var(--ink); }
+  body.ms .pod.p2 .step { background: #E9E4DA; } body.ms .pod.p3 .step { background: #F2C29B; }
+  body.ms .pod .gift { background: var(--yel, var(--accent)); border: 2px solid var(--ink); }
   .rank .pp { width: 44px; height: 44px; font-size: 17px; }
 
   /* ---------- Clipper ---------- */
@@ -977,8 +998,8 @@ ${show ? `  <section class="cases">${M.showcaseTitle ? `<h2 class="msh2 rv">${es
 
   <section class="msec orange">
     <div class="mscta rv">${joinBtn()}</div>
-    <h2 class="msh ol rv">Top clippeurs de la semaine</h2>
-    ${lb.length ? rankList(lb) : '<div class="card empty rv" style="max-width:860px;margin:0 auto">Pas encore de vues cette semaine. Le classement se remplit dès les premiers clips.</div>'}
+    ${PUB.monthPrize ? `<h2 class="msh ol rv">Le podium du mois</h2><p class="pod-sub rv">Le 1er du mois, le top ${PUB.monthPrize} gagne <b>1 mois de ${esc(rewardShort())} offert</b> · fin dans <b>${monthDaysLeft()} j</b></p>${monthBoard(false)}<p class="rv" style="text-align:center;margin-top:22px"><a class="btn big" href="#/classement">Voir tout le classement ${ARROW}</a></p>` : `<h2 class="msh ol rv">Top clippeurs de la semaine</h2>
+    ${lb.length ? rankList(lb) : '<div class="card empty rv" style="max-width:860px;margin:0 auto">Pas encore de vues cette semaine. Le classement se remplit dès les premiers clips.</div>'}`}
   </section>
   <div class="band" aria-hidden="true"><div>${bandItem.repeat(6)}${bandItem.repeat(6)}</div></div>
 
@@ -1068,9 +1089,30 @@ function rankList(rows) {
   return `<div class="ranks">${rows.map((r) => `<div class="card rank rv ${r.rank <= 3 ? 'top' : ''} ${ME && r.name === ME.username ? 'me' : ''}"><span class="n">${r.rank}</span>${avatar(r.name, r.avatar)}
     <span class="who"><b>${esc(r.name)}</b><small>${compact(r.views)} vues</small></span><span class="v"><span class="up">▲</span>+${fmt(r.coins)} coins</span></div>`).join('')}</div>`;
 }
+/** Classement du mois (créateurs avec monthlyPrize, ex. Loann) : podium des N premiers qui gagnent la récompense, puis la suite. */
+function monthDaysLeft() {
+  const now = new Date(), end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return Math.max(1, Math.ceil((end - now) / 86_400_000));
+}
+function monthBoard(withHead = true, withRest = withHead) {
+  if (!PUB.monthPrize) return '';
+  const n = PUB.monthPrize, rows = PUB.monthLeaderboard ?? [];
+  const month = new Date().toLocaleDateString('fr-FR', { month: 'long' });
+  const prize = `1 mois de ${esc(rewardShort())}`;
+  const slot = (r, place) => r
+    ? `<div class="pod p${place} rv${ME && r.name === ME.username ? ' me' : ''}"><span class="medal">${['🥇', '🥈', '🥉'][place - 1] ?? place}</span>${avatar(r.name, r.avatar)}<b>${esc(r.name)}</b><small>${compact(r.views)} vues</small><span class="gift">🎁 ${prize}</span><i class="step">${place}</i></div>`
+    : `<div class="pod p${place} free rv"><span class="medal">${['🥇', '🥈', '🥉'][place - 1] ?? place}</span><span class="pp">?</span><b>Place libre</b><small>À prendre</small><span class="gift">🎁 ${prize}</span><i class="step">${place}</i></div>`;
+  const order = n >= 3 ? [2, 1, 3] : n === 2 ? [2, 1] : [1];
+  const rest = withRest ? rows.slice(n) : [];
+  const mine = ME ? rows.find((r) => r.name === ME.username) : null;
+  return `${withHead ? `<div class="head center rv"><h2>Le podium de <span class="y">${esc(month)}</span></h2>
+      <p>Le 1er du mois, le top ${n} gagne <b>${prize} offert</b>. Fin du mois dans <b>${monthDaysLeft()} jour${monthDaysLeft() > 1 ? 's' : ''}</b>.${mine ? ` Tu es ${mine.rank}e.` : ''}</p></div>` : ''}
+    <div class="podium">${order.map((p) => slot(rows[p - 1], p)).join('')}</div>
+    ${rest.length ? `<div class="ranks" style="margin-top:18px">${rest.map((r) => `<div class="card rank rv ${ME && r.name === ME.username ? 'me' : ''}"><span class="n">${r.rank}</span>${avatar(r.name, r.avatar)}<span class="who"><b>${esc(r.name)}</b><small>${compact(r.views)} vues ce mois-ci</small></span><span class="v gap">${rows[n - 1] ? `<b>−${compact(Math.max(0, rows[n - 1].views - r.views + 1))}</b><small>vues du podium</small>` : ''}</span></div>`).join('')}</div>` : ''}`;
+}
 function pageRanking() {
   const lb = PUB.leaderboard;
-  return `<section style="margin-top:56px"><div class="head center rv"><h2>Le <span class="y">classement</span></h2><p>${esc(C.texts.rankingText)}${ME?.weekRank ? ` Tu es ${ME.weekRank}e.` : ''}</p></div>
+  return `${PUB.monthPrize ? `<section style="margin-top:56px">${monthBoard()}</section>` : ''}<section style="margin-top:56px"><div class="head center rv"><h2>${PUB.monthPrize ? 'Cette <span class="y">semaine</span>' : 'Le <span class="y">classement</span>'}</h2><p>${esc(C.texts.rankingText)}${ME?.weekRank ? ` Tu es ${ME.weekRank}e.` : ''}</p></div>
     ${lb.length ? rankList(lb) : '<div class="card empty rv" style="max-width:860px;margin:0 auto">Pas encore de vues cette semaine. Poste ton premier clip pour apparaître ici.</div>'}</section>`;
 }
 

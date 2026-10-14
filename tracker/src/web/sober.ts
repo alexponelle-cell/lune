@@ -44,6 +44,8 @@ export function demoPublic(cr: CreatorConfig, rewardImage: string, extra: DemoIt
       ...extra.map((it, i) => ({ id: i + 2, ...it, stock: null, imageUrl: null })),
     ],
     leaderboard: rows.map((r, i) => ({ rank: i + 1, name: r.name, avatar: null, views: r.views, coins: Math.floor((r.views / 1000) * cr.pointsPer1000) })),
+    // Classement du mois (créateurs avec monthlyPrize) : mêmes pseudos, vues du mois
+    ...(cr.monthlyPrize ? { monthPrize: cr.monthlyPrize, monthLeaderboard: rows.map((r, i) => ({ rank: i + 1, name: r.name, avatar: null, views: r.views * 3 })) } : {}),
   };
 }
 
