@@ -17,6 +17,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
   type TextChannel,
+  type VoiceChannel,
 } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
@@ -109,6 +110,10 @@ interface ChannelPlan {
   name: string;
   access: Access;
   topic?: string;
+  /** Salon vocal (ex. conférences en direct) : en lecture seule, les membres écoutent sans parler. */
+  voice?: true;
+  /** Retrouve aussi un salon existant dont le nom commence pareil (ex. « conférence-rediffusions » déjà créé à la main). */
+  prefix?: true;
 }
 export const ROLE_READER = '📖 Lecteur';
 export const ROLE_RULES = '✅ Règles acceptées';
@@ -163,6 +168,9 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
       { name: '💬│général', access: writable(ROLE_CLIPPER) },
       { name: '🎥│mes-clips', access: writable(ROLE_CLIPPER), topic: 'Partage tes meilleurs clips' },
       { name: HELP_CHANNEL, access: writable(ROLE_CLIPPER), topic: 'Une question ? Le bot répond tout de suite (/aide), sinon le staff' },
+      { name: '📝│conférence-rediff', access: readonly(ROLE_CLIPPER), topic: 'Les rediffusions et les supports des conférences', prefix: true },
+      { name: '💪│entraide', access: writable(ROLE_CLIPPER), topic: 'Aidez-vous entre clippeurs : montage, idées, retours' },
+      { name: '🧠│conférence', access: readonly(ROLE_CLIPPER), voice: true },
     ],
   },
   {
@@ -252,14 +260,30 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
       created.push(`catégorie ${group.category}`);
     } else await cat.permissionOverwrites.set(overwrites(guild, group.access, staff.id)).catch(() => {});
     for (const plan of group.channels) {
+      if (plan.voice) {
+        // Vocal : les membres écoutent, seul le staff parle
+        const perms = overwrites(guild, plan.access, staff.id).map((o) =>
+          'deny' in o && o.id !== guild.roles.everyone.id && o.id !== staff.id && o.id !== guild.members.me!.id ? { ...o, allow: [V.ViewChannel, V.Connect], deny: [V.Speak, V.Stream] } : o,
+        );
+        let vc = guild.channels.cache.find((x) => x.type === ChannelType.GuildVoice && (x.name === plan.name || bare(x.name) === bare(plan.name))) as VoiceChannel | undefined;
+        if (!vc) {
+          vc = await guild.channels.create({ name: plan.name, type: ChannelType.GuildVoice, parent: cat.id, permissionOverwrites: perms });
+          created.push(`🔊${plan.name}`);
+        } else {
+          if (vc.parentId !== cat.id) await vc.setParent(cat.id, { lockPermissions: false }).catch(() => {});
+          await vc.permissionOverwrites.set(perms).catch(() => {});
+        }
+        await vc.setPosition(group.channels.indexOf(plan)).catch(() => {});
+        continue;
+      }
       // Retrouvé même si l'emoji du nom a changé (ex. « bienvenue »)
-      let ch = guild.channels.cache.find((x) => x.type === ChannelType.GuildText && (x.name === plan.name || bare(x.name) === bare(plan.name))) as TextChannel | undefined;
+      let ch = guild.channels.cache.find((x) => x.type === ChannelType.GuildText && (x.name === plan.name || bare(x.name) === bare(plan.name) || (!!plan.prefix && bare(x.name).startsWith(bare(plan.name))))) as TextChannel | undefined;
       if (!ch) {
         ch = await guild.channels.create({ name: plan.name, type: ChannelType.GuildText, parent: cat.id, topic: plan.topic, permissionOverwrites: overwrites(guild, plan.access, staff.id) });
         created.push(`#${plan.name}`);
       }
       // Salon retrouvé sous un autre nom (ex. #général créé par Discord) : renommé comme le plan
-      if (ch.name !== plan.name) await ch.setName(plan.name).catch(() => {});
+      if (ch.name !== plan.name && !plan.prefix) await ch.setName(plan.name).catch(() => {});
       // Salon existant ailleurs (ex. #général par défaut) : rangé dans sa catégorie, accès mis à jour
       if (ch.parentId !== cat.id) await ch.setParent(cat.id, { lockPermissions: false }).catch(() => {});
       await ch.permissionOverwrites.set(overwrites(guild, plan.access, staff.id)).catch(() => {});
