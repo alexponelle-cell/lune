@@ -681,7 +681,7 @@
   body.micka .reel { position: relative; margin: 6px calc(50% - 50vw) 0; overflow: hidden; --cap: clamp(46px, 6vw, 64px); }
   body.micka .reel::before, body.micka .reel::after { content: ''; position: absolute; inset-inline: -20%; z-index: 3; height: var(--cap); background: var(--bg); pointer-events: none; }
   body.micka .reel::before { top: 0; border-radius: 0 0 50% 50% / 0 0 100% 100%; } body.micka .reel::after { bottom: 0; border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
-  body.micka .reel > div { display: flex; align-items: center; gap: 20px; width: max-content; padding: calc(.72 * var(--cap)) 28px; animation: mreel 46s linear infinite; will-change: transform; }
+  body.micka .reel > div { display: flex; align-items: center; gap: 20px; width: max-content; padding: calc(.72 * var(--cap)) 28px; animation: mreel 92s linear infinite; will-change: transform; }
   body.micka .reel img, body.micka .reel video { flex: none; width: clamp(158px, 19vw, 208px); aspect-ratio: 3 / 4; height: auto; object-fit: cover; border-radius: 12px; background: #111; }
   @keyframes mreel { to { transform: translateX(-50%); } }
   body.micka .caps { margin: 26px auto 0; max-width: 600px; font-size: 14px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); line-height: 1.6; }
@@ -941,7 +941,7 @@ function pageHomeMs() {
   const reel = (M.reel ?? []).map((f, i) => M.reelVideos?.[i] ? `<video src="${esc(M.reelVideos[i])}" poster="${window.__MSI[f]}" autoplay muted loop playsinline preload="metadata"></video>` : `<img src="${window.__MSI[f]}" alt="" loading="lazy">`).join('');
   const show = (M.showcase ?? []).map((t, i) => `<div class="case rv${i % 2 ? ' rev' : ''}"><a class="vid" ${t.url ? `href="${esc(t.url)}" target="_blank" rel="noopener"` : ''} aria-label="Voir la vidéo de ${esc(t.name)}"><video src="${esc(t.video)}" ${t.poster ? `poster="${esc(t.poster)}"` : ''} autoplay muted loop playsinline preload="metadata"></video></a><div class="who"><b class="ol">${esc(t.name)}</b><span>${esc(t.niche)}</span><small>${t.stats.map(esc).join('<i>·</i>')}</small></div></div>`).join('');
   const heroTop = reel ? `<h1 class="load">${hl(C.texts.heroTitle)}</h1>
-    <div class="reel load" aria-hidden="true"><div>${reel}${reel}</div></div>
+    <div class="reel load" aria-hidden="true"><div>${reel.repeat(4)}</div></div>
     <p class="caps load">${esc(M.heroLine)}</p>${M.punch ? `<p class="punch load">${esc(M.punch)}</p>` : ''}
     <a class="chev" href="#comment" aria-label="Descendre"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 9l7 7 7-7"/></svg></a>` : '';
   return `<section class="mshero">
