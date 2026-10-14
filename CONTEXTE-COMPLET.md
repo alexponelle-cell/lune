@@ -343,13 +343,13 @@ Commun aux deux :
 
 - Un **service par créateur**, tous depuis ce repo et cette branche :
   - `lune` : BeOne, l'agence et Mars, https://lune-production-dbd1.up.railway.app ;
-  - `squiduu` (https://squiduu-production.up.railway.app), `loann` (https://loann-production.up.railway.app), `Cubi` (https://cubi-production.up.railway.app, ancien service Debo), plus `lune-dev` (pas touché).
+  - `squiduu` (https://squiduu-production.up.railway.app), `loann` (https://loann-production.up.railway.app), `Cubi` (https://cubi-production.up.railway.app, ancien service Debo), plus `micka` (https://micka-production.up.railway.app, créé le 14 oct) et `lune-dev` (**ne pas toucher** : autre repo `alexponelle-cell/lune-dev`, sûrement le bot Neptune relié à lune).
 - `MARS_SITES` (sur chaque service) = `BeOne=…lune…,SQUIDUU=…,Loann=…,Cubi=…` : le menu Programme de Mars. Le sélecteur « Client affiché » liste aussi les **agences locales** de la base (une vieille agence « Loann » vide sur lune a été supprimée le 10 oct).
 - L'accueil de lune (`/`) affiche la **vitrine publique « Neptune Clipping »** (`src/web/neptune.ts`) aux visiteurs non connectés ; le staff connecté voit Mars, lien « Staff login ».
 - Chaque service a sa variable `CREATOR` et ses propres secrets.
 - Un push sur la branche déclenche le redéploiement. Sinon, bouton **Deploy** sur Railway.
 - Pour lire les logs : Railway, service, Deployments, View logs. Demander une capture à Alex, puisque l'agent n'a pas accès à Railway.
-- Plan Railway : **Trial** (crédit unique de 5 $, ~1 $ consommé du 25/09 au 08/10). À passer en Hobby (5 $/mois, consommation incluse) avant épuisement.
+- Plan Railway : **Hobby** depuis le 14 oct (5 $/mois consommation incluse, carte de la mère ; plafond compute 10 $, alerte 7 $). Le Trial bloquait la création de services.
 - Le guide complet de la première mise en ligne est dans `tracker/DEPLOY.md`.
 
 ## 9. Outils de l'agent (environnement cloud)
@@ -419,7 +419,7 @@ Commun aux deux :
 - Lucas a une micro-entreprise, mais elle est peut-être inutilisable (« s'est fait bz »). Alex préfère créer la sienne.
 - **Coûts actuels** :
   - Apify Starter : 19 $/mois, plafonné à 19 $ (+ nouveau compte plafonné à 15 $, voir section 10) ;
-  - Railway : **Trial** (crédit 5 $, ~1 $ / 2 semaines), passer en Hobby (5 $/mois) vers mi-novembre avec les parents ;
+  - Railway : **Hobby** 5 $/mois (depuis le 14 oct) ;
   - YouTube API : gratuit.
 - **Objectif** : 0 € de relevés grâce aux connexions officielles, puis couper Apify.
 
@@ -442,7 +442,7 @@ Commun aux deux :
 2. **Validation TikTok** (renvoyée le 10 oct) : si validée → clés Production sur les 4 services, Redirect URIs des 3 autres sites, `TIKTOK_APIFY_FALLBACK=0`. Si refus domaine → acheter un domaine.
 3. **Apify** : vérifier que le nouveau `APIFY_TOKEN` est sur squiduu, loann et Cubi ; surveiller la jauge dans Mars.
 4. **Loann** : API MS pour livrer les mois automatiquement (attendre le dev de Loann) ; afficher le classement du mois sur le site (`monthLeaderboard`, côté Claude Design).
-5. **Railway Trial → Hobby** vers mi-novembre.
+5. **Micka** : finir le lancement (/setup, test, Apify de Micka, MARS_SITES, annonce).
 6. **Rework de Mars** page par page (Rémunération, Inspiration, Suivi déjà retirés) : attendre ce qu'Alex veut retirer / fusionner.
 7. **IA « clipper »** : ajouter les tutos / conférences / ateliers de Lucas aux réponses du bot (`domain/faq.ts`).
 8. **Josplay** : définir la récompense. **Nighting** en pause.
