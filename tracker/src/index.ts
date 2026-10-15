@@ -107,8 +107,8 @@ const stopWeb = startWeb(
   createApp({ repo, agency, recruitment, fans, password: config.DASHBOARD_PASSWORD, robloxApiKey: config.ROBLOX_API_KEY, neptuneApiKey: config.NEPTUNE_API_KEY,
     fansBotSends: !!config.FANS_BOT_TOKEN,
     siteVerification: tiktokSiteVerification(config.TIKTOK_VERIFY_CONTENT, config.TIKTOK_VERIFY_FILE),
-    tiktokOAuth: tiktokCreds ? { creds: tiktokCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/tiktok/callback`, store: tiktokStore } : undefined,
-    instagramOAuth: instagramCreds ? { creds: instagramCreds, redirectUri: `${dashboardUrl.replace(/\/+$/, '')}/fan/instagram/callback`, store: instagramStore } : undefined,
+    tiktokOAuth: tiktokCreds ? { creds: tiktokCreds, redirectUri: config.TIKTOK_REDIRECT_URI ?? `${dashboardUrl.replace(/\/+$/, '')}/fan/tiktok/callback`, store: tiktokStore } : undefined,
+    instagramOAuth: instagramCreds ? { creds: instagramCreds, redirectUri: config.INSTAGRAM_REDIRECT_URI ?? `${dashboardUrl.replace(/\/+$/, '')}/fan/instagram/callback`, store: instagramStore } : undefined,
     refreshFans,
     marsSites: (config.MARS_SITES ?? '')
       .split(',')

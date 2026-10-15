@@ -66,6 +66,12 @@ const schema = z.object({
    */
   TIKTOK_CLIENT_KEY: optionalString,
   TIKTOK_CLIENT_SECRET: optionalString,
+  /**
+   * Adresse de retour TikTok / Instagram enregistrée chez eux, si ce n'est pas ce service (ex. celle de lune) :
+   * ce service-là renvoie le clippeur ici avec son code (relais), sans redemander de validation à TikTok / Meta.
+   */
+  TIKTOK_REDIRECT_URI: optionalString,
+  INSTAGRAM_REDIRECT_URI: optionalString,
   /** Comptes TikTok pas encore connectés : relus via Apify (payant) tant que c'est « 1 », ignorés sinon. */
   TIKTOK_APIFY_FALLBACK: z.enum(['0', '1']).default('1'),
   /**

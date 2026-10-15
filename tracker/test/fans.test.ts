@@ -905,6 +905,19 @@ describe('TikTok connecté (API officielle gratuite)', () => {
     }) as typeof fetch;
   }
 
+  it('relais : lune renvoie la connexion TikTok vers le site qui l’a lancée (seulement nos sites)', async () => {
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://lune.test/');
+    const app = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, password: 'secret', bot: {},
+      selfUrl: 'https://lune.test', marsSites: [{ name: 'BeOne', url: 'https://lune.test' }, { name: 'Micka', url: 'https://micka.test' }] });
+    const b64 = (u: string) => Buffer.from(u).toString('base64url');
+    const relay = await app.request(`/fan/tiktok/callback?code=abc&state=xyz.${b64('https://micka.test')}`);
+    expect(relay.headers.get('location')).toBe(`https://micka.test/fan/tiktok/callback?code=abc&state=xyz.${b64('https://micka.test')}`);
+    // Site inconnu : pas de relais (pas de redirection ouverte)
+    expect((await app.request(`/fan/tiktok/callback?code=abc&state=xyz.${b64('https://pirate.test')}`)).headers.get('location')).not.toContain('pirate');
+  });
+
   it('connexion sur le site → compte relié et vérifié, vues lues sans Apify, jeton renouvelé', async () => {
     const { TikTokOfficialFetcher, TikTokTokenStore } = await import('../src/platforms/tiktokOfficial.js');
     const repo = new Repo(openDatabase(':memory:'));

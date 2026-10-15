@@ -275,17 +275,29 @@ export function createApp(deps: WebDeps): Hono {
       },
     },
   };
+  /** Site d'origine d'une connexion TikTok / Instagram (dans le state), s'il fait partie de nos sites et que ce n'est pas celui-ci. */
+  const relayOrigin = (state: string | undefined) => {
+    const raw = state?.split('.')[1];
+    if (!raw) return undefined;
+    const target = Buffer.from(raw, 'base64url').toString().replace(/\/+$/, '');
+    if (!target || target === deps.selfUrl) return undefined;
+    return (deps.marsSites ?? []).some((s) => s.url.replace(/\/+$/, '') === target) ? target : undefined;
+  };
   for (const platform of ['tiktok', 'instagram'] as const) {
     const name = platform === 'tiktok' ? 'TikTok' : 'Instagram';
     app.get(`/fan/${platform}/connect`, (c) => {
       const o = officialLogins[platform];
       if (!o) return fanError(c, `Connexion ${name} pas encore disponible.`);
       if (!fanOf(c)) return fanError(c, `Connecte-toi d’abord (bouton du site ou /site sur Discord), puis reclique sur « Connecter mon ${name} ».`);
-      const state = randomBytes(16).toString('base64url');
+      // L'adresse de ce site voyage dans le state : si TikTok / Meta renvoie sur un autre de nos sites (relais), il sait où nous renvoyer
+      const state = `${randomBytes(16).toString('base64url')}.${Buffer.from(deps.selfUrl ?? '').toString('base64url')}`;
       setCookie(c, `${platform}_state`, state, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/fan', maxAge: 600 });
       return c.redirect(o.authorize(state));
     });
     app.get(`/fan/${platform}/callback`, async (c) => {
+      // Relais : la connexion a été lancée depuis un autre de nos sites (seule cette adresse est enregistrée chez TikTok / Meta)
+      const origin = relayOrigin(c.req.query('state'));
+      if (origin) return c.redirect(`${origin}/fan/${platform}/callback?${new URL(c.req.url).searchParams.toString()}`);
       const o = officialLogins[platform];
       const state = getCookie(c, `${platform}_state`);
       deleteCookie(c, `${platform}_state`, { path: '/fan' });
