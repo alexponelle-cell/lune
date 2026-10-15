@@ -216,6 +216,12 @@
   .row input { flex: 1; min-width: 0; }
   input[type=email], input[type=text] { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 13px 15px; outline: none; font-size: 15px; font-weight: 500; transition: border-color .2s; }
   input:focus { border-color: var(--accent); }
+  .signup { display: grid; gap: 12px; margin-top: 14px; }
+  .signup .sg { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: center; }
+  .signup .sg b { font-size: 15px; }
+  .signup .sg .ok { font-weight: 600; }
+  .signup .sg .btn { justify-self: start; }
+  @media (max-width: 600px) { .signup .sg { grid-template-columns: 1fr; gap: 6px; } }
   .list-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
   .list-row:first-of-type { border-top: 0; }
   .st { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 4px 11px; white-space: nowrap; font-weight: 700; }
@@ -1069,14 +1075,51 @@ function pageShop() {
   </section>`;
 }
 
+/** Inscription sur le site : TikTok (connexion officielle si dispo, sinon @), YouTube et Instagram (@ ou lien), compte de livraison. */
+function signupCard() {
+  const official = ME.officialLogin ?? [];
+  const missing = ['tiktok', 'youtube', 'instagram'].filter((p) => !ME.accounts.some((a) => a.platform === p));
+  const row = (p, ph) => {
+    const a = ME.accounts.find((x) => x.platform === p);
+    if (official.includes(p)) {
+      const c = ME.accounts.find((x) => x.platform === p && x.connected);
+      return `<div class="sg"><b>${PLATFORM[p]}</b>${c ? `<span class="ok">✅ Connecté (@${esc(c.handle)})</span>` : `<a class="btn primary" href="/fan/${p}/connect">Connecter mon ${PLATFORM[p]} ${ARROW}</a>`}</div>`;
+    }
+    return `<label class="sg"><b>${PLATFORM[p]}</b><input type="text" name="${p}" placeholder="${ph}" value="${a ? '@' + esc(a.handle) : ''}"></label>`;
+  };
+  const ra = C.rewardAccount;
+  return `<div class="card panel rv" style="margin-bottom:14px"><h3>${missing.length ? 'Inscris-toi' : 'Tes comptes'}</h3>
+    <p>${missing.length ? `Relie tes 3 comptes (TikTok, YouTube et Instagram). Il en manque : <b>${missing.map((p) => PLATFORM[p]).join(', ')}</b>.` : 'Inscription complète ✅ Tu peux modifier tes comptes ici.'}${official.length ? ' La connexion officielle prouve que le compte est à toi : on ne publie jamais rien.' : ''}</p>
+    <form class="signup" id="signup">
+      ${row('tiktok', '@toncompte ou lien du profil')}
+      ${row('youtube', '@tachaine ou lien de la chaîne')}
+      ${row('instagram', '@toncompte ou lien du profil')}
+      <label class="sg"><b>${esc(ra.title)}</b><input type="${ra.kind === 'email' ? 'email' : 'text'}" name="reward" placeholder="${esc(ra.placeholder)}" value="${esc(ME.rewardAccount?.value ?? '')}"></label>
+      <div><button class="btn primary">${missing.length ? 'Valider mon inscription' : 'Enregistrer'}</button></div>
+    </form>${ME.accounts.length && !missing.length ? tiktokBlock() : ''}</div>`;
+}
+async function submitSignup(form) {
+  const f = new FormData(form), body = {};
+  for (const k of ['tiktok', 'youtube', 'instagram', 'reward']) if (f.get(k)) body[k] = String(f.get(k));
+  const r = await api('/api/fan/register', { method: 'POST', body });
+  const warn = [
+    ...r.conflicts.map((a) => `@${a.handle} est déjà relié à quelqu'un d'autre : préviens le staff`),
+    ...r.invalid.map((p) => `${PLATFORM[p]} : mets ton @ ou le lien du profil`),
+    ...(r.rewardError ? [r.rewardError] : []),
+  ];
+  if (warn.length) toast(warn.join(' · '), 'err');
+  else if (r.missing.length) toast(`Enregistré. Il manque encore : ${r.missing.map((p) => PLATFORM[p]).join(', ')}`);
+  else toast(r.registered ? 'Inscription validée ✅ Ton salon privé t’attend sur Discord' : 'Comptes enregistrés ✅', 'ok');
+  await refresh();
+}
 function pageClip() {
   const head = `<div class="head rv"><h2>${esc(C.texts.clipTitle)} <span class="y">${esc(C.creatorName)}</span></h2><p>${esc(C.texts.clipText)}</p></div>`;
   const how = `<div class="card panel rv" style="margin-bottom:14px"><h3>Relier tes comptes</h3>
-    <p>Sur le Discord, ouvre un ticket et fais <code>/inscription</code>. Renseigne tes comptes TikTok, YouTube et Instagram, et ton ${esc(C.rewardAccount.label.charAt(0).toLowerCase() + C.rewardAccount.label.slice(1))}. Seules les vues faites après l'inscription comptent.</p>
+    <p>Connecte-toi avec Discord ci-dessous, puis relie tes comptes TikTok, YouTube et Instagram ici même. Seules les vues faites après l'inscription comptent.</p>
     ${PUB.discordInviteUrl ? `<a class="btn primary" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Ouvrir le Discord ${ARROW}</a>` : ''}</div>`;
   if (!ME) return `<section style="margin-top:56px">${head}${how}${loginCard('Suis tes **clips**', 'Connecte-toi avec Discord pour voir tes clips, tes vues et tes coins.')}</section>`;
   return `<section style="margin-top:56px">${head}
-    ${ME.accounts.length ? `<div class="card panel rv" style="margin-bottom:14px"><h3>Comptes suivis</h3><p>Tes vues sont mises à jour toutes les 1 à 2 nuits.</p><div class="tags">${ME.accounts.map((a) => `<span class="tag">${PLATFORM[a.platform]} · @${esc(a.handle)}</span>`).join('')}</div>${tiktokBlock()}</div>` : how}
+    ${signupCard()}
     <div class="head rv" style="margin-top:48px"><h2>Mes <span class="y">clips</span></h2><p>${fmt(ME.clipCount)} clip(s) détecté(s).</p></div>
     <div class="clips">${ME.clips.map((c) => `<a class="card clip rv" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
       <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : ''}<span class="pf">${PLATFORM[c.platform]}</span>${c.coins ? `<span class="gain">+${fmt(c.coins)} coins</span>` : ''}</div>
@@ -1204,13 +1247,15 @@ async function refresh() { await loadMe(); route(); }
 function route() {
   const r = location.hash.replace(/^#\/?/, '').split('/')[0];
   if (r === 'comment') return; // ancre de l'accueil
-  const known = routes().some(([k]) => k === r) || r === 'progression' ? r : '';
+  const known = r === 'inscription' ? 'clipper' : routes().some(([k]) => k === r) || r === 'progression' ? r : '';
   renderChrome(known);
   const app = $('#app');
   app.innerHTML = `<div class="page">${(known && C.vault && known === C.vault.route ? pageVault : { '': pageHome, recompenses: pageShop, clipper: pageClip, classement: pageRanking, profil: pageProfile, progression: pageProgress }[known])()}</div>`;
   observe(app);
   tickers(app);
   bindBuy(app);
+  const sg = $('#signup');
+  if (sg) sg.onsubmit = async (e) => { e.preventDefault(); const b = e.target.querySelector('button'); b.disabled = true; try { await submitSignup(e.target); } catch (err) { toast(err.message, 'err'); b.disabled = false; } };
   const af = $('#account');
   if (af) af.onsubmit = async (e) => { e.preventDefault(); try { await saveAccount(new FormData(e.target).get('v')); await refresh(); } catch (err) { toast(err.message, 'err'); } };
   $('#notify')?.addEventListener('change', async (e) => {

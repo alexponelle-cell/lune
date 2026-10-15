@@ -232,6 +232,10 @@ export class FanService {
 
   /** Lien perso (connexion 10 min) qui ouvre directement la formation. */
   /** Lien perso (10 min) qui connecte le fan puis l'envoie sur ses boutons « Connecter mon TikTok / Instagram ». */
+  /** Lien perso (connecté d'office) vers l'inscription sur le site. */
+  signupUrl(clipperId: number, now = Date.now()): string {
+    return `${this.loginUrl(clipperId, now)}&next=inscription`;
+  }
   connectUrl(clipperId: number, now = Date.now()): string {
     return `${this.loginUrl(clipperId, now)}&next=connect`;
   }
@@ -746,6 +750,46 @@ export class FanService {
 
   /** Connexions officielles gratuites (TikTok, Instagram), branchées au démarrage si les apps sont configurées. */
   officialLogin?: { platforms: Platform[]; connected(): Set<number> };
+
+  /** Inscription terminée depuis le site (3 réseaux reliés) : le bot donne les rôles Discord et ouvre le salon privé. */
+  onRegistered?: (discordId: string, accounts: string[]) => Promise<void> | void;
+
+  /** Réseaux encore manquants pour l'inscription (TikTok, YouTube et Instagram sont obligatoires). */
+  missingPlatforms(clipperId: number): Platform[] {
+    const active = this.repo.listAccountsForClipper(clipperId).filter((a) => a.active);
+    return (['tiktok', 'youtube', 'instagram'] as const).filter((p) => !active.some((a) => a.platform === p));
+  }
+
+  /** Les 3 réseaux viennent d'être complétés (ils manquaient avant) : prévient le bot. */
+  async finishRegistration(clipper: Clipper, missingBefore: Platform[]): Promise<boolean> {
+    if (!missingBefore.length || this.missingPlatforms(clipper.id).length || clipper.discordId.startsWith('manual:')) return false;
+    const names = { tiktok: 'TikTok', youtube: 'YouTube', instagram: 'Instagram' } as const;
+    const accounts = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.active).map((a) => `${names[a.platform as Platform]} @${a.handle}`);
+    await Promise.resolve(this.onRegistered?.(clipper.discordId, accounts)).catch(() => {});
+    return true;
+  }
+
+  /**
+   * Inscription depuis le site : comptes tapés (@ ou lien) + compte de livraison. Un champ vide ne retire rien
+   * (un compte connecté officiellement n'a pas de champ). Renvoie ce qui a été relié et ce qu'il manque encore.
+   */
+  async siteRegister(clipper: Clipper, input: Partial<Record<Platform, string>> & { reward?: string }) {
+    const before = this.missingPlatforms(clipper.id);
+    const typed = Object.fromEntries((['tiktok', 'youtube', 'instagram'] as const).filter((p) => input[p]?.trim()).map((p) => [p, input[p]!]));
+    const res = this.setAccounts(clipper, typed);
+    let rewardError: string | undefined;
+    const reward = input.reward?.trim();
+    if (reward && reward.toLowerCase() !== (this.rewardAccount(clipper.id).value ?? '').toLowerCase()) {
+      try {
+        if (this.creator.rewardAccount.kind === 'email') this.linkEmail(clipper, reward);
+        else await this.linkRoblox(clipper, reward);
+      } catch (err) {
+        rewardError = err instanceof Error ? err.message : String(err);
+      }
+    }
+    const registered = await this.finishRegistration(clipper, before);
+    return { ...res, rewardError, missing: this.missingPlatforms(clipper.id), registered };
+  }
 
   /**
    * Le clippeur vient de connecter son compte (OAuth TikTok / Instagram) : ce compte devient celui suivi pour

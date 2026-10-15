@@ -436,7 +436,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
             .setColor(color(fans))
             .setTitle('Inscris-toi')
             .setDescription(
-              `Clique sur **S’inscrire** et renseigne **tes 3 comptes** TikTok, YouTube et Instagram, plus ton ${c.rewardAccount.label.replace(/^(ton|ta|tes)\s+/i, '').replace(/^./, (x) => x.toLowerCase())}.\n\nEnsuite, **poste ton 1er clip** de ${c.creatorName} : dès qu’il est détecté, toute la communauté se débloque.\n\nTu peux recliquer à tout moment pour modifier tes comptes. ${fans.countFromLabel() ? `Tous tes clips postés depuis le ${fans.countFromLabel()} comptent.` : 'Seules les vues faites après ton inscription comptent.'}\n➕ Tu as **un 2e compte** TikTok, YouTube ou Instagram ? Clique sur **2e compte** (ou fais \`/inscription2\`) : ses vues s’ajoutent à ton profil.`,
+              `Clique sur **S’inscrire** : le bot t’envoie ton lien perso vers le site. Là, tu relies **tes 3 comptes** (TikTok en 1 clic, YouTube et Instagram) et ton ${c.rewardAccount.label.replace(/^(ton|ta|tes)\s+/i, '').replace(/^./, (x) => x.toLowerCase())}.\n\nEnsuite, **poste ton 1er clip** de ${c.creatorName} : dès qu’il est détecté, toute la communauté se débloque.\n\nTu peux recliquer à tout moment pour modifier tes comptes. ${fans.countFromLabel() ? `Tous tes clips postés depuis le ${fans.countFromLabel()} comptent.` : 'Seules les vues faites après ton inscription comptent.'}\n➕ Tu as **un 2e compte** TikTok, YouTube ou Instagram ? Clique sur **2e compte** (ou fais \`/inscription2\`) : ses vues s’ajoutent à ton profil.`,
             ),
         ],
         components: [buttons],

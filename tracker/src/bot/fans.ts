@@ -90,24 +90,15 @@ export function attachInscription(discord: DiscordClient, fans: FanService): voi
         }
         const name = interaction.inCachedGuild() ? interaction.member.displayName : interaction.user.username;
         const fan = fans.ensureFan(interaction.user.id, name);
-        const accounts = fans.accountsOf(fan.id);
-        const current = (p: string) => {
-          const a = accounts.find((x) => x.platform === p && x.slot === 1);
-          return a ? `@${a.handle}` : '';
-        };
-        const modal = new ModalBuilder().setCustomId(INSCRIPTION_MODAL).setTitle(`Inscription ${fans.settings().programName}`.slice(0, 45));
-        for (const f of PLATFORM_FIELDS) {
-          const input = new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setPlaceholder(f.placeholder).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(200);
-          const v = current(f.id);
-          if (v) input.setValue(v);
-          modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
-        }
-        const ra = fans.creator.rewardAccount;
-        const rbx = new TextInputBuilder().setCustomId('roblox').setLabel(ra.label.slice(0, 45)).setPlaceholder(ra.placeholder).setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(ra.kind === 'email' ? 254 : 20);
-        const r = fans.rewardAccount(fan.id).value;
-        if (r) rbx.setValue(r);
-        modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(rbx));
-        await interaction.showModal(modal);
+        // L'inscription se fait sur le site : connexion TikTok officielle (preuve que le compte est à lui), @ Insta / YouTube, compte de livraison
+        const missing = fans.missingPlatforms(fan.id);
+        await interaction.reply({
+          content: missing.length
+            ? `📝 **Inscris-toi sur le site** (tu es déjà connecté avec ce lien, il marche 10 min) : relie ton TikTok en 1 clic, mets ton Instagram et ton YouTube, et ton ${fans.creator.rewardAccount.label.replace(/^(ton|ta|tes)\s+/i, '').replace(/^./, (x) => x.toLowerCase())}.\nDès que tes 3 comptes sont reliés, tu reçois ton salon privé ici.`
+            : '✅ Tu es déjà inscrit. Pour modifier tes comptes, ouvre le site :',
+          components: [new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(fans.signupUrl(fan.id)).setLabel(missing.length ? 'S’inscrire sur le site' : 'Ouvrir le site').setEmoji('📝'))],
+          flags: MessageFlags.Ephemeral,
+        });
         return;
       }
       if ((interaction.isChatInputCommand() && interaction.commandName === 'inscription2') || (interaction.isButton() && interaction.customId === 'fans:signup2')) {
@@ -404,6 +395,18 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     c.user.setActivity('🪙 /site pour la boutique', { type: ActivityType.Custom });
     log.info(`bot fans connecté en tant que ${c.user.tag}`);
     opts.fans.onTrainingDone = (discordId) => onTrainingCompleted(c, opts.fans, discordId);
+    // Inscription terminée sur le site : rôles, salon privé et log, comme l'ancien formulaire Discord
+    opts.fans.onRegistered = async (discordId, accounts) => {
+      const ids = new Set(opts.fans.botState<string[]>('setup-guilds', []));
+      for (const guild of c.guilds.cache.filter((g) => ids.has(g.id)).values()) {
+        const member = await guild.members.fetch(discordId).catch(() => null);
+        if (!member) continue;
+        await onFanRegistered(guild, member, accounts, opts.fans.publicSiteUrl(), [
+          ...(opts.fans.unverifiedAccounts(opts.fans.ensureFan(discordId, member.displayName).id).length ? ['🔎 Tes comptes sont vérifiés sous 24 h : tes vues comptent dès la validation, rien n’est perdu.'] : []),
+          ...(opts.fans.settings().clipRule ? [`🏷️ **Mets #${opts.fans.clipKeywords()[0] ?? 'createur'} dans la légende de chaque clip**, sinon il ne compte pas.`] : []),
+        ]);
+      }
+    };
     timer = setInterval(() => void sendNotifications().catch((err) => log.error('messages privés fans', err)), 2 * 60_000);
     void sendNotifications().catch(() => {});
     // Serveur monté par /setup (toutes les 15 min) : rôles de palier, classement du lundi, nouvelles vidéos

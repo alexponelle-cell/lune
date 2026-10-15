@@ -108,6 +108,25 @@ describe('programme fans (Neptune)', () => {
     expect(micka.fans.orders({})).toHaveLength(0);
   });
 
+  it('inscription sur le site : 3 réseaux + e-mail, rôles Discord déclenchés une seule fois, rien de retiré par un champ vide', async () => {
+    const squiduu = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('squiduu'));
+    const calls: Array<[string, string[]]> = [];
+    squiduu.onRegistered = (id, accounts) => void calls.push([id, accounts]);
+    const fan = squiduu.ensureFan('s1', 'Sam');
+    const a = await squiduu.siteRegister(fan, { tiktok: '@sam.tt', youtube: '@samyt' });
+    expect(a).toMatchObject({ missing: ['instagram'], registered: false });
+    expect(calls).toHaveLength(0);
+    const b = await squiduu.siteRegister(fan, { instagram: 'https://www.instagram.com/sam.ig/', reward: 'sam@mail.fr' });
+    expect(b).toMatchObject({ missing: [], registered: true });
+    expect(calls).toEqual([['s1', expect.arrayContaining(['TikTok @sam.tt', 'YouTube @samyt', 'Instagram @sam.ig'])]]);
+    expect(squiduu.rewardAccount(fan.id).value).toBe('sam@mail.fr');
+    // Modifier un compte après coup : pas de 2e déclenchement, champ vide = inchangé
+    await squiduu.siteRegister(fan, { youtube: '@samyt2', tiktok: '' });
+    expect(calls).toHaveLength(1);
+    expect(squiduu.missingPlatforms(fan.id)).toEqual([]);
+    expect(squiduu.signupUrl(fan.id)).toContain('next=inscription');
+  });
+
   it('/inscription2 : un 2e compte du même réseau, compté sur le même profil', () => {
     const fan = fans.ensureFan('d5', 'Duo');
     fans.setAccounts(fan, { tiktok: '@duo.main' });

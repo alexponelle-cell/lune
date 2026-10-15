@@ -225,6 +225,10 @@
   input, textarea { width: 100%; font: 600 16px Inter, sans-serif; color: var(--ink); background: var(--soft); border: 3px solid transparent; border-radius: 16px; padding: 14px 16px; outline: none; transition: border-color .2s, background .2s; }
   input:focus, textarea:focus { border-color: var(--purple); background: #fff; }
   .row input { flex: 1; width: auto; }
+  .signup { display: grid; gap: 10px; margin: 6px 0 4px; }
+  .signup .sg { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: center; font-weight: 800; }
+  .signup .sg .btn { justify-self: start; }
+  @media (max-width: 600px) { .signup .sg { grid-template-columns: 1fr; gap: 4px; } }
   .list-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-top: 2px solid var(--soft); font-weight: 700; }
   .list-row:first-of-type { border-top: 0; }
   .switch { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; font-weight: 800; }
@@ -542,19 +546,34 @@ function pageShop() {
   </section>`;
 }
 
+/** Inscription sur le site : TikTok (connexion officielle si dispo, sinon @), YouTube et Insta (@ ou lien), pseudo Roblox. */
+function signupForm() {
+  const official = ME.officialLogin ?? [];
+  const missing = ['tiktok', 'youtube', 'instagram'].filter((p) => !ME.accounts.some((a) => a.platform === p));
+  const row = (p, ph) => {
+    const a = ME.accounts.find((x) => x.platform === p);
+    if (official.includes(p)) {
+      const c = ME.accounts.find((x) => x.platform === p && x.connected);
+      return `<div class="sg">${PLATFORM[p]}${c ? `<span>✅ Connecté (@${esc(c.handle)})</span>` : `<a class="btn yellow" href="/fan/${p}/connect">Connecter mon ${PLATFORM[p]}</a>`}</div>`;
+    }
+    return `<label class="sg">${PLATFORM[p]}<input name="${p}" placeholder="${ph}" value="${a ? '@' + esc(a.handle) : ''}"></label>`;
+  };
+  return `<h3>${missing.length ? 'Inscris-toi !' : 'Tes comptes'}</h3><p>${missing.length ? `Relie tes 3 comptes : il manque <b>${missing.map((p) => PLATFORM[p]).join(', ')}</b>. Ensuite chaque vue te rapporte des coins.` : 'Inscription complète ✅ Tu peux modifier tes comptes ici.'}</p>
+    <form class="signup" id="signup">${row('tiktok', '@toncompte')}${row('youtube', '@tachaine')}${row('instagram', '@toncompte')}
+      <label class="sg">Pseudo Roblox<input name="reward" placeholder="TonPseudo" value="${esc(ME.rewardAccount?.value ?? '')}"></label>
+      <div><button class="btn yellow big">${missing.length ? 'Valider mon inscription' : 'Enregistrer'}</button></div></form>`;
+}
 function pageClip() {
   const steps = `<div class="steps">
     <div class="card wiggle reveal"><div class="n">1</div><div class="emo">🎬</div><b>Crée ton clip</b></div>
     <div class="card wiggle reveal"><div class="n">2</div><div class="emo">📱</div><b>Poste-le</b></div>
-    <div class="card wiggle reveal"><div class="n">3</div><div class="emo">📝</div><b>Fais /inscription sur Discord</b></div>
+    <div class="card wiggle reveal"><div class="n">3</div><div class="emo">📝</div><b>Inscris-toi ici</b></div>
     <div class="card wiggle reveal"><div class="n">4</div><div class="emo">🪙</div><b>Gagne des coins</b></div></div>`;
   const head = `<div class="head-row reveal" style="margin-top:34px"><div><span class="eyebrow">🎬 Clipper</span><h2>Clippe & gagne</h2><p class="sub">Poste des clips de BeOnePourcent sur TikTok, Insta ou YouTube. On suit tes vues, chaque vue te rapporte des coins.</p></div></div>`;
   if (!ME) return `<section>${head}${steps}<div style="margin-top:22px">${loginCard('Suis tes clips', 'Connecte-toi avec Discord pour voir tes clips, tes vues et tes coins.', 'camera')}</div></section>`;
   const clips = ME.clips;
   return `<section>${head}${steps}
-    <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${ME.accounts.length
-      ? `<h3>Tes vues sont suivies 🚀</h3><p>Chaque clip posté sur ces comptes te rapporte des coins, automatiquement, toutes les 1 à 2 nuits.</p><div class="accounts">${ME.accounts.map((a) => `<span class="acc" style="padding:8px 14px">${PLATFORM[a.platform]} @${esc(a.handle)}</span>`).join('')}</div>${tiktokBlock()}`
-      : `<h3>Relie tes comptes !</h3><p>Sur Discord, fais <b>/inscription</b> et remplis tes comptes TikTok, YouTube, Insta (et ton pseudo Roblox). C'est tout : chaque vue te rapporte ensuite des coins.</p>${PUB.discordInviteUrl ? `<a class="btn yellow big" href="${esc(PUB.discordInviteUrl)}" target="_blank" rel="noopener">Aller sur le Discord</a>` : ''}`}</div></div>
+    <div class="card send reveal">${mascot('camera', 'mascot bob')}<div>${signupForm()}</div></div>
   </section>
   <section>
     <div class="head-row reveal"><div><span class="eyebrow">📈 Tes clips</span><h2>Mes clips</h2></div><div class="coin-pill">${coin('coin')}${fmt(ME.clipCount)}<small>CLIPS</small></div></div>
@@ -616,13 +635,27 @@ function pageProfile() {
 async function refresh() { await loadMe(); route(); }
 function route() {
   const r = location.hash.replace(/^#\/?/, '').split('/')[0];
-  const known = ROUTES.some(([k]) => k === r) ? r : '';
+  const known = r === 'inscription' ? 'clipper' : ROUTES.some(([k]) => k === r) ? r : '';
   renderChrome(known);
   const app = $('#app');
   app.innerHTML = `<div class="page">${{ '': pageHome, recompenses: pageShop, clipper: pageClip, classement: pageRanking, profil: pageProfile }[known]()}</div>`;
   observe();
   bindBuy(app);
   app.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { FILTER = b.dataset.f; route(); }));
+  const sg = $('#signup');
+  if (sg) sg.onsubmit = async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target), body = {};
+    for (const k of ['tiktok', 'youtube', 'instagram', 'reward']) if (f.get(k)) body[k] = String(f.get(k));
+    try {
+      const r = await api('/api/fan/register', { method: 'POST', body });
+      const warn = [...r.conflicts.map((a) => `@${a.handle} est déjà relié à quelqu'un d'autre : préviens le staff`), ...r.invalid.map((p) => `${PLATFORM[p]} : mets ton @ ou le lien du profil`), ...(r.rewardError ? [r.rewardError] : [])];
+      if (warn.length) toast(warn.join(' · '), 'err');
+      else if (r.missing.length) toast(`Enregistré. Il manque encore : ${r.missing.map((p) => PLATFORM[p]).join(', ')}`);
+      else toast(r.registered ? 'Inscription validée ✅ Ton salon privé t’attend sur Discord' : 'Comptes enregistrés ✅', 'ok');
+      await refresh();
+    } catch (err) { toast(err.message, 'err'); }
+  };
   const rf = $('#roblox');
   if (rf) rf.onsubmit = async (e) => {
     e.preventDefault();

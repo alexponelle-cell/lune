@@ -218,7 +218,7 @@ export function createApp(deps: WebDeps): Hono {
   const isHttps = (c: Context) => c.req.header('x-forwarded-proto') === 'https' || c.req.url.startsWith('https:');
   const startSession = (c: Context, session: string, next?: string) => {
     setCookie(c, FAN_COOKIE, session, { httpOnly: true, sameSite: 'Lax', secure: isHttps(c), path: '/', maxAge: 30 * 86_400 });
-    return c.redirect(next === 'formation' ? '/formation' : next === 'connect' ? '/fan#clipper' : '/fan');
+    return c.redirect(next === 'formation' ? '/formation' : next === 'connect' || next === 'inscription' ? '/fan#clipper' : '/fan');
   };
   const fanError = (c: Context, message: string) => c.redirect(`/fan?error=${encodeURIComponent(message)}`);
 
@@ -307,7 +307,9 @@ export function createApp(deps: WebDeps): Hono {
       if (!fan) return fanError(c, `Session expirée : reconnecte-toi puis reclique sur « Connecter mon ${name} ».`);
       try {
         const { tokens, username, store } = await o.finish(code);
+        const before = fans.missingPlatforms(fan.id);
         store.save(fans.connectOfficial(fan, platform, username), tokens);
+        await fans.finishRegistration(fan, before);
         return c.redirect(`/fan?connected=${platform}#clipper`);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -381,6 +383,13 @@ export function createApp(deps: WebDeps): Hono {
     const fan = requireFan(c);
     const { username } = z.object({ username: z.string().trim().min(3).max(20) }).parse(await c.req.json());
     return c.json(await fans.linkRoblox(fan, username));
+  });
+  /** Inscription depuis le site : TikTok / YouTube / Instagram (@ ou lien) + compte de livraison. */
+  app.post('/api/fan/register', async (c) => {
+    const fan = requireFan(c);
+    const field = z.string().trim().max(200).optional();
+    const body = z.object({ tiktok: field, youtube: field, instagram: field, reward: z.string().trim().max(254).optional() }).parse(await c.req.json());
+    return c.json(await fans.siteRegister(fan, body));
   });
   /** Compte de livraison des récompenses (e-mail ou pseudo Roblox selon le créateur). */
   app.put('/api/fan/account', async (c) => {
