@@ -241,6 +241,10 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
     created.push(`rôle ${ROLE_HEAD}`);
   }
   const staff = await role(ROLE_STAFF, 0xf5f5f7, true);
+  // Staff et Head of Clipping : administrateurs du serveur (rôles donnés à la main par les admins, jamais en libre-service)
+  for (const r of [staff, guild.roles.cache.find((x) => sameName(x.name, ROLE_HEAD))]) {
+    if (r && !r.permissions.has(V.Administrator)) await r.setPermissions([...r.permissions.toArray(), 'Administrator'], 'Staff = administrateur').catch((err) => log.warn(`${r.name} : droit administrateur impossible (${err instanceof Error ? err.message : String(err)})`));
+  }
   await role(ROLE_TOP, 0xffd24a, true);
   await ensureTierRoles(guild, fans);
   await role(ROLE_CLIPPER, color(fans), false);
