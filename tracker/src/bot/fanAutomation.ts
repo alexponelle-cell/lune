@@ -314,7 +314,7 @@ export async function monthlyPodium(client: Client<true>, fans: FanService, now 
             .setTitle(`🏆 Podium de ${r.month}`)
             .setDescription(
               r.winners.length
-                ? `${lines.join('\n')}\n\n🎁 Le top ${r.winners.length} gagne **${r.reward}**, offert ! Il est envoyé sur l’e-mail de votre inscription.\nNouveau mois, compteurs à zéro : à vous de jouer 🔥`
+                ? `${lines.join('\n')}\n\n🎁 Le top ${r.winners.length} gagne **${r.reward}**${r.manual ? ' ! Le staff vous contacte en privé.' : ', offert ! Il est envoyé sur l’e-mail de votre inscription.'}\nNouveau mois, compteurs à zéro : à vous de jouer 🔥`
                 : 'Personne n’a fait de vues ce mois-ci. Le podium du mois prochain est grand ouvert 🔥',
             ),
         ],

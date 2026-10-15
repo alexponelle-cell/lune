@@ -101,6 +101,13 @@ describe('programme fans (Neptune)', () => {
     expect(loann.awardMonthlyPrize(oct + 12 * 3_600_000)).toBeNull();
   });
 
+  it('podium du mois de Micka : lot hors boutique (event IRL), aucune commande créée', () => {
+    const micka = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/', async () => null, creatorConfig('micka'));
+    const r = micka.awardMonthlyPrize(Date.parse('2026-11-01T10:00:00Z'))!;
+    expect(r).toMatchObject({ manual: true, reward: expect.stringContaining('IRL') });
+    expect(micka.fans.orders({})).toHaveLength(0);
+  });
+
   it('/inscription2 : un 2e compte du même réseau, compté sur le même profil', () => {
     const fan = fans.ensureFan('d5', 'Duo');
     fans.setAccounts(fan, { tiktok: '@duo.main' });

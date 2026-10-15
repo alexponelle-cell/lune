@@ -363,7 +363,7 @@ export class FanService {
    * 1er du mois : les N premiers du mois écoulé reçoivent la récompense principale (commande offerte, livrée
    * automatiquement si l'API de livraison est branchée). Une seule fois par mois. Renvoie les gagnants.
    */
-  awardMonthlyPrize(now = Date.now()): { month: string; winners: Array<{ rank: number; discordId: string; name: string; views: number }>; reward: string } | null {
+  awardMonthlyPrize(now = Date.now()): { month: string; winners: Array<{ rank: number; discordId: string; name: string; views: number }>; reward: string; manual?: true } | null {
     const n = this.creator.monthlyPrize;
     if (!n) return null;
     const start = FanService.monthStart(now, -1);
@@ -371,10 +371,15 @@ export class FanService {
     const key = new Date(start + 12 * 3_600_000).toISOString().slice(0, 7);
     if (this.botState<string>('monthly-prize', '') === key) return null;
     this.setBotState('monthly-prize', key);
+    const month = new Date(start + 12 * 3_600_000).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
+    const label = this.creator.monthlyPrizeLabel;
+    if (label) {
+      const winners = this.periodLeaderboard(start, end, n);
+      return { month, reward: label, manual: true, winners: winners.map(({ rank, discordId, name, views }) => ({ rank, discordId, name, views })) };
+    }
     const shop = this.fans.items({ activeOnly: true });
     const item = (this.creator.reward && shop.find((i) => i.ref === this.creator.reward!.ref)) ?? shop[0];
     if (!item) return null;
-    const month = new Date(start + 12 * 3_600_000).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
     const winners = this.periodLeaderboard(start, end, n);
     for (const w of winners) this.fans.giftOrder(w.id, item.id, `top ${w.rank} de ${month}`, now);
     return { month, reward: item.name, winners: winners.map(({ rank, discordId, name, views }) => ({ rank, discordId, name, views })) };

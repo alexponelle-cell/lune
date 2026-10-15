@@ -67,6 +67,11 @@ export interface CreatorConfig {
    * gratuitement, le 1er du mois suivant (annonce dans #classement, livraison comme un achat). Ex. 3.
    */
   monthlyPrize?: number;
+  /**
+   * Lot du podium du mois quand ce n'est pas la récompense de la boutique (ex. « une place à l'événement IRL du mois »).
+   * Rien n'est créé dans la boutique : le podium est annoncé et le staff contacte les gagnants.
+   */
+  monthlyPrizeLabel?: string;
   /** true = clippeurs de confiance : aucun compte « à vérifier » ni fan suspect, tout est validé d'office. */
   trustAccounts?: true;
   /** false = pas de mot-clé (#tag) obligatoire dans la légende : tous les clips des comptes reliés comptent. */
