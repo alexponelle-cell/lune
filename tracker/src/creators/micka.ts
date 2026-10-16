@@ -12,7 +12,7 @@ const demo = PROSPECTS.micka!.config;
 
 export const micka: CreatorConfig = {
   ...demo,
-  youtube: 'mickaelwu',
+  youtube: 'mickaelwu,mickaelwubusiness,MickaëlWuAccompagnement',
   clipKeywords: ['micka', 'mickaelwu', 'mickael wu', 'mickaël wu'],
   gradeWindowDays: 30,
   monthlyPrize: 3,

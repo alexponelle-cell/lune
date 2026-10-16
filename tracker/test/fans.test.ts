@@ -713,7 +713,7 @@ describe('créateur configurable (SQUIDUU)', () => {
     const { soberPage } = await import('../src/web/sober.js');
     const { readFileSync } = await import('node:fs');
     const cr = creatorConfig('micka');
-    expect(cr.youtube).toBe('mickaelwu');
+    expect(cr.youtube.split(',')).toEqual(['mickaelwu', 'mickaelwubusiness', 'MickaëlWuAccompagnement']);
     expect(cr.clipKeywords).toContain('micka');
     expect(cr.reward?.price).toBe(100_000);
     expect(cr.discord?.welcome).toContain('{creator}');
