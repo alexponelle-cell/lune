@@ -17,6 +17,7 @@ export const micka: CreatorConfig = {
   gradeWindowDays: 30,
   monthlyPrize: 3,
   monthlyPrizeLabel: 'une place à l’événement IRL ou au workshop du mois',
+  monthlyPrizeShort: 'Place à l’event IRL',
   texts: {
     ...demo.texts,
     faq: [

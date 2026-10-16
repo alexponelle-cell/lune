@@ -1093,7 +1093,7 @@ export class FanService {
       leaderboard: this.leaderboard(now).map(({ id: _id, ...r }) => r),
       // Classement du mois (créateurs avec récompense du mois, ex. Loann : top 3 = 1 mois offert)
       ...(this.creator.monthlyPrize
-        ? { monthPrize: this.creator.monthlyPrize, monthLeaderboard: this.monthLeaderboard(now).map(({ id: _id, discordId: _d, ...r }) => r) }
+        ? { monthPrize: this.creator.monthlyPrize, ...(this.creator.monthlyPrizeLabel ? { monthPrizeLabel: this.creator.monthlyPrizeLabel, monthPrizeShort: this.creator.monthlyPrizeShort ?? this.creator.monthlyPrizeLabel } : {}), monthLeaderboard: this.monthLeaderboard(now).map(({ id: _id, discordId: _d, ...r }) => r) }
         : {}),
     };
   }

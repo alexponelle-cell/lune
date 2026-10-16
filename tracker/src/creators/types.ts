@@ -72,6 +72,8 @@ export interface CreatorConfig {
    * Rien n'est créé dans la boutique : le podium est annoncé et le staff contacte les gagnants.
    */
   monthlyPrizeLabel?: string;
+  /** Version courte du lot du mois pour la pastille du podium (ex. « Place à l’event IRL »). */
+  monthlyPrizeShort?: string;
   /** true = clippeurs de confiance : aucun compte « à vérifier » ni fan suspect, tout est validé d'office. */
   trustAccounts?: true;
   /** false = pas de mot-clé (#tag) obligatoire dans la légende : tous les clips des comptes reliés comptent. */

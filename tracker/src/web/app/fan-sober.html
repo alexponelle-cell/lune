@@ -1004,7 +1004,7 @@ ${show ? `  <section class="cases">${M.showcaseTitle ? `<h2 class="msh2 rv">${es
 
   <section class="msec orange">
     <div class="mscta rv">${joinBtn()}</div>
-    ${PUB.monthPrize ? `<h2 class="msh ol rv">Le podium du mois</h2><p class="pod-sub rv">Le 1er du mois, le top ${PUB.monthPrize} gagne <b>1 mois de ${esc(rewardShort())} offert</b> · fin dans <b>${monthDaysLeft()} j</b></p>${monthBoard(false)}<p class="rv" style="text-align:center;margin-top:22px"><a class="btn big" href="#/classement">Voir tout le classement ${ARROW}</a></p>` : `<h2 class="msh ol rv">Top clippeurs de la semaine</h2>
+    ${PUB.monthPrize ? `<h2 class="msh ol rv">Le podium du mois</h2><p class="pod-sub rv">Le 1er du mois, le top ${PUB.monthPrize} gagne <b>${esc(PUB.monthPrizeLabel ?? `1 mois de ${rewardShort()} offert`)}</b> · fin dans <b>${monthDaysLeft()} j</b></p>${monthBoard(false)}<p class="rv" style="text-align:center;margin-top:22px"><a class="btn big" href="#/classement">Voir tout le classement ${ARROW}</a></p>` : `<h2 class="msh ol rv">Top clippeurs de la semaine</h2>
     ${lb.length ? rankList(lb) : '<div class="card empty rv" style="max-width:860px;margin:0 auto">Pas encore de vues cette semaine. Le classement se remplit dès les premiers clips.</div>'}`}
   </section>
   <div class="band" aria-hidden="true"><div>${bandItem.repeat(6)}${bandItem.repeat(6)}</div></div>
@@ -1141,7 +1141,9 @@ function monthBoard(withHead = true, withRest = withHead) {
   if (!PUB.monthPrize) return '';
   const n = PUB.monthPrize, rows = PUB.monthLeaderboard ?? [];
   const month = new Date().toLocaleDateString('fr-FR', { month: 'long' });
-  const prize = `1 mois de ${esc(rewardShort())}`;
+  // Lot du mois : monthPrizeLabel (ex. Micka : place à l’event IRL), sinon 1 mois de la récompense
+  const label = PUB.monthPrizeShort ?? PUB.monthPrizeLabel;
+  const prize = label ? esc(label.charAt(0).toUpperCase() + label.slice(1)) : `1 mois de ${esc(rewardShort())}`;
   const slot = (r, place) => r
     ? `<div class="pod p${place} rv${ME && r.name === ME.username ? ' me' : ''}"><span class="medal">${['🥇', '🥈', '🥉'][place - 1] ?? place}</span>${avatar(r.name, r.avatar)}<b>${esc(r.name)}</b><small>${compact(r.views)} vues</small><span class="gift">🎁 ${prize}</span><i class="step">${place}</i></div>`
     : `<div class="pod p${place} free rv"><span class="medal">${['🥇', '🥈', '🥉'][place - 1] ?? place}</span><span class="pp">?</span><b>Place libre</b><small>À prendre</small><span class="gift">🎁 ${prize}</span><i class="step">${place}</i></div>`;
@@ -1149,7 +1151,7 @@ function monthBoard(withHead = true, withRest = withHead) {
   const rest = withRest ? rows.slice(n) : [];
   const mine = ME ? rows.find((r) => r.name === ME.username) : null;
   return `${withHead ? `<div class="head center rv"><h2>Le podium de <span class="y">${esc(month)}</span></h2>
-      <p>Le 1er du mois, le top ${n} gagne <b>${prize} offert</b>. Fin du mois dans <b>${monthDaysLeft()} jour${monthDaysLeft() > 1 ? 's' : ''}</b>.${mine ? ` Tu es ${mine.rank}e.` : ''}</p></div>` : ''}
+      <p>Le 1er du mois, le top ${n} gagne <b>${PUB.monthPrizeLabel ? esc(PUB.monthPrizeLabel) : `${prize} offert`}</b>. Fin du mois dans <b>${monthDaysLeft()} jour${monthDaysLeft() > 1 ? 's' : ''}</b>.${mine ? ` Tu es ${mine.rank}e.` : ''}</p></div>` : ''}
     <div class="podium">${order.map((p) => slot(rows[p - 1], p)).join('')}</div>
     ${rest.length ? `<div class="ranks" style="margin-top:18px">${rest.map((r) => `<div class="card rank rv ${ME && r.name === ME.username ? 'me' : ''}"><span class="n">${r.rank}</span>${avatar(r.name, r.avatar)}<span class="who"><b>${esc(r.name)}</b><small>${compact(r.views)} vues ce mois-ci</small></span><span class="v gap">${rows[n - 1] ? `<b>−${compact(Math.max(0, rows[n - 1].views - r.views + 1))}</b><small>vues du podium</small>` : ''}</span></div>`).join('')}</div>` : ''}`;
 }
