@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
@@ -201,9 +203,15 @@ export async function syncGradeRoles(client: Client<true>, fans: FanService, now
         if (f.level > current && current >= 0 && f.level > 0 && levelUp && !fans.fans.wasNotified(f.clipperId, key)) {
           fans.fans.markNotified(f.clipperId, key);
           const l = levels[f.level]!;
+          // Étoile du grade (dessins de Lucas, mêmes que sur le site) en vignette
+          const starUrl = new URL(`../web/app/fan/ms-star${f.level + 1}.webp`, import.meta.url);
+          const star = f.level < 4 && existsSync(starUrl) ? starUrl : null;
+          const embed = new EmbedBuilder().setColor(accent(fans)).setDescription(`${star ? '' : `${l.emoji} `}${member} passe **${l.name}** avec **${nf(f.views)} vues** sur les ${days} derniers jours ! 🔥`);
+          if (star) embed.setThumbnail('attachment://grade.webp');
           await levelUp.send({
             content: `${member}`,
-            embeds: [new EmbedBuilder().setColor(accent(fans)).setDescription(`${l.emoji} ${member} passe **${l.name}** avec **${nf(f.views)} vues** sur les ${days} derniers jours ! 🔥`)],
+            embeds: [embed],
+            ...(star ? { files: [{ attachment: fileURLToPath(star), name: 'grade.webp' }] } : {}),
             allowedMentions: { users: [member.id] },
           });
         }
