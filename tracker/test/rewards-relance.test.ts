@@ -53,3 +53,32 @@ describe('evaluateRelance', () => {
     expect(evaluateRelance({ ...base, lastPostAt: now, recentViews: 0, comparisonComplete: false }, rules, now)).toEqual([]);
   });
 });
+
+describe('messages de relance et motivation', () => {
+  it('niveau 1, 2, puis 3 et plus ; jamais 2 fois le même à la suite', async () => {
+    const { RELANCE_1, RELANCE_2, RELANCE_3 } = await import('../src/domain/relance.js');
+    const inactive = { kind: 'inactive' as const, daysSinceLastPost: 3 };
+    expect(RELANCE_1).toContain(relanceMessage(inactive, 1));
+    expect(RELANCE_2).toContain(relanceMessage(inactive, 2));
+    expect(RELANCE_3).toContain(relanceMessage(inactive, 7));
+    let prev: string | null = null;
+    for (let i = 0; i < 200; i++) {
+      const m = relanceMessage(inactive, 3, prev);
+      expect(m).not.toBe(prev);
+      prev = m;
+    }
+  });
+
+  it('motivation : toutes les phrases sortent avant de revenir, jamais 2 fois de suite', async () => {
+    const { drawMotivation, MOTIVATION } = await import('../src/domain/motivation.js');
+    let state = { day: '', bag: [] as number[], last: null as number | null };
+    const seen: number[] = [];
+    for (let i = 0; i < MOTIVATION.length * 4; i++) {
+      const { index, bag } = drawMotivation(state);
+      if (state.last !== null) expect(index).not.toBe(state.last);
+      seen.push(index);
+      state = { day: '', bag, last: index };
+    }
+    expect(new Set(seen.slice(0, MOTIVATION.length)).size).toBe(MOTIVATION.length);
+  });
+});

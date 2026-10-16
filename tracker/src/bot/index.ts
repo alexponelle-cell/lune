@@ -18,6 +18,8 @@ import { attachRecruitment, RECRUITMENT_COMMANDS, type RecruitmentBridge } from 
 export interface Bot {
   notifier: Notifier;
   bridge: BotBridge;
+  /** Poste un message dans #général du serveur de l'agence. false si salon introuvable. */
+  postGeneral(text: string): Promise<boolean>;
   stop: () => Promise<void>;
 }
 
@@ -187,7 +189,7 @@ export async function startBot(deps: Deps): Promise<Bot> {
   }
 
   const notifier: Notifier = {
-    relance: (clipper: Clipper, _reason: RelanceReason, text: string) => deliver(clipper, text, `Salut ${clipper.username}, `),
+    relance: (clipper: Clipper, _reason: RelanceReason, text: string) => deliver(clipper, text, ''),
   };
 
   const guild = async () => {
@@ -228,5 +230,17 @@ export async function startBot(deps: Deps): Promise<Bot> {
     },
   };
 
-  return { notifier, bridge, stop: () => client.destroy() };
+  async function postGeneral(text: string): Promise<boolean> {
+    const g = await guild();
+    const channels = await g.channels.fetch();
+    const general = [...channels.values()].find((c) => c?.isTextBased() && /g[ée]n[ée]ral/i.test(c.name));
+    if (!general?.isSendable()) {
+      log.warn('motivation : aucun salon « général » sur le serveur de l’agence');
+      return false;
+    }
+    await general.send(text);
+    return true;
+  }
+
+  return { notifier, bridge, postGeneral, stop: () => client.destroy() };
 }

@@ -451,6 +451,20 @@ export class Repo {
     return r.last;
   }
 
+  countRelancesSince(clipperId: number, kind: string, since: number): number {
+    const r = this.db
+      .prepare('SELECT COUNT(*) AS n FROM relances WHERE clipper_id = ? AND kind = ? AND sent_at > ?')
+      .get(clipperId, kind, since) as { n: number };
+    return r.n;
+  }
+
+  lastRelanceMessage(clipperId: number): string | null {
+    const r = this.db
+      .prepare('SELECT message FROM relances WHERE clipper_id = ? ORDER BY sent_at DESC, id DESC LIMIT 1')
+      .get(clipperId) as { message: string } | undefined;
+    return r?.message ?? null;
+  }
+
   logRelance(clipperId: number, kind: string, message: string, at: number): void {
     this.db
       .prepare('INSERT INTO relances (clipper_id, kind, message, sent_at) VALUES (?, ?, ?, ?)')

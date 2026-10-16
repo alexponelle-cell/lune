@@ -7,6 +7,7 @@ import { collectAll, fanAccountDue, paidAccount, parisMidnight } from './jobs/co
 import { InstagramOfficialFetcher, InstagramTokenStore } from './platforms/instagramOfficial.js';
 import { TikTokOfficialFetcher, TikTokTokenStore, tiktokSiteVerification } from './platforms/tiktokOfficial.js';
 import { runRelances } from './jobs/relance.js';
+import { runMotivation } from './jobs/motivation.js';
 import { every } from './jobs/scheduler.js';
 import { log } from './log.js';
 import { createFetchers } from './platforms/index.js';
@@ -247,6 +248,9 @@ const stopRelance = notifier
     }))
   : () => {};
 
+// Phrase de motivation du jour, 9 h (Paris), #général du serveur de l'agence
+const stopMotivation = bot ? every('motivation', 10, async () => ({ postée: await runMotivation(repo, (t) => bot.postGeneral(t)) })) : () => {};
+
 async function shutdown() {
   log.info('arrêt…');
   stopCollect();
@@ -255,6 +259,7 @@ async function shutdown() {
   stopGameDelivery();
   stopEmailDelivery();
   stopRelance();
+  stopMotivation();
   stopWeb();
   await bot?.stop();
   await stopFansBot?.();

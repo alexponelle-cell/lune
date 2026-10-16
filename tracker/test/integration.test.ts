@@ -242,6 +242,23 @@ describe('parcours complet', () => {
     expect(sent[0]?.who).toBe('Maé');
     expect(await runRelances(repo, analytics, notifier, settings, t0 + HOUR)).toBe(0);
     expect(await runRelances(repo, analytics, notifier, settings, t0 + 25 * HOUR)).toBe(1);
+    expect(await runRelances(repo, analytics, notifier, settings, t0 + 50 * HOUR)).toBe(1);
+    const { RELANCE_1, RELANCE_2, RELANCE_3 } = await import('../src/domain/relance.js');
+    expect(RELANCE_1).toContain(sent[0]!.msg);
+    expect(RELANCE_2).toContain(sent[1]!.msg);
+    expect(RELANCE_3).toContain(sent[2]!.msg);
+  });
+
+  it('motivation : une fois par jour à 9 h (Paris)', async () => {
+    const { runMotivation } = await import('../src/jobs/motivation.js');
+    const posts: string[] = [];
+    const post = async (t: string) => (posts.push(t), true);
+    const morning = Date.UTC(2026, 9, 16, 6, 0); // 8 h à Paris
+    expect(await runMotivation(repo, post, morning)).toBe(false);
+    expect(await runMotivation(repo, post, morning + HOUR)).toBe(true);
+    expect(await runMotivation(repo, post, morning + 2 * HOUR)).toBe(false);
+    expect(await runMotivation(repo, post, morning + 25 * HOUR)).toBe(true);
+    expect(posts[1]).not.toBe(posts[0]);
   });
 });
 

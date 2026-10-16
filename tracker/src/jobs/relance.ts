@@ -30,7 +30,10 @@ export async function runRelances(
     for (const reason of evaluateRelance(activity, settings, now)) {
       const last = repo.lastRelanceAt(clipper.id, reason.kind);
       if (last !== null && now - last < settings.cooldownHours * HOUR) continue;
-      const message = relanceMessage(reason, clipper.id + now);
+      // 1re, 2e, puis 3e relance (et suivantes) depuis son dernier clip
+      const since = activity.lastPostAt ?? activity.trackedSince;
+      const level = reason.kind === 'inactive' ? repo.countRelancesSince(clipper.id, 'inactive', since) + 1 : 1;
+      const message = relanceMessage(reason, level, repo.lastRelanceMessage(clipper.id));
       try {
         await notifier.relance(clipper, reason, message);
         repo.logRelance(clipper.id, reason.kind, message, now);
