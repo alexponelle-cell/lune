@@ -634,6 +634,61 @@
     body.ms .msfaq { grid-template-columns: 1fr; gap: 30px; }
     body.ms .tl .box { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   }
+
+  /* ---------- Skin « noah » (Noah Panchaud, Speedrun Monétisation 90 jours) : blanc, noir, rouge #E10600, surligné jaune ---------- */
+  body.rich.noah { --red: #E10600; --red-d: #B30500; --amber: #F59E0B; --lime: #7CB305; --green: #12B54A; --mark: #FFD60A; background: #fff; }
+  body.noah h1, body.noah h2, body.noah h3, body.noah .ol, body.noah .logo { font-family: Inter, -apple-system, 'Segoe UI', sans-serif; font-weight: 800; letter-spacing: -.04em; }
+  body.noah .mshero h1 { font-size: clamp(40px, 6.4vw, 78px); line-height: .98; }
+  body.noah .mshero h1 .y { color: var(--red); }
+  body.noah .msh { font-size: clamp(36px, 5.5vw, 64px); line-height: 1; letter-spacing: -.035em; }
+  body.noah .btn.primary { background: var(--red); color: #fff; border: 0; border-radius: 99px; font-weight: 800; box-shadow: none; transition: transform .15s, background .15s; }
+  body.noah .btn.primary:hover { background: var(--red-d); transform: translateY(-2px); }
+  body.noah .btn.primary.big { padding: 20px 40px; font-size: 18px; }
+  body.noah .frame { border: 0; border-radius: 20px; box-shadow: 0 30px 70px -30px rgba(0,0,0,.35); }
+  body.noah .rays { background: #fff; }
+  body.noah .scard { border-color: var(--line); }
+  body.noah .scard .bdg { background: var(--red); }
+  body.noah .scard .big { color: var(--red); }
+  body.noah .offer { border-left: 6px solid var(--green); } body.noah .offer .soc, body.noah .offer .side { color: var(--green); }
+  body.noah .msec::before { border-color: var(--line); }
+  body.noah .msec.orange { --sec: #F6F6F7; }
+  /* Étapes comme sur son site : bord gauche coloré rouge → ambre → lime → vert */
+  body.noah .tl::before { display: none; }
+  body.noah .tl { gap: 0; max-width: 860px; border-top: 1px solid var(--line); }
+  body.noah .tl .step { --c: var(--red); justify-items: stretch; border-bottom: 1px solid var(--line); border-left: 6px solid var(--c); padding: 30px 0 30px 28px; transition: background .2s; }
+  body.noah .tl .step:hover { background: #F6F6F7; }
+  body.noah .tl .step:nth-child(2) { --c: var(--amber); } body.noah .tl .step:nth-child(3) { --c: var(--lime); } body.noah .tl .step:nth-child(4) { --c: var(--green); }
+  body.noah .tl .step:last-child { border: 0; padding: 40px 0 0; justify-items: center; }
+  body.noah .tl h3 { text-align: left; font-size: clamp(26px, 3.6vw, 40px); margin: 0 0 6px; }
+  body.noah .tl .box { border: 0; background: none; padding: 0; grid-template-columns: 1fr; font-size: clamp(17px, 1.8vw, 20px); }
+  body.noah .tl .box:hover { transform: none; }
+  body.noah .tl .box .e { display: none; }
+  body.noah .tl .join { border: 0; width: auto; aspect-ratio: auto; box-shadow: none; padding: 0; }
+  body.noah .tl .join span { color: var(--text); font-size: clamp(26px, 3.6vw, 40px); background: linear-gradient(transparent 58%, var(--mark) 58%); padding: 0 4px; }
+  body.noah .tier { border-color: var(--line); border-top: 6px solid var(--c, var(--red)); border-radius: 16px; }
+  body.noah .tier:nth-child(2) { --c: var(--amber); } body.noah .tier:nth-child(3) { --c: var(--lime); } body.noah .tier:nth-child(4) { --c: var(--green); }
+  body.noah .tier:last-child { box-shadow: none; border-color: var(--line); border-top-color: var(--green); }
+  body.noah .tier:hover { border-color: var(--line); }
+  body.noah .band { background: var(--red); color: #fff; }
+  body.noah .vs .with { background: #F6F6F7; } body.noah .vs .with h3 { color: var(--red); }
+  /* Témoignages : miniature YouTube + bouton lecture rouge, abonnés en pastille verte */
+  body.noah .cases { display: grid; gap: clamp(56px, 8vw, 80px); max-width: 1120px; margin: 110px auto 0; }
+  body.noah .cases .msh2 { margin: 0; font-size: clamp(36px, 5.5vw, 64px); letter-spacing: -.035em; }
+  body.noah .case { display: grid; grid-template-columns: 1fr 1.15fr; gap: 56px; align-items: center; }
+  body.noah .case.rev { grid-template-columns: 1.15fr 1fr; } body.noah .case.rev .vid { order: -1; }
+  body.noah .case:not(.rev) .vid { order: 2; }
+  body.noah .case .who { display: grid; gap: 14px; }
+  body.noah .case .who small { color: var(--muted); font-size: clamp(16px, 1.8vw, 19px); } body.noah .case .who small i { font-style: normal; margin: 0 6px; }
+  @media (max-width: 900px) { body.noah .case, body.noah .case.rev { grid-template-columns: 1fr; gap: 20px; } body.noah .case .vid { order: -1 !important; } }
+  body.noah .cases .vid { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 20px; overflow: hidden; background: #000; }
+  body.noah .cases .vid img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .2s; }
+  body.noah .cases .vid:hover img { opacity: .82; }
+  body.noah .cases .play { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 76px; height: 76px; border-radius: 50%; background: var(--red); display: grid; place-items: center; }
+  body.noah .cases .play::after { content: ''; margin-left: 6px; border-left: 24px solid #fff; border-block: 15px solid transparent; }
+  body.noah .cases .who b { font-size: clamp(32px, 4.6vw, 52px); letter-spacing: -.04em; }
+  body.noah .cases .who span { display: inline-block; justify-self: start; font-weight: 800; color: #0A6B2D; background: rgba(18,181,74,.13); padding: 6px 14px; border-radius: 99px; }
+  body.noah .y { background: linear-gradient(transparent 58%, var(--mark) 58%); color: inherit; padding: 0 2px; }
+  body.noah .mshero h1 .y { background: none; padding: 0; }
   /* ---------- Skin « cubi » (Cubi Game) : même mise en page riche, charte noir / blanc / orange, bords en blocs ---------- */
   body.ms.cubi { --yel: #FFFFFF; --ink: #111111; background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='%23F1F1F1'/%3E%3Crect x='38' y='38' width='20' height='20' rx='4' fill='%23F1F1F1'/%3E%3C/svg%3E") repeat; }
   body.ms.cubi h1, body.ms.cubi h2, body.ms.cubi .final h2, body.ms.cubi .ol, body.ms.cubi .logo, body.ms.cubi .ticker > div, body.ms.cubi .spark, body.ms.cubi .rank .n, body.ms.cubi .goal-top > b, body.ms.cubi .scard .bdg { font-family: 'Bungee', 'Space Grotesk', sans-serif; font-weight: 400; letter-spacing: 0; }
@@ -966,7 +1021,7 @@ function pageHomeMs() {
   const lv = C.levels;
   const bandItem = `${logo ? `<img src="${logo}" alt="">` : ''}<span>${esc(M.band)}</span>`;
   const reel = (M.reel ?? []).map((f, i) => M.reelVideos?.[i] ? `<video src="${esc(M.reelVideos[i])}" poster="/fan/assets/${esc(f)}" autoplay muted loop playsinline preload="metadata"></video>` : `<img src="/fan/assets/${esc(f)}" alt="" loading="lazy">`).join('');
-  const show = (M.showcase ?? []).map((t, i) => `<div class="case rv${i % 2 ? ' rev' : ''}"><a class="vid" ${t.url ? `href="${esc(t.url)}" target="_blank" rel="noopener"` : ''} aria-label="Voir la vidéo de ${esc(t.name)}"><video src="${esc(t.video)}" ${t.poster ? `poster="${esc(t.poster)}"` : ''} autoplay muted loop playsinline preload="metadata"></video></a><div class="who"><b class="ol">${esc(t.name)}</b><span>${esc(t.niche)}</span><small>${t.stats.map(esc).join('<i>·</i>')}</small></div></div>`).join('');
+  const show = (M.showcase ?? []).map((t, i) => `<div class="case rv${i % 2 ? ' rev' : ''}"><a class="vid" ${t.url ? `href="${esc(t.url)}" target="_blank" rel="noopener"` : ''} aria-label="Voir la vidéo de ${esc(t.name)}">${t.video ? `<video src="${esc(t.video)}" ${t.poster ? `poster="${esc(t.poster)}"` : ''} autoplay muted loop playsinline preload="metadata"></video>` : `<img src="${esc(t.poster ?? '')}" alt="" loading="lazy"><span class="play" aria-hidden="true"></span>`}</a><div class="who"><b class="ol">${esc(t.name)}</b><span>${esc(t.niche)}</span><small>${t.stats.map(esc).join('<i>·</i>')}</small></div></div>`).join('');
   const heroTop = reel ? `<h1 class="load">${hl(C.texts.heroTitle)}</h1>
     <div class="reel load" aria-hidden="true"><div>${reel.repeat(4)}</div></div>
     <p class="caps load">${esc(M.heroLine)}</p>${M.punch ? `<p class="punch load">${esc(M.punch)}</p>` : ''}
@@ -975,7 +1030,7 @@ function pageHomeMs() {
     ${heroTop || `<h1 class="load">${hl(C.texts.heroTitle)}</h1><p class="line load">${esc(M.heroLine)}</p>
     <div class="msstage load">
       <div class="scard rays"><span class="bdg">${esc(M.statLeft.badge)}</span><div class="ol t">${esc(M.statLeft.text)}</div><div class="ic">🏆</div></div>
-      <div class="frame"><img src="${M.heroImage ? `/fan/assets/${esc(M.heroImage)}` : '/fan/assets/creator.png'}" alt="">${logo ? `<img class="logo-ms" src="${logo}" alt="">` : ''}</div>
+      <div class="frame"><img src="${M.heroImage ? (/^https:/.test(M.heroImage) ? esc(M.heroImage) : `/fan/assets/${esc(M.heroImage)}`) : '/fan/assets/creator.png'}" alt="">${logo ? `<img class="logo-ms" src="${logo}" alt="">` : ''}</div>
       <div class="scard rays"><span class="bdg">✦</span><div class="ol big">${esc(M.statRight.big)}</div><div class="ol t">${esc(M.statRight.text)}</div></div>
     </div>`}
     <div class="mscta load">${joinBtn()}<small>${ctaNoteMs()}</small></div>
