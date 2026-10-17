@@ -625,7 +625,8 @@ export class FanService {
       ...this.balance(clipper.id, now),
       items: this.fans.items({ activeOnly: true }),
       orders: this.fans.orders({ clipperId: clipper.id, limit: 50 }),
-      quests: this.quests(clipper.id, now),
+      // Quêtes arrêtées (17 oct, demande d'Alex) : plus affichées ni récompensées
+      quests: [] as Quest[],
       maxClipViews: this.fans.clips(clipper.id, 500).reduce((m, c) => Math.max(m, c.views), 0),
       clipDays: [...new Set(this.fans.clipDays(clipper.id, now - 120 * 86_400_000).map((t) => dayKey(t)))],
       founder: this.isFounder(clipper),
