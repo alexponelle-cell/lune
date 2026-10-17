@@ -528,10 +528,10 @@ export async function dailyBestClips(client: Client<true>, fans: FanService, now
   const top = fans.clipGains(now - 86_400_000).filter((c) => c.discordId && c.gained >= 500 && c.url).sort((a, b) => b.gained - a.gained).slice(0, 3);
   if (!top.length) return false;
   const medals = ['🥇', '🥈', '🥉'];
-  const text = ['🔥 **Les clips qui ont le plus percé ces dernières 24 h** : regarde ce qui marche et inspire-toi !', ...top.map((c, i) => `${medals[i]} <@${c.discordId}> · **+${compact(c.gained)} vues** · ${c.url}`)].join('\n');
+  const text = ['@everyone 🔥 **Les clips qui ont le plus percé ces dernières 24 h** : regarde ce qui marche et inspire-toi !', ...top.map((c, i) => `${medals[i]} <@${c.discordId}> · **+${compact(c.gained)} vues** · ${c.url}`)].join('\n');
   for (const guild of setupGuilds(client, fans)) {
     const ch = channel(guild, BEST_CLIPS_CHANNEL);
-    await ch?.send({ content: text, allowedMentions: { users: [] } }).catch(() => {});
+    await ch?.send({ content: text, allowedMentions: { parse: ['everyone'], users: top.map((c) => c.discordId!) } }).catch(() => {});
   }
   return true;
 }
