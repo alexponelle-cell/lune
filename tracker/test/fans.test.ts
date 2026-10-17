@@ -164,6 +164,9 @@ describe('programme fans (Neptune)', () => {
     expect(got.map((r) => r.coins)).toEqual([5]);
     expect(fans.balance(fan.id).earned).toBe(before + 5);
     expect(fans.awardQuests().filter((r) => r.discordId === 'q1')).toHaveLength(0);
+    // Quêtes arrêtées : coins retirés
+    fans.undoQuests();
+    expect(fans.balance(fan.id).earned).toBe(before);
   });
 
   it('/inscription2 : un 2e compte du même réseau, compté sur le même profil', () => {

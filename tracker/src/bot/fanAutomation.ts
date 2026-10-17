@@ -412,3 +412,25 @@ export async function questRewards(client: Client<true>, fans: FanService, now =
   }
   return done.length;
 }
+
+/** Quêtes arrêtées : supprime les messages « Quête réussie » du bot dans les salons privés et retire les coins donnés (une fois). */
+export async function cleanupQuests(client: Client<true>, fans: FanService): Promise<number> {
+  if (fans.botState<boolean>('quests-cleaned', false)) return 0;
+  const undone = fans.undoQuests();
+  let deleted = 0;
+  for (const guild of setupGuilds(client, fans)) {
+    const privs = guild.channels.cache.filter((c) => c.type === ChannelType.GuildText && /\[\d+\]/.test((c as TextChannel).topic ?? '')) as unknown as Map<string, TextChannel>;
+    for (const ch of privs.values()) {
+      const msgs = await ch.messages.fetch({ limit: 50 }).catch(() => null);
+      for (const m of msgs?.values() ?? []) {
+        if (m.author.id === client.user.id && m.content.includes('Quête réussie')) {
+          await m.delete().catch(() => {});
+          deleted++;
+        }
+      }
+    }
+  }
+  fans.setBotState('quests-cleaned', true);
+  log.info(`quêtes annulées : ${undone} récompense(s) retirée(s), ${deleted} message(s) supprimé(s)`);
+  return deleted;
+}

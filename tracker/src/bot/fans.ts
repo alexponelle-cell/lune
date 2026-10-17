@@ -20,7 +20,7 @@ import {
 import { log } from '../log.js';
 import { FAQ_MENU, faqAnswer, type FaqIntent, looksLikeQuestion, matchFaq, PERSONAL_INTENTS } from '../domain/faq.js';
 import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
-import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking, monthlyPodium, relanceFans, motivationFans } from './fanAutomation.js';
+import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking, monthlyPodium, relanceFans, motivationFans, cleanupQuests } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -411,6 +411,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     void sendNotifications().catch(() => {});
     // Serveur monté par /setup (toutes les 15 min) : rôles de palier, classement du lundi, nouvelles vidéos
     const automations = async () => {
+      await cleanupQuests(c, opts.fans).catch((err) => log.error('nettoyage quêtes', err));
       await reportSuspicious(c, opts.fans).catch((err) => log.error('fans à vérifier', err));
       await reportOrdersToApprove(c, opts.fans).catch((err) => log.error('achats à valider', err));
       await reportAccountsToReview(c, opts.fans).catch((err) => log.error('comptes à vérifier', err));

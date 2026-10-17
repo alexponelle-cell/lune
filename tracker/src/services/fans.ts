@@ -355,6 +355,11 @@ export class FanService {
     return { views, earned, spent, balance: earned - spent };
   }
 
+  /** Quêtes arrêtées : coins donnés retirés (une seule fois au démarrage). */
+  undoQuests(): number {
+    return this.fans.undoQuests((key) => (key === 'quest:accounts' ? QUEST_COINS.accounts : QUEST_COINS.streak7));
+  }
+
   /** Badge « Fondateur » : inscrit dans les 14 premiers jours du programme. */
   private isFounder(clipper: Clipper): boolean {
     const clientId = this.settings().clientId;

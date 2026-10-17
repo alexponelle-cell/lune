@@ -373,6 +373,16 @@ export class FanRepo {
     return !!this.db.prepare('SELECT 1 FROM fan_notified WHERE clipper_id = ? AND key = ?').get(clipperId, key);
   }
 
+  /** Annule les quêtes déjà récompensées : retire leurs coins bonus et oublie qu'elles ont été données. */
+  undoQuests(coinsFor: (key: string) => number): number {
+    const rows = this.db.prepare("SELECT clipper_id AS id, key FROM fan_notified WHERE key LIKE 'quest:%'").all() as Array<{ id: number; key: string }>;
+    for (const r of rows) {
+      this.addBonus(r.id, -coinsFor(r.key));
+      this.db.prepare('DELETE FROM fan_notified WHERE clipper_id = ? AND key = ?').run(r.id, r.key);
+    }
+    return rows.length;
+  }
+
   markNotified(clipperId: number, key: string, now = Date.now()): void {
     this.db.prepare('INSERT OR IGNORE INTO fan_notified (clipper_id, key, created_at) VALUES (?, ?, ?)').run(clipperId, key, now);
   }
