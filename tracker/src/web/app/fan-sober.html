@@ -635,6 +635,29 @@
     body.ms .tl .box { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   }
 
+
+  /* ---------- DA commune : rangs (étoiles), badges (hexagones), quêtes : aplats, un contour par client ---------- */
+  body { --c1: #C98A5B; --c2: #F5C838; --c3: #EE5A3C; --c4: #3B8CF5; --ol: var(--text); --olw: 3.5; --fo: 0; --fd: 0; }
+  body.ms { --olw: 4; } body.micka { --olw: 0; } body.noah { --olw: 3; }
+  .t1 { --c: var(--c1); --fo: 0; --fd: 0; --gl: #fff; } .t2 { --c: var(--c2); --fo: .32; --fd: 0; --gl: #14130F; } .t3 { --c: var(--c3); --fo: .32; --fd: .14; --gl: #fff; } .t4 { --c: var(--c4); --fo: .4; --fd: .18; --gl: #fff; }
+  svg.gst { width: 100px; height: 100px; display: block; }
+  body.ms svg.gst { filter: drop-shadow(0 4px 0 var(--ol)); }
+  .pips { display: flex; gap: 5px; height: 9px; justify-content: center; margin: 2px 0 4px; } .pips i { width: 9px; height: 9px; border-radius: 50%; background: var(--text); }
+  .lvl svg.gst { width: 1.5em; height: 1.5em; display: inline-block; vertical-align: -.4em; filter: none; }
+  .gi { fill: none; stroke: var(--ink, var(--text)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .badges.hexes { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .hexb { border: 1px solid var(--line); border-radius: var(--r); padding: 16px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--card); }
+  .hexb b { font-size: 14px; } .hexb small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .hexb .hxg { position: relative; width: 78px; height: 78px; filter: saturate(1.3); } .hexb .hxg svg.gst { width: 78px; height: 78px; filter: none; }
+  .hexb .hxg .gi { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; stroke: var(--gl); stroke-width: 2.2; }
+  .hexb.lk .hxg { filter: saturate(.35) brightness(1.04) opacity(.8); } .hexb.lk .pips i { background: none; border: 2px solid var(--muted); }
+  .quests { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .quest { border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 10px; background: var(--card); }
+  .quest .qchip { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; background: var(--accent); color: var(--accent-ink); padding: 5px 11px; border-radius: 99px; }
+  .quest h4 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.01em; } .quest p { margin: 0; color: var(--muted); font-size: 14px; flex: 1; }
+  .quest .rwd { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 22px; } .quest .rwd span { font-size: 14px; } .quest .rwd .gi { width: 24px; height: 24px; stroke: var(--accent); } .quest .rwd svg.gst { width: 34px; height: 34px; }
+  .quest .qbar { height: 9px; background: color-mix(in srgb, var(--text) 10%, transparent); border-radius: 99px; overflow: hidden; } .quest .qbar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .quest small { color: var(--muted); font-weight: 700; font-size: 13px; } .quest.ok { border-color: var(--accent); }
   /* ---------- Skin « noah » (Noah Panchaud, Speedrun Monétisation 90 jours) : blanc, noir, rouge #E10600, surligné jaune ---------- */
   body.rich.noah { --red: #E10600; --red-d: #B30500; --amber: #F59E0B; --lime: #7CB305; --green: #12B54A; --mark: #FFD60A; background: #fff; }
   body.noah h1, body.noah h2, body.noah h3, body.noah .ol, body.noah .logo { font-family: Inter, -apple-system, 'Segoe UI', sans-serif; font-weight: 800; letter-spacing: -.04em; }
@@ -822,6 +845,22 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="g-star" viewBox="0 0 64 64"><path style="fill:var(--c)" d="M32 6L39.94 22.08 57.68 24.66 44.84 37.17 47.87 54.84 32 46.5 16.13 54.84 19.16 37.17 6.32 24.66 24.06 22.08z"/><path style="fill:#fff;opacity:var(--fo)" d="M32 33L32 6 24.06 22.08zM32 33L57.68 24.66 39.94 22.08zM32 33L47.87 54.84 44.84 37.17zM32 33L16.13 54.84 32 46.5zM32 33L6.32 24.66 19.16 37.17z"/><path style="fill:#000;opacity:var(--fd)" d="M32 33L32 6 39.94 22.08zM32 33L57.68 24.66 44.84 37.17zM32 33L47.87 54.84 32 46.5zM32 33L16.13 54.84 19.16 37.17zM32 33L6.32 24.66 24.06 22.08z"/><path style="fill:none;stroke:var(--ol);stroke-width:var(--olw);stroke-linejoin:round" d="M32 6L39.94 22.08 57.68 24.66 44.84 37.17 47.87 54.84 32 46.5 16.13 54.84 19.16 37.17 6.32 24.66 24.06 22.08z"/></symbol>
+<symbol id="g-hex" viewBox="0 0 64 64"><path style="fill:var(--c)" d="M32 5L55.38 18.5 55.38 45.5 32 59 8.62 45.5 8.62 18.5z"/><path style="fill:#fff;opacity:var(--fo)" d="M32 32L32 5 55.38 18.5zM32 32L55.38 45.5 32 59zM32 32L8.62 45.5 8.62 18.5z"/><path style="fill:#000;opacity:var(--fd)" d="M32 32L55.38 18.5 55.38 45.5zM32 32L32 59 8.62 45.5zM32 32L8.62 18.5 32 5z"/><path style="fill:none;stroke:var(--ol);stroke-width:var(--olw);stroke-linejoin:round" d="M32 5L55.38 18.5 55.38 45.5 32 59 8.62 45.5 8.62 18.5z"/></symbol>
+<symbol id="i-clap" viewBox="0 0 24 24"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 9l2-5h3.5L6 9M10 9l2.5-5H16l-2.5 5M16 9l2.5-5H21"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 4 6 6 6 11a6 6 0 0 1-12 0c0-2 1-3 2-4 .5 2 1.5 3 3 3-1-4-1-7 1-10z"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 11h16M9 3v4M15 3v4"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 18h18l-1.5-10-4.5 4-3-6-3 6-4.5-4zM4 21h16"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+<symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h11l2-8H6.2M9 20h.01M18 20h.01"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="4.5"/></symbol>
+</svg>
 <header class="top"><div class="top-in">
   <a class="logo" href="#/" id="logo"></a>
   <nav class="menu" id="menu"></nav>
@@ -846,7 +885,11 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch { return 
 
 let PUB = null, ME = null, C = null; // C = config du créateur
 /** Étoile du grade (Débutant → Élite, dessins de Lucas) au lieu de l'emoji ; emoji au-delà de 4 niveaux. */
-const lvlIcon = (i) => i < 4 && C.levels.length <= 4 ? `<img class="star" src="/fan/assets/ms-star${i + 1}.webp" alt="">` : C.levels[i].emoji;
+/** Étoile de rang (DA commune) : aplat de la couleur du rang 1 → 4, contour du client. */
+const starSvg = (n) => `<svg class="gst t${n}" viewBox="0 0 64 64" aria-hidden="true"><use href="#g-star"/></svg>`;
+const pips = (n) => `<div class="pips">${'<i></i>'.repeat(n)}</div>`;
+const gi = (k) => `<svg class="gi" aria-hidden="true"><use href="#i-${k}"/></svg>`;
+const lvlIcon = (i) => i < 4 && C.levels.length <= 4 ? starSvg(i + 1) : C.levels[i].emoji;
 /** Pourquoi un clip ne rapporte pas (affiché sous le clip). */
 const clipWhy = (c) => c.why?.includes('unverified') ? 'compte en vérification par le staff' : c.why?.includes('before') ? 'publié avant ton inscription' : c.why?.includes('notag') ? `${PUB.clipTag ?? '#tag'} manquant dans la légende` : 'ne rapporte pas';
 const levelOf = (views) => C.levels.reduce((acc, l, i) => (views >= l.min ? i : acc), 0);
@@ -1059,7 +1102,7 @@ ${show ? `  <section class="cases">${M.showcaseTitle ? `<h2 class="msh2 rv">${es
     ${spk ? `<h2 class="msh2 rv">${esc(M.speakersTitle ?? '')}</h2>
     <div class="spk-wrap" aria-hidden="true"><ul class="tp-row r" data-speed="82">${spk}${spk}${spk}${spk}</ul></div>` : ''}
     <h2 class="msh2 rv" style="margin-top:${spk ? 56 : 0}px">${esc(M.tiersTitle)}</h2>
-    <div class="tiers">${lv.slice(0, 4).map((l, i) => `<div class="tier rv">${M.tierCubes?.[i] ? cubeSvg(M.tierCubes[i]) : M.tierEmoji ? `<img src="/fan/assets/ms-star${i + 1}.webp" alt="">` : `<img src="/fan/assets/ms-tier${i + 1}.webp" alt="">`}${esc(l.name)}<small>${i === 0 ? `&lt; ${compact(lv[1]?.min ?? 0)}` : `&gt; ${compact(l.min)}`} vues${C.gradeWindowDays ? '/mois' : ''}</small></div>`).join('')}</div>
+    <div class="tiers">${lv.slice(0, 4).map((l, i) => `<div class="tier rv">${M.tierCubes?.[i] ? cubeSvg(M.tierCubes[i]) : starSvg(i + 1) + pips(i + 1)}${esc(l.name)}<small>${i === 0 ? `&lt; ${compact(lv[1]?.min ?? 0)}` : `&gt; ${compact(l.min)}`} vues${C.gradeWindowDays ? '/mois' : ''}</small></div>`).join('')}</div>
   </section>
 
   <section class="msec orange">
@@ -1228,11 +1271,23 @@ function pageProfile() {
   const platforms = new Set(ME.accounts.map((a) => a.platform)).size;
   const traded = ME.orders.filter((o) => o.status !== 'refunded').length;
   const ra = C.rewardAccount;
+  // Badges (DA commune) : hexagone de la couleur du rang, pictogramme, conditions ; grisés tant qu'ils ne sont pas débloqués
+  const days = new Set(ME.clipDays ?? []);
+  const longest = [...days].sort().reduce((acc, d) => { const prev = new Date(Date.parse(d) - 864e5).toISOString().slice(0, 10); const run = days.has(prev) ? acc.run + 1 : 1; return { run, best: Math.max(acc.best, run) }; }, { run: 0, best: 0 }).best;
+  const top = ME.maxClipViews ?? 0, top3 = !!ME.weekRank && ME.weekRank <= 3;
   const badges = [
-    ['🎬', 'Premier clip', ME.clipCount >= 1], ['💯', '10 clips', ME.clipCount >= 10], ['📱', 'Multi-plateforme', platforms >= 2],
-    ['👀', '10k vues', ME.views >= 1e4], ['🚀', '100k vues', ME.views >= 1e5], ['💎', '1M vues', ME.views >= 1e6],
-    ['🔗', ra.badge, !!ME.rewardAccount?.value], ['🛒', 'Premier échange', traded >= 1], ['🏆', 'Top 3 semaine', !!ME.weekRank && ME.weekRank <= 3],
+    [1, 'clap', 'Premier clip', '1 clip posté', ME.clipCount >= 1],
+    [2, 'eye', 'En route', '1 clip à 10 000 vues', top >= 1e4],
+    [2, 'cal', 'Série 7 jours', '7 jours d’affilée', longest >= 7],
+    [2, 'grid', 'Multi-plateforme', '2 réseaux reliés', platforms >= 2],
+    [1, 'link', ra.badge, 'Compte de livraison relié', !!ME.rewardAccount?.value],
+    [2, 'cart', 'Premier échange', '1 récompense échangée', traded >= 1],
+    [3, 'flame', 'Viral', '1 clip à 100 000 vues', top >= 1e5],
+    [4, 'bolt', 'Méga viral', '1 clip à 1 million de vues', top >= 1e6],
+    [4, 'crown', 'Fondateur', 'Arrivé dans les premiers jours', !!ME.founder],
+    [4, top3 ? 'trophy' : 'lock', top3 ? 'Top 3' : 'Badge caché', top3 ? 'Top 3 de la semaine' : 'Condition secrète', top3],
   ];
+  const quests = ME.quests ?? [];
   return `<section style="margin-top:56px"><div class="profile">
     <div class="card id rv">${avatar(ME.username, ME.avatar)}<h3>${esc(ME.username)}</h3><div class="lvl">${lvlIcon(li)} ${esc(lvl.name)}</div>
       ${bar(pct)}<div class="bar-txt">${next ? `<span>Prochain : ${esc(next.name)}</span><span>encore ${compact(next.min - ME.views)} vues</span>` : '<span>Niveau maximum atteint</span>'}</div></div>
@@ -1243,8 +1298,12 @@ function pageProfile() {
         <div class="card stat rv"><small>Clips</small><div class="v">${fmt(ME.clipCount)}</div></div>
         <div class="card stat rv"><small>Semaine</small><div class="v">${ME.weekRank ? ME.weekRank + 'e' : '—'}</div></div>
       </div>
-      <div class="card panel rv"><h3>Badges</h3><p>${badges.filter((b) => b[2]).length} / ${badges.length} débloqués</p>
-        <div class="badges">${badges.map(([e, n, on]) => `<div class="badge ${on ? '' : 'off'}"><div class="e">${e}</div>${esc(n)}</div>`).join('')}</div></div>
+      ${quests.length ? `<div class="card panel rv"><h3>Quêtes</h3><p>Des coins en bonus pour tes efforts.</p>
+        <div class="quests">${quests.map((q) => `<div class="quest${q.done ? ' ok' : ''}"><span class="qchip">${esc(q.done ? 'Réussie ✓' : q.chip)}</span><h4>${esc(q.title)}</h4><p>${esc(q.text)}</p>
+          <div class="rwd">${q.coins ? `${gi('coin')}+${fmt(q.coins)}<span>coins</span>` : `${starSvg(2)}<span>${esc(q.rewardLabel ?? '')}</span>`}</div>
+          <div class="qbar"><i style="width:${Math.min(100, (q.progress / q.goal) * 100)}%"></i></div><small>${fmt(q.progress)} / ${fmt(q.goal)} ${esc(q.unit)}</small></div>`).join('')}</div></div>` : ''}
+      <div class="card panel rv"><h3>Badges</h3><p>${badges.filter((b) => b[4]).length} / ${badges.length} débloqués</p>
+        <div class="badges hexes">${badges.map(([r, g, n, d, on]) => `<div class="hexb${on ? '' : ' lk'}"><span class="hxg t${r}"><svg class="gst" viewBox="0 0 64 64" aria-hidden="true"><use href="#g-hex"/></svg>${gi(g)}</span>${pips(r)}<b>${esc(n)}</b><small>${esc(d)}</small></div>`).join('')}</div></div>
       <div class="card panel rv"><h3>${esc(ra.title)}</h3><p>${ME.rewardAccount?.value ? `Relié : <b style="color:var(--text)">${esc(ME.rewardAccount.value)}</b>. ${esc(ra.deliveryHint)}` : esc(ra.deliveryHint)}</p>
         <form class="row" id="account"><input type="${ra.kind === 'email' ? 'email' : 'text'}" name="v" placeholder="${esc(ra.placeholder)}" aria-label="${esc(ra.label)}" value="${esc(ME.rewardAccount?.value ?? '')}" required><button class="btn">${ME.rewardAccount?.value ? 'Modifier' : 'Enregistrer'}</button></form></div>
       <div class="card panel rv"><h3>Notifications Discord</h3><p>Un message privé quand tu gagnes des coins, passes un niveau ou peux échanger une récompense. Un par jour au maximum.</p>

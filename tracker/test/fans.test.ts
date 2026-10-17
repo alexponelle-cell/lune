@@ -149,6 +149,23 @@ describe('programme fans (Neptune)', () => {
     expect(msgs[3]).not.toBe(msgs[2]);
   });
 
+  it('quêtes : 3 comptes = +5 coins une seule fois, série de 7 jours = +100 coins', async () => {
+    const { currentStreak, buildQuests } = await import('../src/domain/quests.js');
+    const now = Date.parse('2026-10-17T12:00:00Z');
+    const day = (d: number) => new Date(now - d * 86_400_000).toISOString().slice(0, 10);
+    expect(currentStreak([0, 1, 2].map(day), now).length).toBe(3);
+    expect(currentStreak([1, 2].map(day), now).length).toBe(2);
+    expect(currentStreak([2, 3].map(day), now).length).toBe(0);
+    expect(buildQuests({ platforms: 3, views: 12_000, streak: 7 }).every((q) => q.done)).toBe(true);
+    const fan = fans.ensureFan('q1', 'Quest');
+    fans.setAccounts(fan, { tiktok: '@q.tt', youtube: '@qyt', instagram: '@q.ig' });
+    const before = fans.balance(fan.id).earned;
+    const got = fans.awardQuests().filter((r) => r.discordId === 'q1');
+    expect(got.map((r) => r.coins)).toEqual([5]);
+    expect(fans.balance(fan.id).earned).toBe(before + 5);
+    expect(fans.awardQuests().filter((r) => r.discordId === 'q1')).toHaveLength(0);
+  });
+
   it('/inscription2 : un 2e compte du même réseau, compté sur le même profil', () => {
     const fan = fans.ensureFan('d5', 'Duo');
     fans.setAccounts(fan, { tiktok: '@duo.main' });

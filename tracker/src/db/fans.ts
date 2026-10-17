@@ -140,6 +140,13 @@ export class FanRepo {
     this.db.prepare('UPDATE clippers SET reward_email = ? WHERE id = ?').run(email, clipperId);
   }
 
+  /** Jours (Paris) où le fan a publié au moins un clip sur ses comptes actifs, après l'ajout du compte. */
+  clipDays(clipperId: number, since: number): number[] {
+    return (this.db
+      .prepare('SELECT v.published_at AS at FROM videos v JOIN accounts a ON a.id = v.account_id WHERE a.clipper_id = ? AND a.active = 1 AND v.published_at >= ? AND v.published_at >= a.created_at')
+      .all(clipperId, since) as Array<{ at: number }>).map((r) => r.at);
+  }
+
   /** Coins ajoutés (ou retirés) à la main par le staff. */
   bonus(clipperId: number): number {
     return ((this.db.prepare('SELECT bonus_coins FROM clippers WHERE id = ?').get(clipperId) as Row | undefined)?.bonus_coins as number) ?? 0;

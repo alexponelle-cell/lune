@@ -10,6 +10,8 @@ import { beone } from '../creators/beone.js';
 import { parisMidnight } from '../jobs/collect.js';
 import type { CreatorConfig } from '../creators/types.js';
 import { relanceMessage } from '../domain/relance.js';
+import { buildQuests, currentStreak, QUEST_COINS, type Quest } from '../domain/quests.js';
+import { dayKey } from '../domain/time.js';
 
 /** Programme fans (bot Neptune) : les fans clippent, gagnent des points avec leurs vues et les échangent en boutique. */
 export interface FanSettings {
@@ -353,6 +355,50 @@ export class FanService {
     return { views, earned, spent, balance: earned - spent };
   }
 
+  /** Badge « Fondateur » : inscrit dans les 14 premiers jours du programme. */
+  private isFounder(clipper: Clipper): boolean {
+    const clientId = this.settings().clientId;
+    if (!clientId) return false;
+    const first = this.repo.listActiveAccounts().filter((a) => a.clientId === clientId).reduce((m, a) => Math.min(m, a.createdAt), Infinity);
+    const mine = this.repo.listAccountsForClipper(clipper.id).reduce((m, a) => Math.min(m, a.createdAt), Infinity);
+    return Number.isFinite(first) && mine <= first + 14 * 86_400_000;
+  }
+
+  // --- Quêtes (site + coins donnés par le bot) ---------------------------------------
+
+  quests(clipperId: number, now = Date.now()): Quest[] {
+    const platforms = new Set(this.repo.listAccountsForClipper(clipperId).filter((a) => a.active).map((a) => a.platform)).size;
+    const days = this.fans.clipDays(clipperId, now - 120 * 86_400_000).map((t) => dayKey(t));
+    return buildQuests({ platforms, views: this.balance(clipperId, now).views, streak: currentStreak(days, now).length });
+  }
+
+  /**
+   * Donne les coins des quêtes réussies, une seule fois chacune (série de 7 jours : à chaque tranche de 7 jours d'une même série).
+   * Renvoie les récompenses données, pour que le bot les annonce dans le salon privé.
+   */
+  awardQuests(now = Date.now()): Array<{ clipperId: number; discordId: string; title: string; coins: number }> {
+    const clientId = this.settings().clientId;
+    if (!clientId) return [];
+    const out: Array<{ clipperId: number; discordId: string; title: string; coins: number }> = [];
+    const fans = new Set(this.repo.listActiveAccounts().filter((a) => a.clientId === clientId).map((a) => a.clipperId));
+    for (const id of fans) {
+      const clipper = this.repo.getClipper(id);
+      if (!clipper || clipper.discordId.startsWith('manual:')) continue;
+      const give = (key: string, title: string, coins: number) => {
+        if (this.fans.wasNotified(id, key)) return;
+        this.fans.markNotified(id, key, now);
+        this.fans.addBonus(id, coins);
+        out.push({ clipperId: id, discordId: clipper.discordId, title, coins });
+      };
+      const platforms = new Set(this.repo.listAccountsForClipper(id).filter((a) => a.active).map((a) => a.platform)).size;
+      if (platforms >= 3) give('quest:accounts', 'Inscris tes 3 comptes', QUEST_COINS.accounts);
+      const days = this.fans.clipDays(id, now - 120 * 86_400_000).map((t) => dayKey(t));
+      const streak = currentStreak(days, now);
+      for (let k = 1; k <= Math.floor(streak.length / 7); k++) give(`quest:streak:${streak.start}:${k}`, `1 clip par jour pendant ${7 * k} jours`, QUEST_COINS.streak7);
+    }
+    return out;
+  }
+
   // --- Espace fan --------------------------------------------------------------------
 
   /** Fans (Discord) dont le 1er clip a été détecté : ils débloquent la communauté. */
@@ -579,6 +625,10 @@ export class FanService {
       ...this.balance(clipper.id, now),
       items: this.fans.items({ activeOnly: true }),
       orders: this.fans.orders({ clipperId: clipper.id, limit: 50 }),
+      quests: this.quests(clipper.id, now),
+      maxClipViews: this.fans.clips(clipper.id, 500).reduce((m, c) => Math.max(m, c.views), 0),
+      clipDays: [...new Set(this.fans.clipDays(clipper.id, now - 120 * 86_400_000).map((t) => dayKey(t)))],
+      founder: this.isFounder(clipper),
     };
   }
 

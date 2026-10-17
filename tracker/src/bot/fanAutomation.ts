@@ -397,3 +397,18 @@ export async function motivationFans(client: Client<true>, fans: FanService, now
   fans.setBotState('motivation', { day, bag, last: index } satisfies MotivationState);
   return true;
 }
+
+/** Quêtes réussies : coins ajoutés (fans.awardQuests) et annoncés dans le salon privé du fan. */
+export async function questRewards(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
+  const done = fans.awardQuests(now);
+  if (!done.length) return 0;
+  const guilds = setupGuilds(client, fans);
+  for (const r of done) {
+    const priv = guilds
+      .map((g) => g.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${r.discordId}]`)) as TextChannel | undefined)
+      .find(Boolean);
+    await priv?.send({ content: `🎯 <@${r.discordId}> **Quête réussie : ${r.title}** → **+${nf(r.coins)} coins** 🪙 Continue comme ça !`, allowedMentions: { users: [r.discordId] } }).catch(() => {});
+    await pause(300);
+  }
+  return done.length;
+}
