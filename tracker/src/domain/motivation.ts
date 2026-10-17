@@ -53,5 +53,5 @@ export function drawMotivation(state: MotivationState, count = MOTIVATION.length
 }
 
 export function motivationMessage(index: number): string {
-  return `☀️ **${MOTIVATION[index]}**\n\nRendez-vous tous les jours à 9h dans le général !`;
+  return `@everyone ☀️ **${MOTIVATION[index]}**\n\nRendez-vous tous les jours à 9h dans le général !`;
 }

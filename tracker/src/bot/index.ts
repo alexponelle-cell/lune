@@ -238,7 +238,7 @@ export async function startBot(deps: Deps): Promise<Bot> {
       log.warn('motivation : aucun salon « général » sur le serveur de l’agence');
       return false;
     }
-    await general.send(text);
+    await general.send({ content: text, allowedMentions: { parse: ['everyone'] } });
     return true;
   }
 

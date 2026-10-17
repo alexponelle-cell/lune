@@ -393,7 +393,7 @@ export async function motivationFans(client: Client<true>, fans: FanService, now
   const generals = setupGuilds(client, fans).map((g) => channel(g, '💬│général')).filter((c): c is TextChannel => !!c);
   if (!generals.length) return false;
   const { index, bag } = drawMotivation(state, undefined, random);
-  for (const g of generals) await g.send(motivationMessage(index)).catch((err) => log.warn(`motivation (${g.guild.name}) : ${String(err)}`));
+  for (const g of generals) await g.send({ content: motivationMessage(index), allowedMentions: { parse: ['everyone'] } }).catch((err) => log.warn(`motivation (${g.guild.name}) : ${String(err)}`));
   fans.setBotState('motivation', { day, bag, last: index } satisfies MotivationState);
   return true;
 }
