@@ -120,8 +120,8 @@ interface ChannelPlan {
   voice?: true;
   /** Retrouve aussi un salon existant dont le nom commence pareil (ex. « conférence-rediffusions » déjà créé à la main). */
   prefix?: true;
-  /** Anciens noms du salon (renommé au /setup au lieu d'en créer un nouveau). */
-  aliases?: string[];
+  /** Anciens salons remplacés par celui-ci : supprimés au /setup (ex. #mes-clips → #feedbacks). */
+  replaces?: string[];
 }
 export const ROLE_READER = '📖 Lecteur';
 export const ROLE_RULES = '✅ Règles acceptées';
@@ -174,7 +174,7 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
     channels: [
       { name: '📣│annonces', access: readonly(ROLE_CLIPPER) },
       { name: '💬│général', access: writable(ROLE_CLIPPER) },
-      { name: '🔄│feedbacks', access: writable(ROLE_CLIPPER), topic: 'Poste ton clip et reçois des retours du staff et de la commu', aliases: ['🎥│mes-clips'] },
+      { name: '🔄│feedbacks', access: writable(ROLE_CLIPPER), topic: 'Poste ton clip et reçois des retours du staff et de la commu', replaces: ['🎥│mes-clips'] },
       { name: HELP_CHANNEL, access: writable(ROLE_CLIPPER), topic: 'Une question ? Le bot répond tout de suite (/aide), sinon le staff' },
       { name: '📝│conférence-rediff', access: readonly(ROLE_CLIPPER), topic: 'Les rediffusions et les supports des conférences', prefix: true },
       { name: '💪│entraide', access: writable(ROLE_CLIPPER), topic: 'Aidez-vous entre clippeurs : montage, idées, retours' },
@@ -298,7 +298,7 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
         continue;
       }
       // Retrouvé même si l'emoji du nom a changé (ex. « bienvenue »)
-      let ch = guild.channels.cache.find((x) => x.type === ChannelType.GuildText && (x.name === plan.name || bare(x.name) === bare(plan.name) || (!!plan.prefix && bare(x.name).startsWith(bare(plan.name))) || !!plan.aliases?.some((a) => bare(x.name) === bare(a)))) as TextChannel | undefined;
+      let ch = guild.channels.cache.find((x) => x.type === ChannelType.GuildText && (x.name === plan.name || bare(x.name) === bare(plan.name) || (!!plan.prefix && bare(x.name).startsWith(bare(plan.name))))) as TextChannel | undefined;
       if (!ch) {
         ch = await guild.channels.create({ name: plan.name, type: ChannelType.GuildText, parent: cat.id, topic: plan.topic, permissionOverwrites: overwrites(guild, plan.access, staff.id) });
         created.push(`#${plan.name}`);
@@ -311,6 +311,13 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
       // Ordre du plan dans la catégorie (ex. #tutos avant #inscription)
       await ch.setPosition(group.channels.indexOf(plan)).catch(() => {});
       channels.set(bare(plan.name), ch);
+      // Anciens salons remplacés (ex. #mes-clips → #feedbacks) : supprimés
+      for (const old of plan.replaces ?? []) {
+        for (const x of guild.channels.cache.filter((c) => c.type === ChannelType.GuildText && c.id !== ch!.id && bare(c.name) === bare(old)).values()) {
+          await x.delete(`Remplacé par ${plan.name}`).catch(() => {});
+          created.push(`🗑️ #${old} supprimé`);
+        }
+      }
     }
     cats.push(cat.id);
   }
