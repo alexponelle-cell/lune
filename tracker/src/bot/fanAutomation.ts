@@ -1,10 +1,12 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
+import { weekendWindow, WEEKEND_GOAL } from '../domain/engagement.js';
+import { startOfDay } from '../domain/time.js';
 import { drawMotivation, type MotivationState, motivationMessage } from '../domain/motivation.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
-import { bare, ensureTierRoles, LEVELUP_CHANNEL, levelRoleName, ROLE_READER, ROLE_RULES, ROLE_TRAINED, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
+import { ANNOUNCE_CHANNEL, BEST_CLIPS_CHANNEL, ROLE_CLIP_WEEK, ROLE_WEEKEND, bare, ensureTierRoles, LEVELUP_CHANNEL, levelRoleName, ROLE_READER, ROLE_RULES, ROLE_TRAINED, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
 
 /**
  * Automatisations des serveurs montés par /setup (sans effet ailleurs : rôles et salons introuvables).
@@ -433,4 +435,142 @@ export async function cleanupQuests(client: Client<true>, fans: FanService): Pro
   fans.setBotState('quests-cleaned', true);
   log.info(`quêtes annulées : ${undone} récompense(s) retirée(s), ${deleted} message(s) supprimé(s)`);
   return deleted;
+}
+
+// --- Motivation des clippeurs : récap du lundi, dépassements, clip de la semaine, meilleurs clips, défi du week-end, feedback ---
+
+/** Salon privé d'un fan (sur un des serveurs montés par /setup). */
+function privateOf(guilds: Guild[], discordId: string): TextChannel | undefined {
+  for (const g of guilds) {
+    const ch = g.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${discordId}]`)) as TextChannel | undefined;
+    if (ch) return ch;
+  }
+  return undefined;
+}
+
+async function ensureRole(guild: Guild, name: string, color: number): Promise<Role | null> {
+  return roleNamed(guild, name) ?? (await guild.roles.create({ name, colors: { primaryColor: color }, hoist: false, reason: 'Motivation des clippeurs' }).catch(() => null));
+}
+
+/** Donne le rôle aux gagnants et le retire aux anciens (mémorisés par serveur). */
+async function rotateRole(guild: Guild, fans: FanService, role: Role, winners: string[], key: string): Promise<void> {
+  const previous = fans.botState<string[]>(`${key}:${guild.id}`, []);
+  for (const id of previous.filter((x) => !winners.includes(x))) await (await guild.members.fetch(id).catch(() => null))?.roles.remove(role).catch(() => {});
+  for (const id of winners) await (await guild.members.fetch(id).catch(() => null))?.roles.add(role).catch(() => {});
+  fans.setBotState(`${key}:${guild.id}`, winners);
+}
+
+/** Lundi à partir de 11 h (Paris), une fois : récap perso de la semaine dans chaque salon privé. */
+export async function weeklyRecap(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
+  const { weekday, hour, day } = parisClock(now);
+  if (weekday !== 1 || hour < 11 || fans.botState<string>('recap-week', '') === day) return 0;
+  fans.setBotState('recap-week', day);
+  const guilds = setupGuilds(client, fans);
+  let sent = 0;
+  for (const r of fans.weeklyRecaps(now)) {
+    const priv = privateOf(guilds, r.discordId);
+    if (!priv) continue;
+    await priv.send({ content: `<@${r.discordId}>\n${r.text}`, allowedMentions: { users: [r.discordId] } }).then(() => sent++).catch(() => {});
+    await pause(300);
+  }
+  return sent;
+}
+
+/** « Tu t'es fait doubler » : entre 10 h et 21 h, si un fan du top 20 perd une place, un message (1 par jour au plus). */
+export async function overtakeAlerts(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
+  const { hour, day } = parisClock(now);
+  const ranks = fans.weekRanks(now, 20);
+  const previous = fans.botState<Record<string, number>>('week-ranks', {});
+  fans.setBotState('week-ranks', Object.fromEntries([...ranks].map(([id, r]) => [String(id), r.rank])));
+  if (hour < 10 || hour >= 21 || !Object.keys(previous).length) return 0;
+  const byRank = new Map([...ranks].map(([id, r]) => [r.rank, { id, ...r }]));
+  const guilds = setupGuilds(client, fans);
+  let sent = 0;
+  for (const [id, r] of ranks) {
+    const before = previous[String(id)];
+    if (before === undefined || r.rank <= before) continue;
+    const key = `overtaken:${day}`;
+    if (fans.fans.wasNotified(id, key)) continue;
+    const ahead = byRank.get(r.rank - 1);
+    const discordId = fans.discordOf(id);
+    const priv = discordId ? privateOf(guilds, discordId) : undefined;
+    if (!priv || !ahead) continue;
+    fans.fans.markNotified(id, key, now);
+    const gap = Math.max(1, ahead.views - r.views);
+    await priv.send({ content: `⚡ <@${discordId}> **${ahead.name}** vient de te passer devant : tu es **${r.rank}e** du classement de la semaine, à **${compact(gap)} vues** de lui. Un clip et tu reprends ta place 💪`, allowedMentions: { users: [discordId!] } }).then(() => sent++).catch(() => {});
+    await pause(300);
+  }
+  return sent;
+}
+
+/** Lundi à partir de 10 h : clip de la semaine (le plus de vues gagnées en 7 jours) dans #classement + rôle pendant 7 jours. */
+export async function clipOfWeek(client: Client<true>, fans: FanService, now = Date.now()): Promise<boolean> {
+  const { weekday, hour, day } = parisClock(now);
+  if (weekday !== 1 || hour < 10 || fans.botState<string>('clip-week', '') === day) return false;
+  fans.setBotState('clip-week', day);
+  const best = fans.clipGains(now - 7 * 86_400_000).filter((c) => c.discordId && c.gained > 0).sort((a, b) => b.gained - a.gained)[0];
+  if (!best) return false;
+  for (const guild of setupGuilds(client, fans)) {
+    const ch = channel(guild, RANKING_CHANNEL);
+    if (!ch) continue;
+    await ch.send({ content: `🎬 **Clip de la semaine** : bravo <@${best.discordId}> ! **${compact(best.gained)} vues** en 7 jours${best.title ? ` avec « ${best.title.slice(0, 80)} »` : ''} 🔥\n${best.url ?? ''}`, allowedMentions: { users: [best.discordId!] } }).catch(() => {});
+    const role = await ensureRole(guild, ROLE_CLIP_WEEK, 0xff7a00);
+    if (role) await rotateRole(guild, fans, role, [best.discordId!], 'clip-week-role');
+  }
+  return true;
+}
+
+/** Chaque jour à partir de 12 h : les 3 clips qui ont le plus percé en 24 h, dans #meilleurs-clips. */
+export async function dailyBestClips(client: Client<true>, fans: FanService, now = Date.now()): Promise<boolean> {
+  const { hour, day } = parisClock(now);
+  if (hour < 12 || fans.botState<string>('best-clips-day', '') === day) return false;
+  fans.setBotState('best-clips-day', day);
+  const top = fans.clipGains(now - 86_400_000).filter((c) => c.discordId && c.gained >= 500 && c.url).sort((a, b) => b.gained - a.gained).slice(0, 3);
+  if (!top.length) return false;
+  const medals = ['🥇', '🥈', '🥉'];
+  const text = ['🔥 **Les clips qui ont le plus percé ces dernières 24 h** : regarde ce qui marche et inspire-toi !', ...top.map((c, i) => `${medals[i]} <@${c.discordId}> · **+${compact(c.gained)} vues** · ${c.url}`)].join('\n');
+  for (const guild of setupGuilds(client, fans)) {
+    const ch = channel(guild, BEST_CLIPS_CHANNEL);
+    await ch?.send({ content: text, allowedMentions: { users: [] } }).catch(() => {});
+  }
+  return true;
+}
+
+/** Défi du week-end : annonce le vendredi à 18 h, rôle le lundi à 10 h pour ceux qui ont posté 3 clips (vendredi 18 h → lundi 0 h). */
+export async function weekendChallenge(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
+  const { weekday, hour, day } = parisClock(now);
+  const guilds = setupGuilds(client, fans);
+  if (weekday === 5 && hour >= 18 && fans.botState<string>('weekend-announce', '') !== day) {
+    fans.setBotState('weekend-announce', day);
+    for (const guild of guilds) {
+      await channel(guild, ANNOUNCE_CHANNEL)?.send({ content: `🔥 **Défi du week-end** : poste **${WEEKEND_GOAL} clips** d’ici dimanche minuit et gagne le rôle **${ROLE_WEEKEND}** toute la semaine prochaine. Let’s go ! 💪`, allowedMentions: { parse: [] } }).catch(() => {});
+    }
+    return 0;
+  }
+  if (weekday !== 1 || hour < 10 || fans.botState<string>('weekend-award', '') === day) return 0;
+  fans.setBotState('weekend-award', day);
+  const { from, to } = weekendWindow(startOfDay(now));
+  const winners = fans.weekendWinners(from, to);
+  for (const guild of guilds) {
+    const role = await ensureRole(guild, ROLE_WEEKEND, 0xff4d2e);
+    if (!role) continue;
+    await rotateRole(guild, fans, role, winners.map((w) => w.discordId), 'weekend-role');
+    if (winners.length) await channel(guild, ANNOUNCE_CHANNEL)?.send({ content: `🔥 **Défi du week-end réussi** par ${winners.map((w) => `<@${w.discordId}>`).join(', ')} : rôle **${ROLE_WEEKEND}** pour la semaine. Bien joué ! Prochain défi vendredi 18 h.`, allowedMentions: { users: winners.map((w) => w.discordId) } }).catch(() => {});
+  }
+  return winners.length;
+}
+
+/** Feedback auto des clips (entre 14 h et 20 h) : « ce format cartonne » / « essaie un hook plus fort ». */
+export async function clipFeedbackMessages(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
+  const { hour } = parisClock(now);
+  if (hour < 14 || hour >= 20) return 0;
+  const guilds = setupGuilds(client, fans);
+  let sent = 0;
+  for (const f of fans.clipFeedback(now)) {
+    const priv = privateOf(guilds, f.discordId);
+    if (!priv) continue;
+    await priv.send({ content: `<@${f.discordId}> ${f.text}`, allowedMentions: { users: [f.discordId] } }).then(() => sent++).catch(() => {});
+    await pause(300);
+  }
+  return sent;
 }

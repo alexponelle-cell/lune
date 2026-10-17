@@ -62,6 +62,10 @@ export const LOG_CHANNEL = '🧾│inscriptions-log';
 export const VIDEOS_CHANNEL = '📰│nouvelles-vidéos';
 export const RANKING_CHANNEL = '🏆│classement';
 export const LEVELUP_CHANNEL = '🎉│level-up';
+export const BEST_CLIPS_CHANNEL = '🔥│meilleurs-clips';
+export const ANNOUNCE_CHANNEL = '📣│annonces';
+export const ROLE_CLIP_WEEK = '🎬 Clip de la semaine';
+export const ROLE_WEEKEND = '🔥 Défi du week-end';
 /** Bouton « 🔔 Alerte vidéos » (ajoute / retire le rôle). */
 export const ALERTS_BUTTON = 'fans:alerts';
 /** SOP de l’agence (tutos clips), mises en avant dans 🎓│tutos */
@@ -181,6 +185,7 @@ export const SERVER_PLAN: Array<{ category: string; access: Access; channels: Ch
     channels: [
       { name: VIDEOS_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Chaque nouvelle vidéo, dès sa sortie : clippe-la en premier' },
       { name: RANKING_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Le top 10 de la semaine, chaque lundi' },
+      { name: BEST_CLIPS_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Chaque jour, les 3 clips qui ont le plus percé : inspire-toi des formats qui marchent' },
       { name: LEVELUP_CHANNEL, access: readonly(ROLE_CLIPPER), topic: 'Les paliers de la boutique débloqués' },
     ],
   },

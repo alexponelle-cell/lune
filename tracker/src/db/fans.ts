@@ -302,6 +302,26 @@ export class FanRepo {
   }
 
   /**
+   * Clips qui comptent (mêmes règles que les coins) avec les vues gagnées depuis `from` (photo la plus proche avant `from`).
+   * Sert au clip de la semaine, aux meilleurs clips du jour et au feedback des clips.
+   */
+  clipGains(clientId: number, from: number, ruleSince: number | null = null, countFrom: number | null = null): Array<{ videoId: number; clipperId: number; url: string | null; title: string | null; platform: string; views: number; gained: number; publishedAt: number }> {
+    return this.db
+      .prepare(
+        `SELECT v.id AS videoId, a.clipper_id AS clipperId, v.url, v.title, a.platform, v.views, v.published_at AS publishedAt,
+                MAX(v.views - COALESCE(
+                  (SELECT vs.views FROM video_snapshots vs WHERE vs.video_id = v.id AND vs.captured_at <= @from ORDER BY vs.captured_at DESC LIMIT 1),
+                  CASE WHEN v.published_at >= @from OR (@countFrom IS NOT NULL AND v.published_at >= @countFrom) THEN 0 ELSE v.baseline_views END), 0) AS gained
+           FROM videos v
+           JOIN accounts a ON a.id = v.account_id AND a.active = 1
+           JOIN clippers c ON c.id = a.clipper_id
+          WHERE c.client_id = @clientId AND a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND (v.published_at >= a.created_at OR (@countFrom IS NOT NULL AND v.published_at >= @countFrom))
+            AND (@since IS NULL OR v.published_at < @since OR v.clip_check = 'ok')`,
+      )
+      .all({ clientId, from, since: ruleSince, countFrom }) as Array<{ videoId: number; clipperId: number; url: string | null; title: string | null; platform: string; views: number; gained: number; publishedAt: number }>;
+  }
+
+  /**
    * Vues gagnées par fan sur ses clips publiés APRÈS avoir relié le compte (règle du programme fans :
    * les vidéos déjà en ligne avant l'inscription ne rapportent rien, même si elles continuent de monter).
    * `from` : seulement les vues gagnées depuis cette date (classement de la semaine).

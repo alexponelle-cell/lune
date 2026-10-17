@@ -12,6 +12,7 @@ import type { CreatorConfig } from '../creators/types.js';
 import { relanceMessage } from '../domain/relance.js';
 import { buildQuests, currentStreak, QUEST_COINS, type Quest } from '../domain/quests.js';
 import { dayKey } from '../domain/time.js';
+import { bestSlot, clipVerdict, verdictMessage, WEEKEND_GOAL } from '../domain/engagement.js';
 
 /** Programme fans (bot Neptune) : les fans clippent, gagnent des points avec leurs vues et les échangent en boutique. */
 export interface FanSettings {
@@ -353,6 +354,99 @@ export class FanService {
     const earned = this.points(views) + this.fans.bonus(clipperId);
     const spent = this.fans.spent(clipperId);
     return { views, earned, spent, balance: earned - spent };
+  }
+
+  // --- Motivation des clippeurs (récap du lundi, dépassements, clip de la semaine, défi du week-end, feedback) ---
+
+  /** Clips qui comptent, avec les vues gagnées depuis `from`, et le Discord / pseudo du clippeur. */
+  clipGains(from: number) {
+    const clientId = this.settings().clientId;
+    if (!clientId) return [];
+    return this.fans.clipGains(clientId, from, this.clipRuleSince(), this.countFrom()).map((c) => {
+      const clipper = this.repo.getClipper(c.clipperId);
+      return { ...c, discordId: clipper?.discordId ?? null, username: clipper?.username ?? '?' };
+    });
+  }
+
+  discordOf(clipperId: number): string | null {
+    return this.repo.getClipper(clipperId)?.discordId ?? null;
+  }
+
+  /** Fans inscrits (au moins un compte suivi dans le programme). */
+  private programFans(): Clipper[] {
+    const clientId = this.settings().clientId;
+    if (!clientId) return [];
+    const ids = new Set(this.repo.listActiveAccounts().filter((a) => a.clientId === clientId).map((a) => a.clipperId));
+    return [...ids].map((id) => this.repo.getClipper(id)).filter((c): c is Clipper => !!c && !c.discordId.startsWith('manual:'));
+  }
+
+  /** Place de chaque fan au classement de la semaine (top `limit`). */
+  weekRanks(now = Date.now(), limit = 30): Map<number, { rank: number; views: number; name: string }> {
+    return new Map(this.leaderboard(now, limit).map((r) => [r.id, { rank: r.rank, views: r.views, name: r.name }]));
+  }
+
+  /** Récap perso du lundi (envoyé dans le salon privé) : vues de la semaine, place, solde, ce qu'il manque, meilleur créneau. */
+  weeklyRecaps(now = Date.now()): Array<{ clipperId: number; discordId: string; text: string }> {
+    const ranks = this.weekRanks(now, 1000);
+    const shop = this.fans.items({ activeOnly: true });
+    const main = (this.creator.reward && shop.find((i) => i.ref === this.creator.reward!.ref)) ?? shop[0];
+    const all = this.clipGains(0);
+    const nf = (n: number) => Math.round(n).toLocaleString('fr-FR').replace(/\u202f|\u00a0/g, ' ');
+    return this.programFans().map((c) => {
+      const r = ranks.get(c.id);
+      const b = this.balance(c.id, now);
+      const lines = ['📊 **Ton récap de la semaine**'];
+      if (r) lines.push(`• **${nf(r.views)} vues** qui comptent cette semaine (+${nf(this.points(r.views))} coins)`, `• Classement de la semaine : **${r.rank}${r.rank === 1 ? 'er' : 'e'}**`);
+      else lines.push('• Aucune vue qui compte cette semaine : un clip aujourd’hui et tu repars 💪');
+      if (main) {
+        const left = main.price - b.balance;
+        lines.push(left > 0 ? `• Solde : **${nf(b.balance)} coins**, encore ${nf(left)} coins (≈ ${nf((left / Math.max(this.settings().pointsPer1000, 1)) * 1000)} vues) pour **${main.name}**` : `• Solde : **${nf(b.balance)} coins** : tu peux échanger **${main.name}** sur le site 🎁`);
+      }
+      const slot = bestSlot(all.filter((x) => x.clipperId === c.id && x.publishedAt > now - 60 * 86_400_000).map((x) => ({ publishedAt: x.publishedAt, views: x.views })));
+      if (slot) lines.push(`• ⏰ Ton meilleur créneau : **${slot.from} h - ${slot.to} h** (tes clips y font ${Math.round(slot.ratio * 10) / 10}× plus de vues)`);
+      return { clipperId: c.id, discordId: c.discordId, text: lines.join('\n') };
+    });
+  }
+
+  /** Feedback auto des clips publiés il y a 1 à 4 jours, comparés aux autres clips du fan (2 par fan et par jour au plus, une fois par clip). */
+  clipFeedback(now = Date.now()): Array<{ clipperId: number; discordId: string; text: string }> {
+    const all = this.clipGains(0);
+    const nf = (n: number) => Math.round(n).toLocaleString('fr-FR').replace(/\u202f|\u00a0/g, ' ');
+    const out: Array<{ clipperId: number; discordId: string; text: string }> = [];
+    const byFan = new Map<number, typeof all>();
+    for (const c of all) if (c.discordId) byFan.set(c.clipperId, [...(byFan.get(c.clipperId) ?? []), c]);
+    const day = dayKey(now);
+    for (const [id, clips] of byFan) {
+      // Une seule fournée de conseils par jour et par fan (2 au plus)
+      if (this.fans.wasNotified(id, `feedback-day:${day}`)) continue;
+      let sent = 0;
+      const fresh = clips.filter((c) => c.publishedAt <= now - 86_400_000 && c.publishedAt >= now - 4 * 86_400_000).sort((a, b) => b.publishedAt - a.publishedAt);
+      for (const clip of fresh) {
+        if (sent >= 2) break;
+        const key = `feedback:${clip.videoId}`;
+        if (this.fans.wasNotified(id, key)) continue;
+        const others = clips.filter((c) => c.videoId !== clip.videoId && c.publishedAt > now - 60 * 86_400_000 && c.publishedAt < now - 86_400_000).map((c) => c.views);
+        const v = clipVerdict(clip.views, others);
+        if (!v) continue;
+        this.fans.markNotified(id, key, now);
+        if (!sent) this.fans.markNotified(id, `feedback-day:${day}`, now);
+        out.push({ clipperId: id, discordId: clip.discordId!, text: verdictMessage(v, clip, others, clip.videoId, nf) });
+        sent++;
+      }
+    }
+    return out;
+  }
+
+  /** Défi du week-end : fans qui ont publié au moins WEEKEND_GOAL clips (qui comptent) dans la fenêtre. */
+  weekendWinners(from: number, to: number): Array<{ clipperId: number; discordId: string; clips: number }> {
+    const counts = new Map<number, { discordId: string; clips: number }>();
+    for (const c of this.clipGains(0)) {
+      if (!c.discordId || c.publishedAt < from || c.publishedAt >= to) continue;
+      const cur = counts.get(c.clipperId) ?? { discordId: c.discordId, clips: 0 };
+      cur.clips++;
+      counts.set(c.clipperId, cur);
+    }
+    return [...counts].filter(([, v]) => v.clips >= WEEKEND_GOAL).map(([clipperId, v]) => ({ clipperId, ...v }));
   }
 
   /** Quêtes arrêtées : coins donnés retirés (une seule fois au démarrage). */

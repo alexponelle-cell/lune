@@ -1,4 +1,6 @@
 import {
+  ChannelType,
+  type TextChannel,
   ActionRowBuilder,
   ActivityType,
   ModalBuilder,
@@ -19,8 +21,8 @@ import {
 } from 'discord.js';
 import { log } from '../log.js';
 import { FAQ_MENU, faqAnswer, type FaqIntent, looksLikeQuestion, matchFaq, PERSONAL_INTENTS } from '../domain/faq.js';
-import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
-import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking, monthlyPodium, relanceFans, motivationFans, cleanupQuests } from './fanAutomation.js';
+import { PRIVATE_CATEGORY, VIDEOS_CHANNEL, bare, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
+import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking, monthlyPodium, relanceFans, motivationFans, cleanupQuests, weeklyRecap, overtakeAlerts, clipOfWeek, dailyBestClips, weekendChallenge, clipFeedbackMessages } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -30,6 +32,45 @@ export const fanCommandDefinitions = [
   new SlashCommandBuilder().setName('coins').setDescription('Tes vues et tes coins').toJSON(),
   new SlashCommandBuilder().setName('aide').setDescription('Questions fréquentes : clique, le bot te répond (avec tes chiffres)').toJSON(),
 ];
+/** /moments (staff) : les passages à clipper d'une vidéo, postés dans #nouvelles-vidéos. */
+const momentsCommand = new SlashCommandBuilder()
+  .setName('moments')
+  .setDescription('Staff : poste les passages à clipper d’une vidéo dans #nouvelles-vidéos')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+  .addStringOption((o) => o.setName('passages').setDescription('Séparés par « ; » ex. 4:12 la crise de rire ; 7:30 le clash').setRequired(true))
+  .addStringOption((o) => o.setName('video').setDescription('Lien de la vidéo (facultatif)').setRequired(false))
+  .toJSON();
+
+/** Passages « 4:12 la crise de rire ; 7:30 le clash » → lignes « ⏱️ 4:12 · la crise de rire ». */
+export function momentLines(raw: string): string[] {
+  return raw
+    .split(/[;\n]/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, 15)
+    .map((x) => {
+      const m = /^(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–:]?\s*(.*)$/.exec(x);
+      return m ? `⏱️ **${m[1]}**${m[2] ? ` · ${m[2]}` : ''}` : `⏱️ ${x}`;
+    });
+}
+
+function attachMoments(discord: DiscordClient): void {
+  discord.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand() || interaction.commandName !== 'moments' || !interaction.inCachedGuild()) return;
+    try {
+      const lines = momentLines(interaction.options.getString('passages', true));
+      const video = interaction.options.getString('video')?.trim();
+      const ch = interaction.guild.channels.cache.find((c) => c.type === ChannelType.GuildText && bare(c.name) === bare(VIDEOS_CHANNEL)) as TextChannel | undefined;
+      if (!ch) return void (await interaction.reply({ content: `Salon ${VIDEOS_CHANNEL} introuvable : refais /setup.`, flags: MessageFlags.Ephemeral }));
+      await ch.send({ content: ['🎯 **Les moments à clipper**' + (video ? ` : ${video}` : ''), ...lines, '', 'Choisis-en un, monte-le à ta façon et poste-le 🔥 (évitez tous de prendre le même !)'].join('\n'), allowedMentions: { parse: [] } });
+      await interaction.reply({ content: `✅ Posté dans ${ch}.`, flags: MessageFlags.Ephemeral });
+    } catch (err) {
+      log.error('/moments', err);
+      if (!interaction.replied) await interaction.reply({ content: 'Oups, réessaie dans un instant.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
+  });
+}
+
 export const FAQ_SELECT = 'fans:faq';
 /** Menu déroulant des questions fréquentes (/aide et message épinglé de ❓│aide). */
 export const faqMenuRow = () =>
@@ -364,7 +405,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       ? opts.guildIds.map((g) => Routes.applicationGuildCommands(opts.clientId!, g))
       : [Routes.applicationCommands(opts.clientId)];
     for (const route of routes) {
-      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand(opts.fans), inscription2Command(), setupCommand] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
+      await rest.put(route, { body: [...fanCommandDefinitions, inscriptionCommand(opts.fans), inscription2Command(), setupCommand, momentsCommand] }).catch((err) => log.error('bot fans : enregistrement des commandes', err));
     }
   }
   // Lire le salon #mes-comptes demande « Message Content Intent » (portail Discord, onglet Bot).
@@ -378,7 +419,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
   let timer: NodeJS.Timeout | undefined;
   let autoTimer: NodeJS.Timeout | undefined;
   // Commandes enregistrées sur chaque serveur où est le bot (au démarrage et dès qu'on l'invite)
-  const commandBody = () => [...fanCommandDefinitions, inscriptionCommand(opts.fans), inscription2Command(), setupCommand];
+  const commandBody = () => [...fanCommandDefinitions, inscriptionCommand(opts.fans), inscription2Command(), setupCommand, momentsCommand];
   const registerIn = (appId: string, guildId: string) =>
     new REST()
       .setToken(opts.token)
@@ -422,6 +463,13 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
       await monthlyPodium(c, opts.fans).catch((err) => log.error('podium du mois', err));
       await relanceFans(c, opts.fans).catch((err) => log.error('relances fans', err));
+      // Motivation : récap du lundi, dépassements, clip de la semaine, meilleurs clips du jour, défi du week-end, feedback des clips
+      await clipOfWeek(c, opts.fans).catch((err) => log.error('clip de la semaine', err));
+      await weeklyRecap(c, opts.fans).catch((err) => log.error('récap de la semaine', err));
+      await overtakeAlerts(c, opts.fans).catch((err) => log.error('dépassements', err));
+      await dailyBestClips(c, opts.fans).catch((err) => log.error('meilleurs clips', err));
+      await weekendChallenge(c, opts.fans).catch((err) => log.error('défi du week-end', err));
+      await clipFeedbackMessages(c, opts.fans).catch((err) => log.error('feedback des clips', err));
       await motivationFans(c, opts.fans).catch((err) => log.error('motivation', err));
       if (opts.youtubeApiKey) await announceNewVideos(c, opts.fans, opts.youtubeApiKey).catch((err) => log.error('nouvelles vidéos', err));
     };
@@ -433,6 +481,7 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
     d.on(Events.Error, (err) => log.error('bot fans', err));
     attachFanCommands(d, opts.fans, opts.siteUrl);
     attachInscription(d, opts.fans);
+    attachMoments(d);
     d.on(Events.GuildCreate, (g) => {
       log.info(`bot fans invité sur ${g.name}`);
       if (d.application) void registerIn(d.application.id, g.id);
