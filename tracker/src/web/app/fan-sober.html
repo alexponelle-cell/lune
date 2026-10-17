@@ -889,7 +889,9 @@ let PUB = null, ME = null, C = null; // C = config du créateur
 const starSvg = (n) => `<svg class="gst t${n}" viewBox="0 0 64 64" aria-hidden="true"><use href="#g-star"/></svg>`;
 const pips = (n) => `<div class="pips">${'<i></i>'.repeat(n)}</div>`;
 const gi = (k) => `<svg class="gi" aria-hidden="true"><use href="#i-${k}"/></svg>`;
-const lvlIcon = (i) => i < 4 && C.levels.length <= 4 ? starSvg(i + 1) : C.levels[i].emoji;
+/** Nouvelle DA (étoiles en aplat, badges hexagonaux) : prête mais PAS en ligne tant qu'Alex n'a pas dit GO (17 oct). */
+const NEW_DA = false;
+const lvlIcon = (i) => i < 4 && C.levels.length <= 4 ? (NEW_DA ? starSvg(i + 1) : `<img class="star" src="/fan/assets/ms-star${i + 1}.webp" alt="">`) : C.levels[i].emoji;
 /** Pourquoi un clip ne rapporte pas (affiché sous le clip). */
 const clipWhy = (c) => c.why?.includes('unverified') ? 'compte en vérification par le staff' : c.why?.includes('before') ? 'publié avant ton inscription' : c.why?.includes('notag') ? `${PUB.clipTag ?? '#tag'} manquant dans la légende` : 'ne rapporte pas';
 const levelOf = (views) => C.levels.reduce((acc, l, i) => (views >= l.min ? i : acc), 0);
@@ -1102,7 +1104,7 @@ ${show ? `  <section class="cases">${M.showcaseTitle ? `<h2 class="msh2 rv">${es
     ${spk ? `<h2 class="msh2 rv">${esc(M.speakersTitle ?? '')}</h2>
     <div class="spk-wrap" aria-hidden="true"><ul class="tp-row r" data-speed="82">${spk}${spk}${spk}${spk}</ul></div>` : ''}
     <h2 class="msh2 rv" style="margin-top:${spk ? 56 : 0}px">${esc(M.tiersTitle)}</h2>
-    <div class="tiers">${lv.slice(0, 4).map((l, i) => `<div class="tier rv">${M.tierCubes?.[i] ? cubeSvg(M.tierCubes[i]) : starSvg(i + 1) + pips(i + 1)}${esc(l.name)}<small>${i === 0 ? `&lt; ${compact(lv[1]?.min ?? 0)}` : `&gt; ${compact(l.min)}`} vues${C.gradeWindowDays ? '/mois' : ''}</small></div>`).join('')}</div>
+    <div class="tiers">${lv.slice(0, 4).map((l, i) => `<div class="tier rv">${M.tierCubes?.[i] ? cubeSvg(M.tierCubes[i]) : NEW_DA ? starSvg(i + 1) + pips(i + 1) : M.tierEmoji ? `<img src="/fan/assets/ms-star${i + 1}.webp" alt="">` : `<img src="/fan/assets/ms-tier${i + 1}.webp" alt="">`}${esc(l.name)}<small>${i === 0 ? `&lt; ${compact(lv[1]?.min ?? 0)}` : `&gt; ${compact(l.min)}`} vues${C.gradeWindowDays ? '/mois' : ''}</small></div>`).join('')}</div>
   </section>
 
   <section class="msec orange">
@@ -1288,6 +1290,11 @@ function pageProfile() {
     [4, top3 ? 'trophy' : 'lock', top3 ? 'Top 3' : 'Badge caché', top3 ? 'Top 3 de la semaine' : 'Condition secrète', top3],
   ];
   const quests = ME.quests ?? [];
+  const oldBadges = [
+    ['🎬', 'Premier clip', ME.clipCount >= 1], ['💯', '10 clips', ME.clipCount >= 10], ['📱', 'Multi-plateforme', platforms >= 2],
+    ['👀', '10k vues', ME.views >= 1e4], ['🚀', '100k vues', ME.views >= 1e5], ['💎', '1M vues', ME.views >= 1e6],
+    ['🔗', ra.badge, !!ME.rewardAccount?.value], ['🛒', 'Premier échange', traded >= 1], ['🏆', 'Top 3 semaine', top3],
+  ];
   return `<section style="margin-top:56px"><div class="profile">
     <div class="card id rv">${avatar(ME.username, ME.avatar)}<h3>${esc(ME.username)}</h3><div class="lvl">${lvlIcon(li)} ${esc(lvl.name)}</div>
       ${bar(pct)}<div class="bar-txt">${next ? `<span>Prochain : ${esc(next.name)}</span><span>encore ${compact(next.min - ME.views)} vues</span>` : '<span>Niveau maximum atteint</span>'}</div></div>
@@ -1302,8 +1309,8 @@ function pageProfile() {
         <div class="quests">${quests.map((q) => `<div class="quest${q.done ? ' ok' : ''}"><span class="qchip">${esc(q.done ? 'Réussie ✓' : q.chip)}</span><h4>${esc(q.title)}</h4><p>${esc(q.text)}</p>
           <div class="rwd">${q.coins ? `${gi('coin')}+${fmt(q.coins)}<span>coins</span>` : `${starSvg(2)}<span>${esc(q.rewardLabel ?? '')}</span>`}</div>
           <div class="qbar"><i style="width:${Math.min(100, (q.progress / q.goal) * 100)}%"></i></div><small>${fmt(q.progress)} / ${fmt(q.goal)} ${esc(q.unit)}</small></div>`).join('')}</div></div>` : ''}
-      <div class="card panel rv"><h3>Badges</h3><p>${badges.filter((b) => b[4]).length} / ${badges.length} débloqués</p>
-        <div class="badges hexes">${badges.map(([r, g, n, d, on]) => `<div class="hexb${on ? '' : ' lk'}"><span class="hxg t${r}"><svg class="gst" viewBox="0 0 64 64" aria-hidden="true"><use href="#g-hex"/></svg>${gi(g)}</span>${pips(r)}<b>${esc(n)}</b><small>${esc(d)}</small></div>`).join('')}</div></div>
+      <div class="card panel rv"><h3>Badges</h3><p>${NEW_DA ? `${badges.filter((b) => b[4]).length} / ${badges.length}` : `${oldBadges.filter((b) => b[2]).length} / ${oldBadges.length}`} débloqués</p>
+        ${NEW_DA ? `<div class="badges hexes">${badges.map(([r, g, n, d, on]) => `<div class="hexb${on ? '' : ' lk'}"><span class="hxg t${r}"><svg class="gst" viewBox="0 0 64 64" aria-hidden="true"><use href="#g-hex"/></svg>${gi(g)}</span>${pips(r)}<b>${esc(n)}</b><small>${esc(d)}</small></div>`).join('')}</div>` : `<div class="badges">${oldBadges.map(([e, n, on]) => `<div class="badge ${on ? '' : 'off'}"><div class="e">${e}</div>${esc(n)}</div>`).join('')}</div>`}</div>
       <div class="card panel rv"><h3>${esc(ra.title)}</h3><p>${ME.rewardAccount?.value ? `Relié : <b style="color:var(--text)">${esc(ME.rewardAccount.value)}</b>. ${esc(ra.deliveryHint)}` : esc(ra.deliveryHint)}</p>
         <form class="row" id="account"><input type="${ra.kind === 'email' ? 'email' : 'text'}" name="v" placeholder="${esc(ra.placeholder)}" aria-label="${esc(ra.label)}" value="${esc(ME.rewardAccount?.value ?? '')}" required><button class="btn">${ME.rewardAccount?.value ? 'Modifier' : 'Enregistrer'}</button></form></div>
       <div class="card panel rv"><h3>Notifications Discord</h3><p>Un message privé quand tu gagnes des coins, passes un niveau ou peux échanger une récompense. Un par jour au maximum.</p>
