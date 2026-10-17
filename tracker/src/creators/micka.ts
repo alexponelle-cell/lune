@@ -14,6 +14,8 @@ export const micka: CreatorConfig = {
   ...demo,
   youtube: 'mickaelwu,mickaelwubusiness,MickaëlWuAccompagnement',
   clipKeywords: ['micka', 'mickaelwu', 'mickael wu', 'mickaël wu'],
+  // Clips d'avant le lancement (clippeurs déjà là depuis fin août) : comptent depuis le 27 août, rattrapage sur les comptes gratuits seulement
+  countViewsFrom: '2026-08-27',
   gradeWindowDays: 30,
   monthlyPrize: 3,
   monthlyPrizeLabel: 'une place à l’événement IRL ou au workshop du mois',
