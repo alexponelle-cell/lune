@@ -1121,6 +1121,7 @@ export class FanService {
       heroMediaUrl: s.heroMediaUrl,
       discordInviteUrl: s.discordInviteUrl,
       pointsPer1000: s.pointsPer1000,
+      clipTag: this.tagLabel(),
       stats: {
         members: fans.length,
         active: new Set(week.map((v) => v.clipperId)).size,

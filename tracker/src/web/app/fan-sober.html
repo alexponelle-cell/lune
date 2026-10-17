@@ -847,6 +847,8 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch { return 
 let PUB = null, ME = null, C = null; // C = config du créateur
 /** Étoile du grade (Débutant → Élite, dessins de Lucas) au lieu de l'emoji ; emoji au-delà de 4 niveaux. */
 const lvlIcon = (i) => i < 4 && C.levels.length <= 4 ? `<img class="star" src="/fan/assets/ms-star${i + 1}.webp" alt="">` : C.levels[i].emoji;
+/** Pourquoi un clip ne rapporte pas (affiché sous le clip). */
+const clipWhy = (c) => c.why?.includes('unverified') ? 'compte en vérification par le staff' : c.why?.includes('before') ? 'publié avant ton inscription' : c.why?.includes('notag') ? `${PUB.clipTag ?? '#tag'} manquant dans la légende` : 'ne rapporte pas';
 const levelOf = (views) => C.levels.reduce((acc, l, i) => (views >= l.min ? i : acc), 0);
 
 // ---------- Visuels ----------
@@ -1181,7 +1183,7 @@ function pageClip() {
     <div class="head rv" style="margin-top:48px"><h2>Mes <span class="y">clips</span></h2><p>${fmt(ME.clipCount)} clip(s) détecté(s).</p></div>
     <div class="clips">${ME.clips.map((c) => `<a class="card clip rv" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
       <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : ''}<span class="pf">${PLATFORM[c.platform]}</span>${c.coins ? `<span class="gain">+${fmt(c.coins)} coins</span>` : ''}</div>
-      <div class="meta"><b>${esc(c.title || 'Clip')}</b><small>${compact(c.views)} vues${c.counted ? '' : ' · ne rapporte pas'}</small></div></a>`).join('')
+      <div class="meta"><b>${esc(c.title || 'Clip')}</b><small>${compact(c.views)} vues${c.counted ? '' : ` · ${clipWhy(c)}`}</small></div></a>`).join('')
       || '<div class="card empty" style="grid-column:1/-1">Aucun clip détecté pour l\'instant. Ils apparaissent ici après la prochaine mise à jour des vues.</div>'}</div>
   </section>`;
 }

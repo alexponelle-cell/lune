@@ -322,6 +322,8 @@ const LEVELS = [
   { name: 'Pro', emoji: '🔥', min: 100_000 },
   { name: '1%', emoji: '👑', min: 1_000_000 },
 ];
+/** Pourquoi un clip ne rapporte pas (affiché sous le clip). */
+const clipWhy = (c) => c.why?.includes('unverified') ? 'compte en vérification par le staff' : c.why?.includes('before') ? 'publié avant ton inscription' : c.why?.includes('notag') ? `${PUB.clipTag ?? '#tag'} manquant dans la légende` : 'ne rapporte pas';
 const levelOf = (views) => { let i = 0; LEVELS.forEach((l, k) => { if (views >= l.min) i = k; }); return i; };
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 
@@ -579,7 +581,7 @@ function pageClip() {
     <div class="head-row reveal"><div><span class="eyebrow">📈 Tes clips</span><h2>Mes clips</h2></div><div class="coin-pill">${coin('coin')}${fmt(ME.clipCount)}<small>CLIPS</small></div></div>
     <div class="clips">${clips.map((c) => `<a class="card clip wiggle reveal" ${c.url ? `href="${esc(c.url)}" target="_blank" rel="noopener"` : ''}>
       <div class="th">${c.thumbnail ? `<img src="${esc(c.thumbnail)}" alt="" loading="lazy">` : '🎬'}<span class="pf">${PLATFORM[c.platform]}</span>${c.counted ? `<span class="earn">+${fmt(c.coins)} ${coin('coin')}</span>` : ''}</div>
-      <div class="meta"><b>${esc(c.title || 'Mon clip')}</b><small>👀 ${compact(c.views)} vues${c.counted ? '' : ' · ne rapporte pas'}</small></div></a>`).join('')
+      <div class="meta"><b>${esc(c.title || 'Mon clip')}</b><small>👀 ${compact(c.views)} vues${c.counted ? '' : ` · ${clipWhy(c)}`}</small></div></a>`).join('')
       || '<div class="card empty reveal" style="grid-column:1/-1"><div class="e">📭</div>Pas encore de clip détecté. Tes clips apparaissent ici dès que tes comptes sont suivis.</div>'}</div>
   </section>`;
 }

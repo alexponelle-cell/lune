@@ -277,18 +277,21 @@ export class FanRepo {
     return r ? { ...(r as never as { clipperId: number; handle: string; platform: string; views: number; gained: number; publishedAt: number | null; accountCreatedAt: number; clipCheck: string | null }), verified: !!r.verified } : undefined;
   }
 
-  clips(clipperId: number, limit = 40, ruleSince: number | null = null, countFrom: number | null = null): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null; counted: boolean }> {
+  clips(clipperId: number, limit = 40, ruleSince: number | null = null, countFrom: number | null = null): Array<{ platform: string; url: string | null; title: string | null; thumbnail: string | null; views: number; gained: number; publishedAt: number | null; counted: boolean; why: Array<'unverified' | 'before' | 'notag'> }> {
     return (
       this.db
         .prepare(
           `SELECT a.platform, v.url, v.title, v.thumbnail_url, v.views, MAX(v.views - CASE WHEN @countFrom IS NOT NULL AND v.published_at >= @countFrom THEN 0 ELSE v.baseline_views END, 0) AS gained, COALESCE(v.published_at, v.first_seen_at) AS at,
                   (a.verified_at IS NOT NULL AND v.published_at IS NOT NULL AND (v.published_at >= a.created_at OR (@countFrom IS NOT NULL AND v.published_at >= @countFrom))
-                    AND (@since IS NULL OR v.published_at < @since OR v.clip_check = 'ok')) AS counted
+                    AND (@since IS NULL OR v.published_at < @since OR v.clip_check = 'ok')) AS counted,
+                  a.verified_at IS NULL AS unverified,
+                  (v.published_at IS NOT NULL AND v.published_at < a.created_at AND (@countFrom IS NULL OR v.published_at < @countFrom)) AS before,
+                  (@since IS NOT NULL AND v.published_at >= @since AND COALESCE(v.clip_check, '') <> 'ok') AS notag
            FROM videos v JOIN accounts a ON a.id = v.account_id
            WHERE a.clipper_id = @clipperId AND a.active = 1 ORDER BY at DESC LIMIT @limit`,
         )
         .all({ clipperId, limit, since: ruleSince, countFrom }) as Row[]
-    ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at, counted: !!r.counted }));
+    ).map((r) => ({ platform: r.platform, url: r.url, title: r.title, thumbnail: r.thumbnail_url, views: r.views, gained: r.gained, publishedAt: r.at, counted: !!r.counted, why: r.counted ? [] : (['unverified', 'before', 'notag'] as const).filter((k) => !!r[k]) }));
   }
 
   /**
