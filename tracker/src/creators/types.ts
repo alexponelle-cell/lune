@@ -56,6 +56,8 @@ export interface CreatorConfig {
     url: string;
     linkLabel: string;
   };
+  /** Autres récompenses créées dans la boutique (ex. Noah : Speedrun Monétisation à 5 M de vues). */
+  extraRewards?: Array<{ name: string; description: string; price: number; ref: string; url: string; linkLabel: string }>;
   levels: Array<{ name: string; emoji: string; min: number }>;
   /**
    * Grades Discord selon les vues des N derniers jours (ex. 30) : un rôle par niveau (Débutant, Confirmé, Pro, Élite),

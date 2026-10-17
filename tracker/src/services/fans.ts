@@ -158,6 +158,9 @@ export class FanService {
     if (c.reward && !this.fans.items().some((i) => i.ref === c.reward!.ref)) {
       this.fans.createItem({ name: c.reward.name, description: c.reward.description, price: c.reward.price, kind: 'item', ref: c.reward.ref, stock: null, imageUrl: c.images?.reward ? '/fan/assets/reward' : null, active: true }, now);
     }
+    for (const r of c.extraRewards ?? []) {
+      if (!this.fans.items().some((i) => i.ref === r.ref)) this.fans.createItem({ name: r.name, description: r.description, price: r.price, kind: 'item', ref: r.ref, stock: null, imageUrl: null, active: true }, now);
+    }
   }
 
   /** Compte de livraison du fan (pseudo Roblox ou e-mail selon le créateur). */
