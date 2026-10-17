@@ -5,6 +5,8 @@ import {
   type CategoryChannel,
   type Client,
   ChannelType,
+  GuildFeature,
+  type StageChannel,
   EmbedBuilder,
   type Guild,
   type GuildMember,
@@ -269,14 +271,22 @@ export async function scaffoldFanServer(guild: Guild, fans: FanService, siteUrl:
         const perms = overwrites(guild, plan.access, staff.id).map((o) =>
           'deny' in o && o.id !== guild.roles.everyone.id && o.id !== staff.id && o.id !== guild.members.me!.id ? { ...o, allow: [V.ViewChannel, V.Connect], deny: [V.Speak, V.Stream] } : o,
         );
-        let vc = guild.channels.cache.find((x) => x.type === ChannelType.GuildVoice && (x.name === plan.name || bare(x.name) === bare(plan.name))) as VoiceChannel | undefined;
+        // Vraie conférence (salon « Scène ») si le serveur est en mode Communauté, sinon vocal classique
+        const stage = guild.features.includes(GuildFeature.Community);
+        const type = stage ? ChannelType.GuildStageVoice : ChannelType.GuildVoice;
+        const stagePerms = perms.map((o) => ('allow' in o && Array.isArray(o.allow) && o.allow.includes(V.Connect) && 'deny' in o ? { ...o, allow: [V.ViewChannel, V.Connect, V.RequestToSpeak] } : o));
+        const same = (x: { name: string }) => x.name === plan.name || bare(x.name) === bare(plan.name);
+        let vc = guild.channels.cache.find((x) => x.type === type && same(x)) as VoiceChannel | StageChannel | undefined;
         if (!vc) {
-          vc = await guild.channels.create({ name: plan.name, type: ChannelType.GuildVoice, parent: cat.id, permissionOverwrites: perms });
-          created.push(`🔊${plan.name}`);
+          vc = (await guild.channels.create({ name: plan.name, type, parent: cat.id, permissionOverwrites: stage ? stagePerms : perms })) as VoiceChannel | StageChannel;
+          created.push(`${stage ? '🎙️' : '🔊'}${plan.name}`);
+          // Ancien vocal remplacé par la scène
+          if (stage) for (const old of guild.channels.cache.filter((x) => x.type === ChannelType.GuildVoice && same(x)).values()) await old.delete('Remplacé par une scène de conférence').catch(() => {});
         } else {
           if (vc.parentId !== cat.id) await vc.setParent(cat.id, { lockPermissions: false }).catch(() => {});
-          await vc.permissionOverwrites.set(perms).catch(() => {});
+          await vc.permissionOverwrites.set(stage ? stagePerms : perms).catch(() => {});
         }
+        if (!stage) created.push(`ℹ️ ${plan.name} : active « Communauté » (Paramètres du serveur) puis refais /setup pour une vraie scène de conférence`);
         await vc.setPosition(group.channels.indexOf(plan)).catch(() => {});
         continue;
       }
