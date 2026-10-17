@@ -163,12 +163,14 @@ export interface CreatorConfig {
     /** Image du cadre central du hero (fichier ms-*.webp), sinon la photo du créateur. */
     heroImage?: string;
     /** Carte-stat de gauche (badge rond + texte) et de droite (gros chiffre + texte). */
-    statLeft: { badge: string; text: string };
+    /** Carte de gauche du hero ; avec `big`, affichée comme la carte de droite (gros chiffre). */
+    statLeft: { badge: string; text: string; big?: string };
     statRight: { big: string; text: string };
     /** Petite ligne sous le bouton du hero. */
     ctaNote: string;
     /** Bandeau sous le hero (façon « Seule l'offre à vie est disponible »). */
-    offer: { title: string; text: string; side: string };
+    /** Bandeau sous le bouton du hero (facultatif). */
+    offer?: { title: string; text: string; side: string };
     /** Frise verticale « Le programme c'est… » : titre de section puis étapes. */
     timelineTitle: string;
     timeline: Array<{ title: string; text: string; emoji: string }>;

@@ -1076,12 +1076,12 @@ function pageHomeMs() {
   return `<section class="mshero">
     ${heroTop || `<h1 class="load">${hl(C.texts.heroTitle)}</h1><p class="line load">${esc(M.heroLine)}</p>
     <div class="msstage load">
-      <div class="scard rays"><span class="bdg">${esc(M.statLeft.badge)}</span><div class="ol t">${esc(M.statLeft.text)}</div><div class="ic">🏆</div></div>
+      <div class="scard rays"><span class="bdg">${esc(M.statLeft.badge)}</span>${M.statLeft.big ? `<div class="ol big">${esc(M.statLeft.big)}</div><div class="ol t">${esc(M.statLeft.text)}</div>` : `<div class="ol t">${esc(M.statLeft.text)}</div><div class="ic">🏆</div>`}</div>
       <div class="frame"><img src="${M.heroImage ? (/^https:/.test(M.heroImage) ? esc(M.heroImage) : `/fan/assets/${esc(M.heroImage)}`) : '/fan/assets/creator.png'}" alt="">${logo ? `<img class="logo-ms" src="${logo}" alt="">` : ''}</div>
       <div class="scard rays"><span class="bdg">✦</span><div class="ol big">${esc(M.statRight.big)}</div><div class="ol t">${esc(M.statRight.text)}</div></div>
     </div>`}
     <div class="mscta load">${joinBtn()}<small>${ctaNoteMs()}</small></div>
-    <div class="offer rv"><span class="soc" aria-hidden="true">${SOCIAL}</span><div><b>${esc(M.offer.title)}</b><small>${esc(M.offer.text)}</small></div><div class="side">${logo ? `<img src="${logo}" alt="">` : ''}${esc(M.offer.side)}</div></div>
+    ${M.offer ? `<div class="offer rv"><span class="soc" aria-hidden="true">${SOCIAL}</span><div><b>${esc(M.offer.title)}</b><small>${esc(M.offer.text)}</small></div><div class="side">${logo ? `<img src="${logo}" alt="">` : ''}${esc(M.offer.side)}</div></div>` : ''}
   </section>
 
   <section class="msec peach" id="comment">

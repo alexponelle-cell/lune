@@ -62,10 +62,9 @@ export const noah: CreatorConfig = {
     tierEmoji: true,
     heroImage: `https://i.ytimg.com/vi/${VSL}/maxresdefault.jpg`,
     heroLine: 'Clippe ses vidéos sur TikTok, Instagram et YouTube. Tes vues te paient le Créateur Club, et même ses coachings.',
-    statLeft: { badge: '🎓', text: 'Le Créateur Club de Noah offert' },
-    statRight: { big: '500 k', text: 'vues = 1 mois de Créateur Club' },
+    statLeft: { badge: '🎓', big: '500 k', text: 'vues = 1 mois de Créateur Club' },
+    statRight: { big: '5 M', text: 'vues = les coachings Speedrun Monétisation' },
     ctaNote: 'Connecte-toi avec Discord pour voir où tu en es',
-    offer: { title: '5 M de vues = les coachings de Speedrun Monétisation', text: 'Pour les clippeurs Pro (+100 k vues par mois) inscrits depuis au moins 1 mois.', side: 'Le niveau au-dessus' },
     timelineTitle: 'Comment ça se passe, étape par étape',
     timeline: [
       { emoji: '✂️', title: 'Tu clippes', text: 'Tu prends le passage le plus drôle ou le plus fort d’une vidéo de Noah et tu le montes à ta façon.' },
