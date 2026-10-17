@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
+import { drawMotivation, type MotivationState, motivationMessage } from '../domain/motivation.js';
 import { log } from '../log.js';
 import type { FanService } from '../services/fans.js';
 import { bare, ensureTierRoles, LEVELUP_CHANNEL, levelRoleName, ROLE_READER, ROLE_RULES, ROLE_TRAINED, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
@@ -359,4 +360,40 @@ export async function announceNewVideos(client: Client<true>, fans: FanService, 
     }
   }
   return fresh.length;
+}
+
+/** Relances des fans inactifs dans leur salon privé (entre 10 h et 20 h, Paris) : 1re, 2e, puis chaque jour. */
+export async function relanceFans(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
+  const { hour } = parisClock(now);
+  if (hour < 10 || hour >= 20) return 0;
+  const guilds = setupGuilds(client, fans);
+  let sent = 0;
+  for (const r of fans.relancesDue(now)) {
+    const priv = guilds
+      .map((g) => g.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${r.discordId}]`)) as TextChannel | undefined)
+      .find(Boolean);
+    if (!priv) continue;
+    try {
+      await priv.send({ content: `<@${r.discordId}> ${r.message}`, allowedMentions: { users: [r.discordId] } });
+      fans.logRelance(r.clipperId, r.message, now);
+      sent++;
+    } catch (err) {
+      log.warn(`relance fan ${r.discordId} : ${err instanceof Error ? err.message : String(err)}`);
+    }
+    await pause(300);
+  }
+  return sent;
+}
+
+/** Phrase de motivation du jour dans #général (9 h - midi, Paris), une fois par jour, tirage sans répétition. */
+export async function motivationFans(client: Client<true>, fans: FanService, now = Date.now(), random = Math.random): Promise<boolean> {
+  const { hour, day } = parisClock(now);
+  const state = fans.botState<MotivationState>('motivation', { day: '', bag: [], last: null });
+  if (hour < 9 || hour >= 12 || state.day === day) return false;
+  const generals = setupGuilds(client, fans).map((g) => channel(g, '💬│général')).filter((c): c is TextChannel => !!c);
+  if (!generals.length) return false;
+  const { index, bag } = drawMotivation(state, undefined, random);
+  for (const g of generals) await g.send(motivationMessage(index)).catch((err) => log.warn(`motivation (${g.guild.name}) : ${String(err)}`));
+  fans.setBotState('motivation', { day, bag, last: index } satisfies MotivationState);
+  return true;
 }

@@ -127,6 +127,28 @@ describe('programme fans (Neptune)', () => {
     expect(squiduu.signupUrl(fan.id)).toContain('next=inscription');
   });
 
+  it('relances des fans inactifs : 1re, 2e puis 3e relance, une par jour, remises à zéro par un nouveau clip', async () => {
+    const { RELANCE_1, RELANCE_2, RELANCE_3 } = await import('../src/domain/relance.js');
+    const fan = fans.ensureFan('r1', 'Rel');
+    fans.setAccounts(fan, { tiktok: '@rel.tt' });
+    const t0 = Date.now();
+    const due = (t: number) => fans.relancesDue(t).filter((r) => r.discordId === 'r1');
+    expect(due(t0 + 3_600_000)).toHaveLength(0);
+    const day = 86_400_000;
+    const msgs: string[] = [];
+    for (const d of [2, 3, 4, 5]) {
+      const [r] = due(t0 + d * day);
+      expect(r).toBeDefined();
+      fans.logRelance(r!.clipperId, r!.message, t0 + d * day);
+      msgs.push(r!.message);
+      expect(due(t0 + d * day + 3_600_000)).toHaveLength(0);
+    }
+    expect(RELANCE_1).toContain(msgs[0]);
+    expect(RELANCE_2).toContain(msgs[1]);
+    expect(RELANCE_3).toContain(msgs[2]);
+    expect(msgs[3]).not.toBe(msgs[2]);
+  });
+
   it('/inscription2 : un 2e compte du même réseau, compté sur le même profil', () => {
     const fan = fans.ensureFan('d5', 'Duo');
     fans.setAccounts(fan, { tiktok: '@duo.main' });

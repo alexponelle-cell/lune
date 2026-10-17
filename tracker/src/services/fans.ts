@@ -9,6 +9,7 @@ import { type CoinsState, coinsDiagnosis, type FaqInfo, type FaqIntent, fanAccou
 import { beone } from '../creators/beone.js';
 import { parisMidnight } from '../jobs/collect.js';
 import type { CreatorConfig } from '../creators/types.js';
+import { relanceMessage } from '../domain/relance.js';
 
 /** Programme fans (bot Neptune) : les fans clippent, gagnent des points avec leurs vues et les échangent en boutique. */
 export interface FanSettings {
@@ -233,6 +234,43 @@ export class FanService {
   /** Lien perso (connexion 10 min) qui ouvre directement la formation. */
   /** Lien perso (10 min) qui connecte le fan puis l'envoie sur ses boutons « Connecter mon TikTok / Instagram ». */
   /** Lien perso (connecté d'office) vers l'inscription sur le site. */
+  /**
+   * Relances des fans inscrits sans nouveau clip depuis `days` jours (une par jour au plus) : 1re, 2e, puis 3e relance
+   * et suivantes (messages de l'équipe, jamais 2 fois le même à la suite). Remis à zéro dès qu'il reposte.
+   */
+  relancesDue(now = Date.now(), days = 2, cooldownHours = 24): Array<{ clipperId: number; discordId: string; message: string }> {
+    const clientId = this.settings().clientId;
+    if (!clientId) return [];
+    const last = this.repo.lastPublishedByAccount();
+    const byFan = new Map<number, { since: number; lastPost: number | null }>();
+    for (const a of this.repo.listActiveAccounts()) {
+      if (a.clientId !== clientId) continue;
+      const cur = byFan.get(a.clipperId) ?? { since: a.createdAt, lastPost: null };
+      cur.since = Math.min(cur.since, a.createdAt);
+      const p = last.get(a.id) ?? null;
+      // Seuls les clips publiés après l'inscription montrent qu'il est actif
+      if (p !== null && p >= a.createdAt) cur.lastPost = Math.max(cur.lastPost ?? 0, p);
+      byFan.set(a.clipperId, cur);
+    }
+    const out: Array<{ clipperId: number; discordId: string; message: string }> = [];
+    for (const [clipperId, f] of byFan) {
+      const clipper = this.repo.getClipper(clipperId);
+      if (!clipper || clipper.discordId.startsWith('manual:')) continue;
+      const reference = f.lastPost ?? f.since;
+      const idle = Math.floor((now - reference) / 86_400_000);
+      if (idle < days) continue;
+      const prev = this.repo.lastRelanceAt(clipperId, 'inactive');
+      if (prev !== null && now - prev < cooldownHours * 3_600_000) continue;
+      const level = this.repo.countRelancesSince(clipperId, 'inactive', reference) + 1;
+      out.push({ clipperId, discordId: clipper.discordId, message: relanceMessage({ kind: 'inactive', daysSinceLastPost: idle }, level, this.repo.lastRelanceMessage(clipperId)) });
+    }
+    return out;
+  }
+
+  logRelance(clipperId: number, message: string, now = Date.now()): void {
+    this.repo.logRelance(clipperId, 'inactive', message, now);
+  }
+
   signupUrl(clipperId: number, now = Date.now()): string {
     return `${this.loginUrl(clipperId, now)}&next=inscription`;
   }

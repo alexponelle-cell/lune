@@ -20,7 +20,7 @@ import {
 import { log } from '../log.js';
 import { FAQ_MENU, faqAnswer, type FaqIntent, looksLikeQuestion, matchFaq, PERSONAL_INTENTS } from '../domain/faq.js';
 import { PRIVATE_CATEGORY, onFanRegistered, setupCommand, handleSetup, handleAlertsButton, handleStepButtons, handleTraining, onTrainingCompleted, VERIFY_BUTTON, verifyRow } from './fanServer.js';
-import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking, monthlyPodium } from './fanAutomation.js';
+import { announceNewVideos, reportAccountsToReview, reportOrdersToApprove, reportSuspicious, snapshotOnboarding, syncGradeRoles, syncTierRoles, unlockFirstClips, weeklyRanking, monthlyPodium, relanceFans, motivationFans } from './fanAutomation.js';
 import type { FanService } from '../services/fans.js';
 import { status } from '../status.js';
 
@@ -420,6 +420,8 @@ export async function startFansBot(opts: { token: string; clientId?: string; gui
       await snapshotOnboarding(c, opts.fans).catch((err) => log.error('funnel onboarding', err));
       await weeklyRanking(c, opts.fans).catch((err) => log.error('classement de la semaine', err));
       await monthlyPodium(c, opts.fans).catch((err) => log.error('podium du mois', err));
+      await relanceFans(c, opts.fans).catch((err) => log.error('relances fans', err));
+      await motivationFans(c, opts.fans).catch((err) => log.error('motivation', err));
       if (opts.youtubeApiKey) await announceNewVideos(c, opts.fans, opts.youtubeApiKey).catch((err) => log.error('nouvelles vidéos', err));
     };
     autoTimer = setInterval(() => void automations(), 15 * 60_000);
