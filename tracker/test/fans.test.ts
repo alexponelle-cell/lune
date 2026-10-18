@@ -127,26 +127,33 @@ describe('programme fans (Neptune)', () => {
     expect(squiduu.signupUrl(fan.id)).toContain('next=inscription');
   });
 
-  it('relances des fans inactifs : 1re, 2e puis 3e relance, une par jour, remises à zéro par un nouveau clip', async () => {
-    const { RELANCE_1, RELANCE_2, RELANCE_3 } = await import('../src/domain/relance.js');
+  it('relances perso des fans : 1 jour sans clip, seulement après un relevé, 1 par jour, 1re / 2e / 3e+, avec leurs chiffres et la citation de leur message', async () => {
+    const { RELANCE_1, RELANCE_2, RELANCE_3, personalRelance } = await import('../src/domain/relance.js');
     const fan = fans.ensureFan('r1', 'Rel');
     fans.setAccounts(fan, { tiktok: '@rel.tt' });
     const t0 = Date.now();
-    const due = (t: number) => fans.relancesDue(t).filter((r) => r.discordId === 'r1');
-    expect(due(t0 + 3_600_000)).toHaveLength(0);
     const day = 86_400_000;
-    const msgs: string[] = [];
+    const checked = (t: number) => repo.db.prepare('UPDATE accounts SET last_checked_at = ?').run(t);
+    const due = (t: number) => fans.relancesDue(t).filter((r) => r.discordId === 'r1');
+    checked(t0);
+    expect(due(t0 + 2 * day)).toHaveLength(0); // pas relevé depuis : on ne sait pas s'il a posté
+    const heads: string[] = [];
     for (const d of [2, 3, 4, 5]) {
+      checked(t0 + d * day - 60_000);
       const [r] = due(t0 + d * day);
       expect(r).toBeDefined();
-      fans.logRelance(r!.clipperId, r!.message, t0 + d * day);
-      msgs.push(r!.message);
-      expect(due(t0 + d * day + 3_600_000)).toHaveLength(0);
+      const msg = personalRelance(r!.ctx, r!.previous, d, String);
+      expect(msg).toContain('sans nouveau clip');
+      fans.logRelance(r!.clipperId, msg, t0 + d * day);
+      heads.push(msg.split('\n')[0]!);
+      expect(due(t0 + d * day + 60_000)).toHaveLength(0); // une seule par jour
     }
-    expect(RELANCE_1).toContain(msgs[0]);
-    expect(RELANCE_2).toContain(msgs[1]);
-    expect(RELANCE_3).toContain(msgs[2]);
-    expect(msgs[3]).not.toBe(msgs[2]);
+    expect(RELANCE_1).toContain(heads[0]);
+    expect(RELANCE_2).toContain(heads[1]);
+    expect(RELANCE_3).toContain(heads[2]);
+    expect(heads[3]).not.toBe(heads[2]);
+    const quoted = personalRelance({ level: 1, daysIdle: 1, quote: { text: 'je bosse sur un montage', ago: 'hier' } }, null, 0, String);
+    expect(quoted).toContain('« je bosse sur un montage »');
   });
 
   it('quêtes : 3 comptes = +5 coins une seule fois, série de 7 jours = +100 coins', async () => {

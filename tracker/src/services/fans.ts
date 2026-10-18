@@ -9,7 +9,7 @@ import { type CoinsState, coinsDiagnosis, type FaqInfo, type FaqIntent, fanAccou
 import { beone } from '../creators/beone.js';
 import { parisMidnight } from '../jobs/collect.js';
 import type { CreatorConfig } from '../creators/types.js';
-import { relanceMessage } from '../domain/relance.js';
+import type { RelanceContext } from '../domain/relance.js';
 import { buildQuests, currentStreak, QUEST_COINS, type Quest } from '../domain/quests.js';
 import { dayKey } from '../domain/time.js';
 import { bestSlot, clipVerdict, verdictMessage, WEEKEND_GOAL } from '../domain/engagement.js';
@@ -241,34 +241,60 @@ export class FanService {
   /** Lien perso (10 min) qui connecte le fan puis l'envoie sur ses boutons « Connecter mon TikTok / Instagram ». */
   /** Lien perso (connecté d'office) vers l'inscription sur le site. */
   /**
-   * Relances des fans inscrits sans nouveau clip depuis `days` jours (une par jour au plus) : 1re, 2e, puis 3e relance
-   * et suivantes (messages de l'équipe, jamais 2 fois le même à la suite). Remis à zéro dès qu'il reposte.
+   * Relances des fans sans nouveau clip depuis `days` jour(s), une par jour : 1re, 2e, puis 3e relance et suivantes (sans fin).
+   * Seulement quand ses comptes ont été relevés après la période (sinon un clip pas encore relevé déclencherait une fausse relance).
+   * Renvoie de quoi écrire un message perso (le bot ajoute la citation de son dernier message dans son salon).
    */
-  relancesDue(now = Date.now(), days = 2, cooldownHours = 24): Array<{ clipperId: number; discordId: string; message: string }> {
+  relancesDue(now = Date.now(), days = 1): Array<{ clipperId: number; discordId: string; name: string; ctx: RelanceContext; previous: string | null }> {
     const clientId = this.settings().clientId;
     if (!clientId) return [];
+    const DAY = 86_400_000;
     const last = this.repo.lastPublishedByAccount();
-    const byFan = new Map<number, { since: number; lastPost: number | null }>();
+    const byFan = new Map<number, { since: number; lastPost: number | null; checked: number | null }>();
     for (const a of this.repo.listActiveAccounts()) {
       if (a.clientId !== clientId) continue;
-      const cur = byFan.get(a.clipperId) ?? { since: a.createdAt, lastPost: null };
+      const cur = byFan.get(a.clipperId) ?? { since: a.createdAt, lastPost: null, checked: Infinity };
       cur.since = Math.min(cur.since, a.createdAt);
       const p = last.get(a.id) ?? null;
       // Seuls les clips publiés après l'inscription montrent qu'il est actif
       if (p !== null && p >= a.createdAt) cur.lastPost = Math.max(cur.lastPost ?? 0, p);
+      // Relevé le plus ancien de ses comptes : on ne sait rien de plus récent
+      cur.checked = a.lastCheckedAt === null || cur.checked === null ? null : Math.min(cur.checked, a.lastCheckedAt);
       byFan.set(a.clipperId, cur);
     }
-    const out: Array<{ clipperId: number; discordId: string; message: string }> = [];
+    const today = dayKey(now);
+    const clips = this.clipGains(0);
+    const ranks = this.weekRanks(now, 1000);
+    const shop = this.fans.items({ activeOnly: true });
+    const main = (this.creator.reward && shop.find((i) => i.ref === this.creator.reward!.ref)) ?? shop[0];
+    const out: Array<{ clipperId: number; discordId: string; name: string; ctx: RelanceContext; previous: string | null }> = [];
     for (const [clipperId, f] of byFan) {
       const clipper = this.repo.getClipper(clipperId);
       if (!clipper || clipper.discordId.startsWith('manual:')) continue;
       const reference = f.lastPost ?? f.since;
-      const idle = Math.floor((now - reference) / 86_400_000);
-      if (idle < days) continue;
+      if (now - reference < days * DAY) continue;
+      // Comptes pas encore relevés après la période : on attend le prochain relevé
+      if (f.checked === null || !Number.isFinite(f.checked) || f.checked < reference + days * DAY) continue;
       const prev = this.repo.lastRelanceAt(clipperId, 'inactive');
-      if (prev !== null && now - prev < cooldownHours * 3_600_000) continue;
-      const level = this.repo.countRelancesSince(clipperId, 'inactive', reference) + 1;
-      out.push({ clipperId, discordId: clipper.discordId, message: relanceMessage({ kind: 'inactive', daysSinceLastPost: idle }, level, this.repo.lastRelanceMessage(clipperId)) });
+      if (prev !== null && dayKey(prev) === today) continue;
+      const mine = clips.filter((c) => c.clipperId === clipperId);
+      const latest = [...mine].sort((a, b) => b.publishedAt - a.publishedAt)[0];
+      const left = main ? main.price - this.balance(clipperId, now).balance : 0;
+      const slot = bestSlot(mine.filter((c) => c.publishedAt > now - 60 * DAY).map((c) => ({ publishedAt: c.publishedAt, views: c.views })));
+      out.push({
+        clipperId,
+        discordId: clipper.discordId,
+        name: clipper.username,
+        previous: this.repo.lastRelanceMessage(clipperId),
+        ctx: {
+          level: this.repo.countRelancesSince(clipperId, 'inactive', reference) + 1,
+          daysIdle: Math.max(1, Math.floor((now - reference) / DAY)),
+          ...(latest ? { lastClip: { views: latest.views, title: latest.title } } : {}),
+          ...(main && left > 0 ? { rewardLeft: { coins: left, views: Math.round((left / Math.max(this.settings().pointsPer1000, 1)) * 1000), name: main.name } } : {}),
+          ...(ranks.get(clipperId) ? { rank: ranks.get(clipperId)!.rank } : {}),
+          ...(slot ? { slot: { from: slot.from, to: slot.to } } : {}),
+        },
+      });
     }
     return out;
   }

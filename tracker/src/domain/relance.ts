@@ -106,3 +106,52 @@ export function relanceMessage(reason: RelanceReason, level = 1, previous: strin
   if (reason.kind === 'inactive') return pickDifferent(level <= 1 ? RELANCE_1 : level === 2 ? RELANCE_2 : RELANCE_3, previous, random);
   return pickDifferent(DROP_MESSAGES.map((m) => m(reason.dropPercent)), previous, random);
 }
+
+// --- Relances personnalisées des fans (serveurs créateurs) ---
+
+/** Ce qu'on sait du clippeur pour personnaliser sa relance. */
+export interface RelanceContext {
+  /** 1re, 2e, 3e relance et suivantes depuis son dernier clip. */
+  level: number;
+  /** Jours sans nouveau clip (d'après le dernier relevé de ses comptes). */
+  daysIdle: number;
+  lastClip?: { views: number; title: string | null };
+  /** Ce qu'il manque pour la récompense principale. */
+  rewardLeft?: { coins: number; views: number; name: string };
+  /** Place au classement de la semaine. */
+  rank?: number;
+  /** Meilleur créneau de publication. */
+  slot?: { from: number; to: number };
+  /** Son dernier message dans son salon privé (48 h max) : cité pour rebondir dessus. */
+  quote?: { text: string; ago: string };
+}
+
+const QUOTE_OPENERS = [
+  'Yo bro, {ago} tu disais « {q} » 👀 alors, ça avance ? Pense à poster ton clip aujourd’hui 💪',
+  'Chef, {ago} tu nous as dit « {q} » 🔥 c’est bon, il sort quand ? On attend ton clip !',
+  'Frérot, {ago} tu disais « {q} » : t’as fini ? Balance-le aujourd’hui et dis-nous comment il part 🚀',
+];
+
+/** Faits perso ajoutés sous le message (2 au plus, choisis selon ce qu'on sait). */
+function facts(ctx: RelanceContext, seed: number, fmt: (n: number) => string): string[] {
+  const list: string[] = [];
+  list.push(ctx.daysIdle <= 1 ? '📅 Pas de nouveau clip depuis **hier**.' : `📅 Ça fait **${ctx.daysIdle} jours** sans nouveau clip.`);
+  if (ctx.lastClip && ctx.lastClip.views > 0) list.push(`🎬 Ton dernier clip${ctx.lastClip.title ? ` (« ${ctx.lastClip.title.slice(0, 40)} »)` : ''} a fait **${fmt(ctx.lastClip.views)} vues** : refais-en un dans la même veine !`);
+  if (ctx.rewardLeft && ctx.rewardLeft.coins > 0) list.push(`🎁 Il te manque **${fmt(ctx.rewardLeft.coins)} coins** (≈ ${fmt(ctx.rewardLeft.views)} vues) pour **${ctx.rewardLeft.name}**.`);
+  if (ctx.rank) list.push(`🏆 Tu es **${ctx.rank}${ctx.rank === 1 ? 'er' : 'e'}** du classement de la semaine : garde ta place !`);
+  if (ctx.slot) list.push(`⏰ Ton meilleur créneau pour poster : **${ctx.slot.from} h - ${ctx.slot.to} h**.`);
+  // Toujours le compteur de jours, puis un 2e fait qui change d'un jour à l'autre
+  const rest = list.slice(1);
+  return rest.length ? [list[0]!, rest[Math.abs(seed) % rest.length]!] : [list[0]!];
+}
+
+/**
+ * Relance perso d'un fan : texte de l'équipe (1re / 2e / 3e+ relance, jamais 2 fois le même à la suite)
+ * ou, s'il a parlé dans son salon, une phrase qui cite son message ; puis ses vrais chiffres.
+ */
+export function personalRelance(ctx: RelanceContext, previous: string | null, seed: number, fmt: (n: number) => string, random = Math.random): string {
+  const head = ctx.quote
+    ? pickDifferent(QUOTE_OPENERS.map((o) => o.replace('{ago}', ctx.quote!.ago).replace('{q}', ctx.quote!.text)), previous?.split('\n')[0], random)
+    : pickDifferent(ctx.level <= 1 ? RELANCE_1 : ctx.level === 2 ? RELANCE_2 : RELANCE_3, previous?.split('\n')[0], random);
+  return [head, ...facts(ctx, seed, fmt)].join('\n');
+}

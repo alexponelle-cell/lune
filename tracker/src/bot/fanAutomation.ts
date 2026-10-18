@@ -2,6 +2,8 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { weekendWindow, WEEKEND_GOAL } from '../domain/engagement.js';
+import { personalRelance } from '../domain/relance.js';
+import { dayKey as dayKeyOf } from '../domain/time.js';
 import { startOfDay } from '../domain/time.js';
 import { drawMotivation, type MotivationState, motivationMessage } from '../domain/motivation.js';
 import { log } from '../log.js';
@@ -364,20 +366,25 @@ export async function announceNewVideos(client: Client<true>, fans: FanService, 
   return fresh.length;
 }
 
-/** Relances des fans inactifs dans leur salon privé (entre 10 h et 20 h, Paris) : 1re, 2e, puis chaque jour. */
+/**
+ * Relances perso des fans sans nouveau clip (tous les jours à partir de 14 h, Paris, une par jour, sans fin) dans leur salon privé :
+ * texte de l'équipe + ses vrais chiffres ; s'il a écrit dans son salon dans les 48 h, on cite son message pour rebondir dessus.
+ */
 export async function relanceFans(client: Client<true>, fans: FanService, now = Date.now()): Promise<number> {
   const { hour } = parisClock(now);
-  if (hour < 10 || hour >= 20) return 0;
+  if (hour < 14 || hour >= 22) return 0;
   const guilds = setupGuilds(client, fans);
   let sent = 0;
   for (const r of fans.relancesDue(now)) {
-    const priv = guilds
-      .map((g) => g.channels.cache.find((c) => c.type === ChannelType.GuildText && (c as TextChannel).topic?.includes(`[${r.discordId}]`)) as TextChannel | undefined)
-      .find(Boolean);
+    const priv = privateOf(guilds, r.discordId);
     if (!priv) continue;
     try {
-      await priv.send({ content: `<@${r.discordId}> ${r.message}`, allowedMentions: { users: [r.discordId] } });
-      fans.logRelance(r.clipperId, r.message, now);
+      const recent = await priv.messages.fetch({ limit: 30 }).catch(() => null);
+      const said = recent?.find((m) => m.author.id === r.discordId && m.content.trim().length >= 3 && now - m.createdTimestamp < 48 * 3_600_000);
+      const ctx = said ? { ...r.ctx, quote: { text: said.content.replace(/\s+/g, ' ').trim().slice(0, 90), ago: dayKeyOf(said.createdTimestamp) === dayKeyOf(now) ? 'tout à l’heure' : dayKeyOf(said.createdTimestamp) === dayKeyOf(now - 86_400_000) ? 'hier' : 'avant-hier' } } : r.ctx;
+      const message = personalRelance(ctx, r.previous, r.clipperId + now, nf);
+      await priv.send({ content: `<@${r.discordId}> ${message}`, allowedMentions: { users: [r.discordId] } });
+      fans.logRelance(r.clipperId, message, now);
       sent++;
     } catch (err) {
       log.warn(`relance fan ${r.discordId} : ${err instanceof Error ? err.message : String(err)}`);
