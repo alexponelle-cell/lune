@@ -227,6 +227,7 @@ export const PROSPECTS: Record<string, Prospect> = {
       ms: {
         rewardShort: 'JosplayMax',
         tierEmoji: true,
+        streak: true,
         heroLine: 'avec la cagnotte de 500 € par mois, partagée selon tes vues. Et en bonus, tes vues te débloquent JosplayMax : tous ses lives en replay 🔥',
         heroImage: 'ms-hero-josplay.webp',
         statLeft: { badge: '💸', big: '500 €', text: 'de cagnotte par mois, partagée selon tes vues' },

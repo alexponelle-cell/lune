@@ -135,6 +135,8 @@ export interface CreatorConfig {
     rewardShort?: string;
     /** Paliers affichés avec l'emoji du niveau (au lieu des étoiles ms-tier*.webp). */
     tierEmoji?: boolean;
+    /** Section « Ta série 🔥 » (flammes de série, DA de xegini) avec la démo « Poster un clip ». */
+    streak?: boolean;
     /** Paliers dessinés en cubes (couleurs du dessus / gauche / droite), à la place des étoiles ms-tier*.webp. */
     tierCubes?: Array<{ top: string; left: string; right: string }>;
     /** Variante de charte sur la même mise en page (classe CSS sur <body>), ex. « cubi » = noir, blanc et orange. */

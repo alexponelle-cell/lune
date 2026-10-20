@@ -844,6 +844,35 @@
     body.micka .mfinal { min-height: 80svh; margin-top: 70px; }
   }
   @media (prefers-reduced-motion: reduce) { body.micka .m-intro { display: none; } body.micka .reel > div { animation: none; } }
+  /* Flammes de série (DA de xegini) : section de l'accueil si C.ms.streak (maquettes pour l'instant) */
+  .stk { max-width: 980px; margin: 0 auto; background: #10234a; color: #f3f7ff; border-radius: 28px; padding: 28px 22px 30px; text-align: center; }
+  .stk h2 { margin: 0; font-weight: 800; font-size: clamp(26px, 4vw, 38px); color: #f3f7ff; }
+  .stk > p { margin: 6px auto 22px; color: #9fb3d6; font-weight: 600; max-width: 560px; }
+  .stk .pal { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 22px; }
+  .stk .pal figure { margin: 0; display: grid; justify-items: center; gap: 4px; font-size: 13px; color: #cfdcf5; font-weight: 600; }
+  .stk .pal svg { width: 74px; height: 74px; }
+  .stk .pal .p { padding: 0 10px; border-radius: 99px; color: #0a1a2e; font-weight: 800; font-size: 12px; }
+  .stk .demo { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 54px 12px 22px; background: #0e1f3f; border: 1.5px solid #1f3a6b; border-radius: 20px; }
+  .stk .stage { position: relative; width: min(180px, 52vw); height: min(204px, 58vw); }
+  .stk .lueur { position: absolute; inset: -12%; border-radius: 50%; opacity: 0; pointer-events: none; }
+  .stk .ombre { position: absolute; left: 24%; width: 52%; height: 11%; bottom: 1%; border-radius: 50%; background: #5f6c80; opacity: .3; }
+  .stk .flamme { position: absolute; left: 14%; width: 72%; bottom: 6%; aspect-ratio: 88/110; transform-origin: 50% 100%; }
+  .stk .flamme svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .stk .ring { position: absolute; left: 18%; width: 64%; bottom: 4%; aspect-ratio: 1; border: 4px solid; border-radius: 50%; opacity: 0; pointer-events: none; }
+  .stk .conf { position: absolute; left: 50%; top: 60%; margin: -5px; width: 10px; height: 10px; border-radius: 3px; opacity: 0; pointer-events: none; }
+  .stk .chiffre { display: grid; justify-items: center; min-width: 2ch; font-size: 64px; font-weight: 800; line-height: 1.05; }
+  .stk .n { grid-area: 1/1; color: #4d5a6e; }
+  .stk .lab { min-height: 1.4em; opacity: 0; font-size: 19px; font-weight: 700; }
+  .stk .carte { min-height: 80px; opacity: 0; display: flex; gap: 10px; justify-content: center; padding: 12px 14px; border: 1.5px solid #1f3a6b; border-radius: 18px; background: #0b1a36; }
+  .stk .j { display: grid; gap: 6px; justify-items: center; font-size: 13px; color: #9fb3d6; }
+  .stk .dot { position: relative; width: 26px; height: 26px; border-radius: 50%; background: #1b2f55; }
+  .stk .ck { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; color: #07182b; font-weight: 800; font-size: 15px; }
+  .stk .msg { margin: 0; min-height: 1.4em; color: #cfdcf5; font-weight: 600; }
+  .stk .post { font: inherit; font-weight: 800; font-size: 17px; padding: 12px 26px; border: 0; border-radius: 99px; background: #f2c94c; color: #0a1a2e; cursor: pointer; box-shadow: 0 4px 0 #b8912a; }
+  .stk .post:active { transform: translateY(3px); box-shadow: 0 1px 0 #b8912a; } .stk .post:disabled { opacity: .6; cursor: default; }
+  .stk .post:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  @media (max-width: 560px) { .stk { padding: 22px 12px 24px; } .stk .pal { gap: 6px 4px; } .stk .pal svg { width: 52px; height: 52px; } .stk .pal figure { font-size: 11px; } .stk .pal .p { font-size: 10px; padding: 0 6px; } }
+  .stk .barre { height: 14px; border-radius: 99px; border: 2px solid #07182b; margin: 22px auto 0; max-width: 620px; }
 </style>
 </head>
 <body>
@@ -893,6 +922,179 @@ const pips = (n) => `<div class="pips">${'<i></i>'.repeat(n)}</div>`;
 const gi = (k) => `<svg class="gi" aria-hidden="true"><use href="#i-${k}"/></svg>`;
 /** Nouvelle DA (étoiles en aplat, badges hexagonaux) : prête mais PAS en ligne tant qu'Alex n'a pas dit GO (17 oct). */
 const NEW_DA = false;
+/* Flammes de série (DA de xegini, « flammes-site ») : une teinte par jour (1 → 100), animation quand la série continue. */
+const FLAMES = (() => {
+  const INK = '#07182b';
+  const STOPS = [[1, '#d3dce9', '#ffffff'], [5, '#86c9a3', '#e6f8ee'], [10, '#5b8ee0', '#dde9fc'], [30, '#8a5fd6', '#e9defb'], [50, '#ee9a4a', '#fee9d2'], [100, '#f2c94c', '#fff4cf']];
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => '#' + rgb(a).map((v, i) => Math.round(v + (rgb(b)[i] - v) * t).toString(16).padStart(2, '0')).join('');
+  function colors(d) {
+    const x = Math.max(1, Math.min(100, d));
+    for (let i = 0; i < STOPS.length - 1; i++) {
+      const [d0, a0, b0] = STOPS[i], [d1, a1, b1] = STOPS[i + 1];
+      if (x <= d1) { const t = (x - d0) / (d1 - d0); return [mix(a0, a1, t), mix(b0, b1, t)]; }
+    }
+    return [STOPS[5][1], STOPS[5][2]];
+  }
+  const body = (id, eye, tr, smoke) => `<g class="f"><g transform="${tr}">${smoke ? '<path d="M62 6C57 1 66 -2 61 -6" fill="none" stroke="#7f8ca0" stroke-width="4.5" stroke-linecap="round"/>' : ''}
+<path d="M62 12C70 32 98 50 98 78C98 98 82 110 60 110C38 110 22 98 22 78C22 64 30 54 38 46C42 52 46 58 52 58C52 44 56 26 62 12Z" fill="url(#g${id})" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
+<path d="M34 80C34 90 38 96 44 100" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3.5" stroke-linecap="round"/>
+<circle cx="60" cy="86" r="9.5" fill="${INK}"/><rect x="54" y="91" width="12" height="9" rx="2.5" fill="${INK}"/>
+<circle cx="56.3" cy="86" r="2.6" fill="${eye}"/><circle cx="63.7" cy="86" r="2.6" fill="${eye}"/></g></g>`;
+  const star = (cx, cy, r) => Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, s = i % 2 ? 0.45 * r : r; return `${(cx + s * Math.cos(a)).toFixed(1)},${(cy + s * Math.sin(a)).toFixed(1)}`; }).join(' ');
+  function svg({ days = 1, off = false, tile = true, id } = {}) {
+    const gid = id || (off ? 'x' : `j${days}` + (tile ? 't' : 'n'));
+    const [c1, c2] = off ? ['#5f6c80', '#97a3b5'] : colors(days), eye = off ? '#8d99ab' : '#fff6d8';
+    const defs = `<defs><linearGradient id="g${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c2}"/><stop offset="1" stop-color="${c1}"/></linearGradient></defs>`;
+    const label = off ? 'Flamme éteinte' : `Flamme de série, ${days} jours`;
+    if (!tile) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 4 88 110" role="img" aria-label="${label}">${defs}${body(gid, eye, 'translate(0 0)', false)}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="${label}">${defs}
+<rect x="3" y="3" width="114" height="114" rx="32" fill="#0f2240" stroke="${off ? '#4d5a6e' : c1}" stroke-width="6"/><circle cx="60" cy="64" r="40" fill="${c1}" fill-opacity=".18"/>
+${body(gid, eye, 'translate(60 66) scale(.8) translate(-60 -64)', off)}
+${!off && days >= 100 ? [[60, 13, 5.5], [46, 17, 4], [74, 17, 4]].map(([x, y, r]) => `<polygon points="${star(x, y, r)}" fill="#ffe28a" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>`).join('') : ''}
+${!off && days >= 10 ? '<path d="M24 14L27 21L34 24L27 27L24 34L21 27L14 24L21 21Z" fill="#fff"/>' : ''}</svg>`;
+  }
+  const TIERS = { 5: 'Commun', 10: 'Rare', 30: 'Épique', 50: 'Légendaire', 100: 'Mythique' };
+  const GREY = ['#5f6c80', '#97a3b5'], DAYS = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'], HIT = 880;
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function stop(stage) { stage._stop?.(); stage._stop = null; }
+  // Flamme « vivante » : le contour ondule, braises qui montent
+  function alive(stage, flame, { k = 1, embers = false, cols = ['#ffffff'] } = {}) {
+    stop(stage);
+    if (reduced()) return;
+    const path = flame.querySelector('path[stroke-width="7"]'), g = flame.querySelector('.f');
+    let on = true, last = 0;
+    const t0 = performance.now();
+    const shape = (e, a) => {
+      const s = (f, p) => Math.sin(e * f + p), n = (v) => v.toFixed(1);
+      const x = 62 + a * (2.2 * s(5.1, 0) + 1.2 * s(9.7, 1)), y = 12 + 1.6 * a * s(6.3, 2), lx = 38 + 1.6 * a * s(7.2, 3), ly = 46 + 2.4 * a * s(8.4, 1), my = 58 + 1.2 * a * s(6.8, 4);
+      return 'M' + n(x) + ' ' + n(y) + 'C' + n(70 + 1.5 * a * s(4.3, 5)) + ' 32 98 50 98 78C98 98 82 110 60 110C38 110 22 98 22 78C22 64 30 54 ' + n(lx) + ' ' + n(ly) + 'C42 52 46 ' + n(my) + ' 52 ' + n(my) + 'C' + n(52 + 1.5 * a * s(5.5, 2)) + ' 44 ' + n(56 + x - 62) + ' 26 ' + n(x) + ' ' + n(y) + 'Z';
+    };
+    const ember = () => {
+      const sp = document.createElement('span'), z = 4 + 5 * Math.random();
+      sp.className = 'conf';
+      sp.style.cssText = `width:${z}px;height:${z}px;border-radius:50%;margin:0;left:${42 + 16 * Math.random()}%;top:62%;background:${cols[Math.floor(Math.random() * cols.length)]}`;
+      stage.append(sp);
+      const dx = 50 * (Math.random() - 0.5), dy = 80 + 90 * Math.random();
+      sp.animate([{ transform: 'translate(0,0) scale(1)', opacity: 0.9 }, { transform: `translate(${0.5 * dx}px,${-0.5 * dy}px) scale(.8)`, opacity: 0.8, offset: 0.5 }, { transform: `translate(${dx}px,${-dy}px) scale(.2)`, opacity: 0 }], { duration: 1100 + 900 * Math.random(), easing: 'ease-out' }).onfinish = () => sp.remove();
+    };
+    const frame = (now) => {
+      if (!on || !stage.isConnected) return;
+      const e = (now - t0) / 1000;
+      path.setAttribute('d', shape(e, k));
+      g.setAttribute('transform', `translate(60 110) rotate(${(2.4 * k * Math.sin(2.4 * e)).toFixed(2)}) scale(${(1 + 0.015 * k * Math.sin(5.2 * e)).toFixed(3)} ${(1 + 0.03 * k * Math.sin(6.1 * e + 1)).toFixed(3)}) translate(-60 -110)`);
+      if (embers && now - last > 260 / k) { last = now; ember(); }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    stage._stop = () => { on = false; };
+  }
+  // Petits sons synthétisés (Web Audio), aucun fichier
+  const sfx = (() => {
+    let ctx = null, noise = null;
+    const get = () => { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume(); return ctx; };
+    const env = (c, t, v, d) => { const g = c.createGain(); g.gain.setValueAtTime(1e-4, t); g.gain.exponentialRampToValueAtTime(v, t + 0.008); g.gain.exponentialRampToValueAtTime(1e-4, t + d); g.connect(c.destination); return g; };
+    return {
+      tone(type, f0, f1, at, d, v) { const c = get(), t = c.currentTime + at, o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + d); o.connect(env(c, t, v, d)); o.start(t); o.stop(t + d + 0.05); },
+      hiss(type, f0, f1, at, d, v, q) {
+        const c = get(), t = c.currentTime + at, src = c.createBufferSource(), flt = c.createBiquadFilter();
+        if (!noise) { noise = c.createBuffer(1, c.sampleRate, c.sampleRate); const ch = noise.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = 2 * Math.random() - 1; }
+        src.buffer = noise; flt.type = type; flt.Q.value = q || 1; flt.frequency.setValueAtTime(f0, t); flt.frequency.exponentialRampToValueAtTime(f1, t + d);
+        src.connect(flt); flt.connect(env(c, t, v, d)); src.start(t); src.stop(t + d + 0.05);
+      },
+    };
+  })();
+  function sound(day, tier, checks) {
+    const n = 0.88, f = 660 * Math.pow(2, Math.min(day, 36) / 36);
+    sfx.tone('sine', 300, 120, 0.04, 0.14, 0.3); sfx.hiss('bandpass', 400, 3200, 0.15, 0.38, 0.22, 1.2); sfx.tone('triangle', 360, 900, 0.52, 0.2, 0.22);
+    sfx.tone('sine', 150, 42, n, 0.26, 0.55); sfx.hiss('lowpass', 900, 120, n, 0.16, 0.3);
+    for (let i = 0; i < 10; i++) sfx.hiss('highpass', 3500, 6000, 0.91 + 0.55 * Math.random(), 0.04, 0.05 + 0.05 * Math.random());
+    sfx.tone('sine', f, 1.001 * f, 0.98, 0.35, 0.3); sfx.tone('sine', 1.5 * f, 1.501 * f, 1.07, 0.45, 0.26);
+    if (tier) [1, 1.25, 1.5, 2].forEach((m, i) => sfx.tone('triangle', f * m, f * m * 1.001, 1.33 + 0.1 * i, 0.4, 0.22));
+    for (let i = 0; i < checks; i++) sfx.tone('sine', 880 + 90 * i, 880 + 92 * i, 2.6 + 0.08 * i, 0.09, 0.12);
+  }
+  // « Poster un clip » : la flamme s'écrase, bondit, prend la couleur du jour, confettis, chiffre qui monte
+  function post({ stage, flame, shadow, num, label, week, msg }, prev, { withSound = true } = {}) {
+    const day = prev + 1, tier = TIERS[day], [c1, c2] = colors(day), k = 0.7 + 0.8 * Math.min(day, 100) / 100;
+    const s = flame.querySelector('svg'), stops = s.querySelectorAll('stop'), eyes = s.querySelectorAll('circle[r="2.6"]');
+    const later = (ms, fn) => setTimeout(fn, ms);
+    const paint = (t) => { stops[0].setAttribute('stop-color', mix(GREY[1], c2, t)); stops[1].setAttribute('stop-color', mix(GREY[0], c1, t)); eyes.forEach((e) => e.setAttribute('fill', mix('#8d99ab', '#fff6d8', t))); shadow.style.background = mix(GREY[0], c1, t); };
+    const done = tier ? `Palier atteint : série de ${day} jours (${tier})` : 'Série prolongée !';
+    const old = num.firstElementChild, nw = document.createElement('span');
+    nw.className = 'n'; nw.textContent = day; nw.style.color = c1; num.append(nw);
+    label.textContent = day > 1 ? 'jours de série' : 'jour de série'; label.style.color = c1;
+    const today = new Date().getDay(), lit = Math.min(day, 7);
+    week.innerHTML = Array.from({ length: 7 }, (_, i) => `<div class="j">${DAYS[(today - 6 + i + 7) % 7]}<span class="dot">${i >= 7 - lit ? `<span class="ck" style="background:${c1}">✓</span>` : ''}</span></div>`).join('');
+    if (reduced()) { paint(1); old.remove(); label.style.opacity = 1; week.style.opacity = 1; msg.textContent = done; return Promise.resolve(); }
+    if (withSound) try { sound(day, tier, lit); } catch {}
+    const D = 1300, T = (sx, sy, y, r) => `scale(${sx},${sy}) translateY(${y}%) rotate(${r}deg)`, K = (o, sx, sy, y, r, ease) => ({ offset: o / D, transform: T(sx, sy, y, r), easing: ease || 'ease-in-out' });
+    flame.animate([K(0, 1, 1, 0, 0), K(55, 1.03, 0.97, 0, -3), K(110, 0.97, 1.03, 0, 3), K(190, 1.3, 0.6, 0, 0), K(420, 1.36, 0.55, 0, 0, 'cubic-bezier(.2,.9,.3,1)'), K(520, 0.86, 1.4, -20, -6), K(640, 0.9, 1.34, -30, 4), K(780, 0.95, 1.25, -26, -3, 'cubic-bezier(.6,0,1,.7)'), K(HIT, 1.38, 0.68, 0, 0), K(1010, 1.04, 1.18, -6, 2), K(1110, 1.06, 0.94, 0, 0), K(1210, 0.98, 1.04, 0, 0), K(D, 1, 1, 0, 0)], { duration: D });
+    later(150, () => { const t0 = performance.now(), step = (now) => { const t = Math.min(1, (now - t0) / 330); paint(t); if (t < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); });
+    shadow.animate([{ transform: 'scaleX(1)', opacity: 0.3 }, { transform: 'scaleX(1)', opacity: 0.3, offset: 480 / D }, { transform: 'scaleX(.7)', opacity: 0.2, offset: 560 / D }, { transform: 'scaleX(.6)', opacity: 0.2, offset: 0.6 }, { transform: 'scaleX(1.2)', opacity: 0.45, offset: HIT / D }, { transform: 'scaleX(1)', opacity: 0.3 }], { duration: D });
+    later(10, () => alive(stage, flame, { k: 0.5 }));
+    const glow = document.createElement('div');
+    glow.className = 'lueur'; glow.style.background = `radial-gradient(circle,${c1}77 0%,transparent 65%)`; stage.prepend(glow);
+    glow.animate([{ opacity: 0, transform: 'scale(.5)' }, { opacity: 0.9, transform: 'scale(1.15)', offset: 0.3 }, { opacity: 0.45, transform: 'scale(1)' }], { duration: 800, delay: 800, fill: 'forwards' });
+    glow.animate([{ opacity: 0.35 }, { opacity: 0.65 }], { duration: 900, delay: 1600, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
+    const ring = (delay) => { const r = document.createElement('div'); r.className = 'ring'; r.style.borderColor = c1; stage.append(r); r.animate([{ transform: 'scale(.4)', opacity: 0.9 }, { transform: 'scale(1.7)', opacity: 0 }], { duration: 750, delay, easing: 'ease-out' }).onfinish = () => r.remove(); };
+    ring(HIT); if (tier) ring(1010);
+    stage.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-5px,4px)' }, { transform: 'translate(4px,-3px)' }, { transform: 'translate(-2px,2px)' }, { transform: 'translate(0,0)' }], { duration: 280, delay: HIT });
+    const pal = [c1, c2, mix(c1, '#ffffff', 0.45)];
+    const burst = (count, delay, dist, dur) => {
+      for (let i = 0; i < count; i++) {
+        const c = document.createElement('span'); c.className = 'conf'; c.style.background = pal[i % 3]; c.style.width = c.style.height = 6 + 6 * Math.random() + 'px'; stage.append(c);
+        const a = Math.random() * Math.PI * 2, r = dist * (0.5 + 0.6 * Math.random()), rot = (Math.random() < 0.5 ? 45 : 0) + 90 * Math.random();
+        c.animate([{ transform: 'translate(0,0) rotate(0deg) scale(1)', opacity: 1 }, { transform: `translate(${Math.cos(a) * r}px,${Math.sin(a) * r - 30}px) rotate(${rot}deg) scale(.5)`, opacity: 0 }], { duration: dur * (0.7 + 0.6 * Math.random()), delay, easing: 'cubic-bezier(.1,.8,.3,1)' }).onfinish = () => c.remove();
+      }
+    };
+    burst(12 + Math.round(10 * Math.min(day, 100) / 100) + (tier ? 14 : 0), HIT, 130 + (tier ? 30 : 0), 1000);
+    old.animate([{ transform: 'translateY(0)', opacity: 1 }, { transform: 'translateY(70%)', opacity: 0 }], { duration: 260, delay: 900, easing: 'ease-in', fill: 'both' });
+    nw.animate([{ transform: 'translateY(-70%) scale(.8) rotate(-8deg)', opacity: 0 }, { transform: 'translateY(6%) scale(1.25) rotate(4deg)', opacity: 1, offset: 0.6 }, { transform: 'translateY(0) scale(1) rotate(0)', opacity: 1 }], { duration: 460, delay: 980, easing: 'ease-out', fill: 'both' });
+    label.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 400, delay: 1750, fill: 'both' });
+    week.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 450, delay: 2250, fill: 'both' });
+    week.querySelectorAll('.ck').forEach((e, i) => e.animate([{ opacity: 0, transform: 'scale(.3)' }, { opacity: 1, transform: 'scale(1.2)', offset: 0.6 }, { opacity: 1, transform: 'scale(1)' }], { duration: 350, delay: 2600 + 80 * i, fill: 'both' }));
+    later(HIT, () => { msg.textContent = 'Série prolongée !'; });
+    later(1000, () => alive(stage, flame, { k, embers: true, cols: [c1, c2] }));
+    return new Promise((ok) => later(2600 + 80 * lit + 350, () => { msg.textContent = done; ok(); }));
+  }
+  const TIER_COL = { Commun: '#86c9a3', Rare: '#5b8ee0', 'Épique': '#8a5fd6', 'Légendaire': '#ee9a4a', Mythique: '#f2c94c' };
+  // Section de l'accueil : paliers + démo « Poster un clip »
+  function section() {
+    const pal = [[1, 'Jour 1', ''], [5, 'Jour 5', 'Commun'], [10, 'Jour 10', 'Rare'], [30, 'Jour 30', 'Épique'], [50, 'Jour 50', 'Légendaire'], [100, 'Jour 100', 'Mythique']]
+      .map(([d, t, p]) => `<figure>${svg({ days: d })}${t}${p ? `<span class="p" style="background:${TIER_COL[p]}">${p}</span>` : ''}</figure>`).join('') + `<figure>${svg({ off: true })}Éteinte</figure>`;
+    const bar = `linear-gradient(90deg,${Array.from({ length: 100 }, (_, i) => colors(i + 1)[0] + ' ' + (i / 99 * 100).toFixed(1) + '%').join(',')})`;
+    return `<section class="msec"><div class="stk rv" id="stk"><h2>Ta série 🔥</h2><p>Un clip par jour et ta flamme grandit : elle change de couleur du jour 1 au jour 100. Un jour sans clip, elle s'éteint.</p>
+      <div class="pal">${pal}</div>
+      <div class="demo"><div class="stage"><div class="ombre"></div><div class="flamme"></div></div><div class="chiffre"></div><div class="lab"></div><div class="carte"></div><p class="msg" role="status"></p><button class="post" type="button">Poster un clip</button></div>
+      <div class="barre" style="background:${bar}"></div></div></section>`;
+  }
+  function bind(root) {
+    const box = root.querySelector('#stk');
+    if (!box) return;
+    const q = (s) => box.querySelector(s), el = { stage: q('.stage'), flame: q('.flamme'), shadow: q('.ombre'), num: q('.chiffre'), label: q('.lab'), week: q('.carte'), msg: q('.msg') }, btn = q('.post');
+    let day = 4, state = 'ready';
+    const reset = (d) => {
+      day = d; state = 'ready'; stop(el.stage);
+      [el.stage, el.num, el.label, el.week].forEach((e) => e.getAnimations({ subtree: true }).forEach((a) => a.cancel()));
+      el.stage.querySelectorAll('.conf,.ring,.lueur').forEach((e) => e.remove());
+      el.label.style.opacity = ''; el.week.style.opacity = ''; el.label.textContent = ''; el.week.innerHTML = '';
+      el.flame.innerHTML = svg({ off: true, tile: false, id: 'demo' }); el.shadow.style.background = '#5f6c80';
+      el.num.innerHTML = `<span class="n">${d}</span>`;
+      el.msg.textContent = d ? 'Tu es là aujourd’hui : poste un clip pour allumer ta flamme.' : 'Poste ton premier clip pour allumer la flamme.';
+      btn.textContent = 'Poster un clip'; btn.disabled = false;
+      alive(el.stage, el.flame, { k: 0.3 });
+    };
+    btn.onclick = () => {
+      if (state === 'done') return reset(day);
+      if (state !== 'ready') return;
+      state = 'anim'; btn.disabled = true;
+      post(el, day).then(() => { day += 1; state = 'done'; btn.textContent = 'Jour suivant'; btn.disabled = false; });
+    };
+    reset(4);
+  }
+  return { svg, colors, section, bind };
+})();
+
 const lvlIcon = (i) => i < 4 && C.levels.length <= 4 ? (NEW_DA ? starSvg(i + 1) : `<img class="star" src="/fan/assets/ms-star${i + 1}.webp" alt="">`) : C.levels[i].emoji;
 /** Pourquoi un clip ne rapporte pas (affiché sous le clip). */
 const clipWhy = (c) => c.why?.includes('unverified') ? 'compte en vérification par le staff' : c.why?.includes('before') ? 'publié avant ton inscription' : c.why?.includes('notag') ? `${PUB.clipTag ?? '#tag'} manquant dans la légende` : 'ne rapporte pas';
@@ -1091,6 +1293,7 @@ function pageHomeMs() {
     <div class="tl">${M.timeline.map((t) => `<div class="step rv"><h3 class="ol">${esc(t.title)}</h3><div class="box"><span class="e rays">${t.emoji}</span><span>${esc(t.text)}</span></div></div>`).join('')}
       <div class="step rv">${M.joinImage ? `<a class="join-img" href="#/recompenses"><img src="/fan/assets/${esc(M.joinImage)}" alt="${esc(M.joinText ?? rewardShort())}"></a>` : `<a class="join rays" href="#/recompenses">${logo ? `<img src="${logo}" alt="">` : ''}<span class="ol">${esc(M.joinText ?? `${compact((C.reward?.price ?? 0) * 1000 / PUB.pointsPer1000)} vues = 1 mois !`)}</span></a>`}</div></div>
   </section>
+${M.streak ? FLAMES.section() : ''}
 
 ${M.reviews ? `  <section class="msec orange">
     <div class="mscta rv">${joinBtn()}</div>
@@ -1381,6 +1584,7 @@ function route() {
   renderChrome(known);
   const app = $('#app');
   app.innerHTML = `<div class="page">${(known && C.vault && known === C.vault.route ? pageVault : { '': pageHome, recompenses: pageShop, clipper: pageClip, classement: pageRanking, profil: pageProfile, progression: pageProgress }[known])()}</div>`;
+  FLAMES.bind(app);
   observe(app);
   tickers(app);
   bindBuy(app);
