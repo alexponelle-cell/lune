@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateRelance, relanceMessage } from '../src/domain/relance.js';
+import { complainsAboutBot, evaluateRelance, relanceMessage } from '../src/domain/relance.js';
 import { computeRewardCents } from '../src/domain/rewards.js';
 import { DAY } from '../src/domain/stats.js';
 
@@ -80,5 +80,15 @@ describe('messages de relance et motivation', () => {
       state = { day: '', bag, last: index };
     }
     expect(new Set(seen.slice(0, MOTIVATION.length)).size).toBe(MOTIVATION.length);
+  });
+});
+
+describe('complainsAboutBot', () => {
+  it('repère les plaintes contre le bot et les « je poste déjà »', () => {
+    expect(complainsAboutBot("Quelqu'un peut couper le bot je poste une vidéo par jour")).toBe(true);
+    expect(complainsAboutBot('Sérieux le bug il est vraiment buggé')).toBe(true);
+    expect(complainsAboutBot("arrête de me spam")).toBe(true);
+    expect(complainsAboutBot("d'ici ce soir c'est posté les 5 shorts")).toBe(false);
+    expect(complainsAboutBot('je finis mon montage')).toBe(false);
   });
 });

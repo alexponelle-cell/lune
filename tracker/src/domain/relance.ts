@@ -155,3 +155,10 @@ export function personalRelance(ctx: RelanceContext, previous: string | null, se
     : pickDifferent(ctx.level <= 1 ? RELANCE_1 : ctx.level === 2 ? RELANCE_2 : RELANCE_3, previous?.split('\n')[0], random);
   return [head, ...facts(ctx, seed, fmt)].join('\n');
 }
+
+/** Message du fan qui se plaint du bot ou dit qu'il poste déjà : on ne le relance pas et on ne le cite pas. */
+export function complainsAboutBot(text: string): boolean {
+  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return /\b(bot|bug|buggee?|beug|spam|harcel|couper|coupe[rz]?|arrete[rz]?|stop|tg|chiant|soule|relou)\b/.test(t)
+    || /(je poste|j'?ai poste|je publie|j'?ai publie|une video par jour|un clip par jour|tous les jours)/.test(t);
+}

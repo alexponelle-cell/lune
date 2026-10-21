@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ChannelType, type Client, EmbedBuilder, type Guild, type Role, type TextChannel } from 'discord.js';
 import { weekendWindow, WEEKEND_GOAL } from '../domain/engagement.js';
-import { personalRelance } from '../domain/relance.js';
+import { complainsAboutBot, personalRelance } from '../domain/relance.js';
 import { dayKey as dayKeyOf } from '../domain/time.js';
 import { startOfDay } from '../domain/time.js';
 import { drawMotivation, type MotivationState, motivationMessage } from '../domain/motivation.js';
@@ -380,7 +380,10 @@ export async function relanceFans(client: Client<true>, fans: FanService, now = 
     if (!priv) continue;
     try {
       const recent = await priv.messages.fetch({ limit: 30 }).catch(() => null);
-      const said = recent?.find((m) => m.author.id === r.discordId && m.content.trim().length >= 3 && now - m.createdTimestamp < 48 * 3_600_000);
+      const mine = [...(recent?.values() ?? [])].filter((m) => m.author.id === r.discordId && m.content.trim().length >= 3 && now - m.createdTimestamp < 48 * 3_600_000);
+      // Il se plaint du bot / dit qu'il poste déjà : pas de relance aujourd'hui (le staff regarde), et on ne cite jamais ça
+      if (mine.some((m) => complainsAboutBot(m.content))) continue;
+      const said = mine[0];
       const ctx = said ? { ...r.ctx, quote: { text: said.content.replace(/\s+/g, ' ').trim().slice(0, 90), ago: dayKeyOf(said.createdTimestamp) === dayKeyOf(now) ? 'tout à l’heure' : dayKeyOf(said.createdTimestamp) === dayKeyOf(now - 86_400_000) ? 'hier' : 'avant-hier' } } : r.ctx;
       const message = personalRelance(ctx, r.previous, r.clipperId + now, nf);
       await priv.send({ content: `<@${r.discordId}> ${message}`, allowedMentions: { users: [r.discordId] } });

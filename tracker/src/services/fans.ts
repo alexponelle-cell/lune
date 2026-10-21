@@ -259,7 +259,8 @@ export class FanService {
       // Seuls les clips publiés après l'inscription montrent qu'il est actif
       if (p !== null && p >= a.createdAt) cur.lastPost = Math.max(cur.lastPost ?? 0, p);
       // Relevé le plus ancien de ses comptes : on ne sait rien de plus récent
-      cur.checked = a.lastCheckedAt === null || cur.checked === null ? null : Math.min(cur.checked, a.lastCheckedAt);
+      // Relevé en erreur (quota Apify, compte introuvable…) = on ne sait pas s'il a posté : pas de relance
+      cur.checked = a.lastCheckedAt === null || a.lastError || cur.checked === null ? null : Math.min(cur.checked, a.lastCheckedAt);
       byFan.set(a.clipperId, cur);
     }
     const today = dayKey(now);
