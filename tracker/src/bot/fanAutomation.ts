@@ -380,10 +380,11 @@ export async function relanceFans(client: Client<true>, fans: FanService, now = 
     if (!priv) continue;
     try {
       const recent = await priv.messages.fetch({ limit: 30 }).catch(() => null);
-      const mine = [...(recent?.values() ?? [])].filter((m) => m.author.id === r.discordId && m.content.trim().length >= 3 && now - m.createdTimestamp < 48 * 3_600_000);
-      // Il se plaint du bot / dit qu'il poste déjà : pas de relance aujourd'hui (le staff regarde), et on ne cite jamais ça
-      if (mine.some((m) => complainsAboutBot(m.content))) continue;
-      const said = mine[0];
+      const mine = [...(recent?.values() ?? [])].filter((m) => m.author.id === r.discordId && m.content.trim().length >= 3);
+      // Il s'est plaint du bot / dit qu'il poste déjà dans la semaine : plus de relance (le staff regarde), et on ne cite jamais ça
+      if (mine.some((m) => now - m.createdTimestamp < 7 * 86_400_000 && complainsAboutBot(m.content))) continue;
+      // On ne cite qu'un vrai message sur son avancement : récent (48 h), assez long, pas une réponse à quelqu'un (« A ok »)
+      const said = mine.find((m) => now - m.createdTimestamp < 48 * 3_600_000 && m.content.trim().length >= 15 && !m.reference && !m.mentions.users.size);
       const ctx = said ? { ...r.ctx, quote: { text: said.content.replace(/\s+/g, ' ').trim().slice(0, 90), ago: dayKeyOf(said.createdTimestamp) === dayKeyOf(now) ? 'tout à l’heure' : dayKeyOf(said.createdTimestamp) === dayKeyOf(now - 86_400_000) ? 'hier' : 'avant-hier' } } : r.ctx;
       const message = personalRelance(ctx, r.previous, r.clipperId + now, nf);
       await priv.send({ content: `<@${r.discordId}> ${message}`, allowedMentions: { users: [r.discordId] } });
