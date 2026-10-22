@@ -15,6 +15,7 @@ import { creatorConfig } from '../src/creators/index.js';
 import { deliverEmailOrders, EmailGrantClient, monthsOf } from '../src/services/emailGrant.js';
 
 /** Compte relié avant les clips du test (seuls les clips publiés après l'ajout du compte rapportent). */
+const DAY = 24 * HOUR;
 const backdate = (repo: Repo, at: number) => repo.db.prepare('UPDATE accounts SET created_at = ?, verified_at = ?').run(at, at);
 /** Simule le premier relevé des comptes (la file du staff n'affiche que les comptes déjà relevés). */
 const releve = (repo: Repo, followers?: number) =>
@@ -46,6 +47,19 @@ describe('programme fans (Neptune)', () => {
     repo.recordCollection(account.id, [{ platformVideoId: 'v1', views: 5000, publishedAt: now - 2 * HOUR }], now - HOUR);
     return fan;
   }
+
+  it('connexion TikTok d’un autre pseudo : ses clips comptent depuis son inscription, pas depuis la connexion', () => {
+    const fan = fans.ensureFan('d8', 'Antoine', now - 5 * DAY);
+    fans.addAccounts(fan, 'https://www.tiktok.com/@antoine.mal.tape');
+    const old = repo.listAccountsForClipper(fan.id)[0]!;
+    repo.db.prepare('UPDATE accounts SET created_at = ? WHERE id = ?').run(now - 5 * DAY, old.id);
+    const id = fans.connectOfficial(fan, 'tiktok', 'antoine.clips', now);
+    const acc = repo.listAccountsForClipper(fan.id).find((a) => a.id === id)!;
+    expect(acc.createdAt).toBe(now - 5 * DAY);
+    expect(repo.listAccountsForClipper(fan.id).map((a) => a.id)).toEqual([id]);
+    repo.recordCollection(id, [{ platformVideoId: 't1', views: 20_000, publishedAt: now - 2 * DAY }], now);
+    expect(fans.balance(fan.id, now).earned).toBe(200);
+  });
 
   it('funnel d’onboarding : étapes Discord (photo du bot) puis inscription, 1er clip, coins', () => {
     fanWithViews();

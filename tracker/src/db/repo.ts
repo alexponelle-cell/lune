@@ -338,6 +338,11 @@ export class Repo {
       .run(at, meta.error ?? null, meta.externalId ?? null, meta.displayName ?? null, meta.followers ?? null, id);
   }
 
+  /** Date de départ du compte (ses clips publiés avant ne comptent pas). */
+  setAccountCreatedAt(id: number, at: number): void {
+    this.db.prepare('UPDATE accounts SET created_at = ? WHERE id = ?').run(at, id);
+  }
+
   /** Vérification du compte (code trouvé dans la bio) ; null = à vérifier. */
   setAccountVerified(id: number, at: number | null, followers?: number): void {
     this.db.prepare('UPDATE accounts SET verified_at = ?, followers = COALESCE(?, followers) WHERE id = ?').run(at, followers ?? null, id);

@@ -38,7 +38,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 
 ## Technique (dossier `tracker/`)
 
-- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v19**),
+- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v20**),
   **Hono** (serveur web), **zod**, **vitest**.
 - `src/creators/*.ts` : **config de chaque créateur** (nom, couleurs, police, textes, récompense, niveaux, messages Discord).
   Choisie au démarrage par la variable `CREATOR`. Ajouter un créateur = copier `squiduu.ts`, l'adapter, l'ajouter dans `index.ts`.

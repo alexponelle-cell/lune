@@ -1020,7 +1020,12 @@ export class FanService {
     const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link, now });
     if (r.conflict) throw new Error(`Le compte @${link.handle} est déjà relié à un autre clippeur : contacte le staff.`);
     this.repo.setAccountVerified(r.account.id, now);
-    for (const a of current) if (a.id !== r.account.id && a.slot === r.account.slot) this.repo.deactivateAccount(a.id);
+    const replaced = current.filter((a) => a.id !== r.account.id && a.slot === r.account.slot);
+    // Nouveau compte qui remplace celui donné à l'inscription (pseudo mal tapé, autre compte à lui : la connexion le prouve) :
+    // ses clips comptent depuis la date de l'ancien, pas seulement à partir de la connexion
+    const since = Math.min(...replaced.map((a) => a.createdAt));
+    if (r.created && Number.isFinite(since) && since < r.account.createdAt) this.repo.setAccountCreatedAt(r.account.id, since);
+    for (const a of replaced) this.repo.deactivateAccount(a.id);
     return r.account.id;
   }
   private lastVerify = new Map<number, number>();

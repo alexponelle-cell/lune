@@ -448,4 +448,18 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
 
   // v19 : 2e compte par réseau (/inscription2) : slot 1 = comptes de /inscription, slot 2 = comptes de /inscription2
   `ALTER TABLE accounts ADD COLUMN slot INTEGER NOT NULL DEFAULT 1;`,
+
+  // v20 : TikTok / Insta connecté sous un autre pseudo que celui de l'inscription : ses clips comptent depuis
+  // la date de l'ancien compte (et plus seulement depuis la connexion), vues d'avant la 1re lecture comprises
+  `
+  CREATE TEMP TABLE fix_since AS
+    SELECT a.id, MIN(b.created_at) AS since FROM accounts a
+      JOIN accounts b ON b.clipper_id = a.clipper_id AND b.platform = a.platform AND b.slot = a.slot AND b.active = 0 AND b.id <> a.id
+     WHERE a.active = 1 AND a.id IN (SELECT account_id FROM tiktok_tokens UNION SELECT account_id FROM instagram_tokens)
+     GROUP BY a.id HAVING MIN(b.created_at) < a.created_at;
+  UPDATE videos SET baseline_views = 0
+   WHERE account_id IN (SELECT id FROM fix_since) AND published_at >= (SELECT since FROM fix_since f WHERE f.id = videos.account_id);
+  UPDATE accounts SET created_at = (SELECT since FROM fix_since f WHERE f.id = accounts.id) WHERE id IN (SELECT id FROM fix_since);
+  DROP TABLE fix_since;
+  `,
 ];
