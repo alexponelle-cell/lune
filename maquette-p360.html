@@ -310,12 +310,13 @@ function pageSpots() {
 function pageConnect() {
   const c = (ic, t, d, st) => `<div class="card conn"><div class="ci">${ic}</div><div style="flex:1"><b>${t}</b><small>${d}</small></div>${st}</div>`;
   const on = '<span class="st" style="--c:#FCCA09">Connecté ✓</span>';
-  return `<h2>Brancher tes outils</h2><p class="sub">4 connexions, 5 minutes, une seule fois. Ensuite tout se remplit tout seul : tu n'as plus rien à saisir.</p>
+  return `<h2>Brancher tes outils</h2><p class="sub">5 connexions, 5 minutes, une seule fois. Ensuite tout se remplit tout seul : tu n'as plus rien à saisir.</p>
   <div class="grid">
     ${c('🗂️', 'Ton outil de prod (Notion ou ton app)', 'On lit les statuts des vidéos et on met à jour « Validé » / « Publié ». 1 clic : « Ajouter l’intégration P360 ».', on)}
     ${c('📸', 'Instagram de tes clients', 'Chaque client reçoit un lien et clique « Autoriser » (connexion officielle, gratuite). Les vues arrivent chaque nuit.', `<span class="st" style="--c:#FFE9A3">2 / 3 clients</span>`)}
     ${c('💬', 'Slack', 'Le bot P360 rejoint ton Slack : relances monteurs, feedbacks, réponses aux questions.', on)}
-    ${c('🏦', 'Banque', 'Relevé CSV une fois par mois, ou clé Qonto en lecture seule (personne ne peut toucher à ton argent).', '<button class="btn sm" data-top="compta" data-sub="bank">Brancher</button>')}
+    ${c('📊', 'Ton Google Sheet', 'On importe ton historique (paiements, marges) une fois : rien n’est perdu, tout continue dans le hub.', '<span class="st" style="--c:#FFE9A3">1 clic</span>')}
+    ${c('🏦', 'Banque (Qonto)', 'Relevé CSV une fois par mois, ou clé Qonto en lecture seule (personne ne peut toucher à ton argent).', '<button class="btn sm" data-top="compta" data-sub="bank">Brancher</button>')}
   </div>
   <div class="card" style="margin-top:14px"><h2>Ce que tu n'as plus à faire</h2>
     <ul class="nolist"><li>✅ Relancer les clients pour la validation</li><li>✅ Relancer les monteurs en retard</li><li>✅ Chercher les vues de chaque reel</li><li>✅ Faire les factures et compter ce que tu dois aux monteurs</li><li>✅ Remplir ton Google Sheet de compta</li><li>✅ Répondre « elle sort quand la vidéo ? »</li></ul></div>`;
@@ -380,7 +381,27 @@ function pageDash() {
       ${s.rate ? `<div class="row"><span>🏛️ Déclaration URSSAF : <b>${fmt(s.ca)}</b> de CA à déclarer</span></div>` : ''}
       ${!lateClients.length && !unpaidM.length ? '<p class="sub">Rien en attente 🎉</p>' : ''}
     </div>
-  </div>`;
+  </div>
+  ${marginCard()}`;
+}
+
+// Marge par client : facturé − sa part des monteurs (selon ses vidéos et leurs tarifs) − sa part des autres dépenses
+function margins(m) {
+  const s = stats(m);
+  const mont = Object.entries(VIDEOS[m] ?? {}).reduce((a, [mo, n]) => a + n * MONTEURS[mo], 0);
+  const w = {}; VIDS.forEach((v) => { w[v.client] = (w[v.client] ?? 0) + MONTEURS[v.monteur]; });
+  const tot = Object.values(w).reduce((a, b) => a + b, 0) || 1;
+  return Object.entries(CLIENTS).map(([c, fee]) => { const share = (w[c] ?? 0) / tot; const cm = Math.round(mont * share), co = Math.round(s.other * share); return { c, fee, cm, co, marge: fee - cm - co }; });
+}
+function marginCard() {
+  const rows = margins(month), tot = rows.reduce((a, r) => ({ fee: a.fee + r.fee, marge: a.marge + r.marge }), { fee: 0, marge: 0 });
+  const best = [...rows].sort((a, b) => b.marge / b.fee - a.marge / a.fee);
+  return `<div class="card" style="margin-top:14px"><div class="row"><div><h2>Marges par client · ${mName(month)}</h2><p class="sub" style="margin:0">Ce que chaque client te rapporte vraiment, une fois les monteurs et les dépenses payés.</p></div>
+    <div style="text-align:right"><small class="sub">Marge totale</small><div style="font-size:26px;font-weight:800;color:var(--y)">${fmt(tot.marge)} <span style="font-size:15px;color:var(--muted)">(${Math.round((tot.marge / tot.fee) * 100)} %)</span></div></div></div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Client</th><th class="r">Facturé</th><th class="r">Monteurs</th><th class="r">Autres</th><th class="r">Marge</th><th style="width:28%"></th></tr></thead><tbody>
+    ${rows.map((r) => { const pc = Math.round((r.marge / r.fee) * 100); return `<tr><td><b>${r.c}</b></td><td class="r num">${fmt(r.fee)}</td><td class="r num">−${fmt(r.cm)}</td><td class="r num">−${fmt(r.co)}</td><td class="r num"><b class="${pc >= 50 ? 'in' : ''}">${fmt(r.marge)}</b> <span style="color:var(--muted)">${pc} %</span></td><td><div class="bar"><i style="width:${Math.max(0, pc)}%"></i></div></td></tr>`; }).join('')}
+    </tbody></table></div>
+    <p class="tip">💡 <b>${best[0].c}</b> est ton client le plus rentable (${Math.round((best[0].marge / best[0].fee) * 100)} %). <b>${best.at(-1).c}</b> te coûte le plus en montage : à revoir au prochain devis.</p></div>`;
 }
 
 function pageMoves() {
