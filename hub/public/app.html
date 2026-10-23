@@ -326,16 +326,19 @@ const vcOf = () => (cf === 'all' ? Object.keys(CLIENTS)[0] : cf);
 const cLabel = () => (cf === 'all' ? 'tous clients' : cf);
 
 // ================= Graphiques =================
-function lineChart(points, w = 560, h = 170) {
-  const max = Math.max(...points.map((p) => p[1])) * 1.15, min = Math.min(...points.map((p) => p[1])) * 0.6;
-  const X = (i) => 20 + (i * (w - 40)) / (points.length - 1), Y = (v) => h - 28 - ((v - min) / (max - min)) * (h - 50);
+/** Courbe mois par mois : axe à 0 (pas de fausse montée), montant au-dessus de chaque mois, mois choisi en jaune. */
+function lineChart(points, w = 560, h = 190, hi = points.length - 1) {
+  const max = Math.max(...points.map((p) => p[1]), 1) * 1.2, top = 26, base = h - 28;
+  const X = (i) => 30 + (i * (w - 60)) / Math.max(1, points.length - 1), Y = (v) => base - (Math.max(0, v) / max) * (base - top);
   let d = `M${X(0)},${Y(points[0][1])}`;
   for (let i = 1; i < points.length; i++) { const x0 = X(i - 1), y0 = Y(points[i - 1][1]), x1 = X(i), y1 = Y(points[i][1]), cx = (x0 + x1) / 2; d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`; }
-  const last = points.length - 1;
+  const last = points.length - 1, k = (v) => (Math.abs(v) >= 1000 ? (v / 1000).toFixed(1).replace('.0', '').replace('.', ',') + ' k€' : Math.round(v) + ' €');
   return `<svg class="chart" viewBox="0 0 ${w} ${h}" width="100%"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCCA09" stop-opacity=".35"/><stop offset="1" stop-color="#FCCA09" stop-opacity="0"/></linearGradient></defs>
-    <path class="area" d="${d} L${X(last)},${h - 28} L${X(0)},${h - 28} Z" fill="url(#ag)"/><path class="line" d="${d}"/>
-    <circle cx="${X(last)}" cy="${Y(points[last][1])}" r="6" fill="#FCCA09" stroke="#111" stroke-width="2.5" style="opacity:0;animation:fade .4s 1.7s forwards"/>
-    ${points.map((p, i) => `<text x="${X(i)}" y="${h - 6}" text-anchor="middle">${p[0]}</text>`).join('')}</svg>`;
+    <line x1="${X(0)}" x2="${X(last)}" y1="${base}" y2="${base}" stroke="#e6e3dc"/>
+    <path class="area" d="${d} L${X(last)},${base} L${X(0)},${base} Z" fill="url(#ag)"/><path class="line" d="${d}"/>
+    ${points.map((p, i) => `<g style="opacity:0;animation:fade .4s ${1.2 + i * 0.05}s forwards"><circle cx="${X(i)}" cy="${Y(p[1])}" r="${i === hi ? 6 : 3.5}" fill="${i === hi ? '#FCCA09' : '#111'}" stroke="#111" stroke-width="${i === hi ? 2.5 : 0}"/>
+      <text x="${X(i)}" y="${Y(p[1]) - 12}" text-anchor="middle" style="font-weight:${i === hi ? 800 : 600};fill:#111">${k(p[1])}</text></g>`).join('')}
+    ${points.map((p, i) => `<text x="${X(i)}" y="${h - 6}" text-anchor="middle" style="${i === hi ? 'font-weight:700;fill:#111' : ''}">${p[0]}</text>`).join('')}</svg>`;
 }
 function gauge(pc, label) {
   const L = Math.PI * 80;
@@ -365,7 +368,7 @@ function pHome() {
     <div class="card c8 in" style="--i:0"><div class="ch"><h3><span class="ic">${ic('euro', 16)}</span>${one ? `Marge · ${cf}` : 'Reste pour toi'} · ${mName(month)}</h3>${arrowBtn('compta')}</div>
       <div class="row" style="align-items:flex-end"><div><div class="big">${count(main)}</div><div class="muted small" style="margin-top:6px">${one ? `${one.pc} % de ce que tu lui factures` : 'sur le facturé, après monteurs, dépenses et URSSAF'} <span class="pill ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)} %</span> vs ${mShort(pm)}</div></div>
       <div class="row" style="gap:22px">${one ? `<div><div class="muted small">Facturé</div><b class="num">${fmt(one.fee)}</b></div><div><div class="muted small">Monteurs</div><b class="num">${fmt(one.cm)}</b></div><div><div class="muted small">Autres</div><b class="num">${fmt(one.co)}</b></div>` : `<div><div class="muted small">Facturé</div><b class="num">${fmt(s.fact)}</b></div><div><div class="muted small">Monteurs</div><b class="num">${fmt(s.mont)}</b></div><div><div class="muted small">Encaissé</div><b class="num">${fmt(s.ca)}</b></div>`}</div></div>
-      <div style="margin-top:10px">${lineChart(trend)}</div></div>
+      <div style="margin-top:10px">${lineChart(trend, 560, 190, trend.length - MONTHS.length + MONTHS.indexOf(month))}</div></div>
     <div class="card c4 in" style="--i:1"><div class="ch"><h3><span class="ic">${ic('chart', 16)}</span>${one ? 'Rentabilité' : 'Marge globale'}</h3>${arrowBtn('compta')}</div>${gauge(Math.round((tot.m / tot.fee) * 100), one ? 'de marge' : 'de ton CA')}
       ${mg.map((r) => `<div style="margin-top:12px"><div class="row small"><span>${r.c}</span><b>${r.pc} %</b></div><div class="bar yl" style="margin-top:5px"><i data-w="${r.pc}"></i></div></div>`).join('')}</div>
     <div class="card dark c4 in" style="--i:2"><div class="ch"><h3><span class="ic">${ic('check', 16)}</span>À valider par tes clients</h3>${arrowBtn('client')}</div>
