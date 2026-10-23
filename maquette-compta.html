@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compta auto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0E0F12; --card:#16181D; --line:#262A32; --text:#F2F4F7; --muted:#8D95A3; --accent:#7C5CFF; --green:#2BD47D; --red:#FF5C6C; --orange:#FFB547; --blue:#4DA3FF; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:500 15px/1.45 Inter, system-ui, sans-serif; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 24px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(14,15,18,.92); backdrop-filter:blur(8px); z-index:5; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; }
+  .brand i { width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--accent),#B49CFF); display:grid; place-items:center; font-style:normal; }
+  .demo { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; background:#2A2340; color:#B49CFF; padding:4px 10px; border-radius:99px; }
+  select, input, button { font:inherit; }
+  .sel { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:8px 12px; }
+  nav { display:flex; gap:6px; padding:14px 24px 0; overflow-x:auto; }
+  nav button { background:none; border:0; color:var(--muted); font-weight:700; padding:10px 14px; border-radius:10px; cursor:pointer; white-space:nowrap; }
+  nav button.on { background:var(--card); color:var(--text); }
+  main { max-width:1180px; margin:0 auto; padding:20px 24px 60px; }
+  .grid { display:grid; gap:14px; }
+  .kpis { grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; }
+  .kpi small { color:var(--muted); font-weight:600; display:block; }
+  .kpi b { font-size:26px; font-weight:800; letter-spacing:-.02em; display:block; margin-top:6px; }
+  .kpi span { font-size:12.5px; color:var(--muted); }
+  .kpi.big { background:linear-gradient(135deg,#231C42,#16181D); border-color:#3B2F6E; }
+  h2 { margin:0 0 4px; font-size:18px; } .sub { color:var(--muted); margin:0 0 14px; font-size:13.5px; }
+  .two { grid-template-columns:1.6fr 1fr; } @media (max-width:860px){ .two { grid-template-columns:1fr; } }
+  table { width:100%; border-collapse:collapse; } th { text-align:left; color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:8px 10px; border-bottom:1px solid var(--line); }
+  td { padding:10px; border-bottom:1px solid var(--line); vertical-align:middle; } tr:last-child td { border-bottom:0; }
+  .r { text-align:right; } .num { font-variant-numeric:tabular-nums; } .in { color:var(--green); } .out { color:var(--text); }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:99px; font-size:12.5px; font-weight:700; white-space:nowrap; }
+  .c-client { background:#14301F; color:var(--green); } .c-monteur { background:#1D2442; color:var(--blue); } .c-outil { background:#2C2414; color:var(--orange); } .c-tournage { background:#2E1C2A; color:#FF8AD8; } .c-check { background:#3A1A1F; color:var(--red); } .c-autre { background:#24262B; color:var(--muted); }
+  .match { color:var(--muted); font-size:12.5px; display:block; margin-top:3px; }
+  .btn { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:9px 14px; font-weight:700; cursor:pointer; }
+  .btn.ghost { background:transparent; border:1px solid var(--line); color:var(--text); } .btn.sm { padding:6px 10px; font-size:13px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .bar { height:8px; border-radius:99px; background:#262A32; overflow:hidden; } .bar i { display:block; height:100%; background:var(--accent); border-radius:99px; }
+  .alert { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:12px; background:#1F1A10; border:1px solid #4A3A16; color:#FFD48A; margin-bottom:14px; font-size:14px; }
+  .ok { background:#10201A; border-color:#1D4A33; color:#9BF0C3; }
+  .drop { border:2px dashed var(--line); border-radius:16px; padding:28px; text-align:center; color:var(--muted); cursor:pointer; }
+  .drop:hover { border-color:var(--accent); color:var(--text); }
+  .field { display:grid; gap:6px; margin:12px 0; } .field input { background:var(--bg); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px 12px; }
+  .lock { font-size:13px; color:var(--muted); }
+  svg text { fill:var(--muted); font-size:11px; font-family:Inter, sans-serif; }
+  .tag-status { font-size:12.5px; font-weight:700; } .paid { color:var(--green); } .late { color:var(--red); } .wait { color:var(--orange); }
+  .hidden { display:none; }
+  @media print { header, nav, .noprint { display:none !important; } body { background:#fff; color:#000; } }
+  #invoice { background:#fff; color:#111; border-radius:16px; padding:40px; max-width:760px; margin:0 auto; }
+  #invoice h1 { margin:0; font-size:28px; } #invoice table td, #invoice table th { border-color:#ddd; color:#111; }
+  #invoice .muted { color:#666; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><i>€</i>Compta auto <span class="demo">Démo</span></div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <select class="sel" id="month"></select>
+    <select class="sel" id="statut" title="Ton statut (pour l'estimation des charges)">
+      <option value="0.261">Micro-entreprise (services, BNC) · 26,1 %</option>
+      <option value="0.212">Micro-entreprise (services, BIC) · 21,2 %</option>
+      <option value="0">Société (SASU / SAS) · voir comptable</option>
+    </select>
+  </div>
+</header>
+<nav id="tabs">
+  <button data-t="dash" class="on">📊 Tableau de bord</button>
+  <button data-t="moves">🔁 Mouvements</button>
+  <button data-t="monteurs">🎬 Monteurs</button>
+  <button data-t="factures">🧾 Factures clients</button>
+  <button data-t="bank">🏦 Banque</button>
+</nav>
+<main id="app"></main>
+
+<script>
+// Données d'exemple (démo) : 3 mois d'activité d'un Head of Content avec 3 clients et 4 monteurs
+const CLIENTS = { 'Client Finance': 1500, 'Client Fitness': 1200, 'Client Immo': 2000 };
+const MONTEURS = { Yanis: 25, Inès: 25, Tom: 30, Léa: 20 }; // € par vidéo
+const RULES = [ // tri automatique : mot dans le libellé → catégorie
+  { re: /client finance|finance/i, cat: 'client', who: 'Client Finance' },
+  { re: /client fitness|fitness/i, cat: 'client', who: 'Client Fitness' },
+  { re: /client immo|immo/i, cat: 'client', who: 'Client Immo' },
+  ...Object.keys(MONTEURS).map((m) => ({ re: new RegExp(m.normalize('NFD').replace(/[̀-ͯ]/g, ''), 'i'), cat: 'monteur', who: m })),
+  { re: /notion|slack|adobe|capcut|canva|google|frame/i, cat: 'outil' },
+  { re: /studio|podcast|location|spot|uber|sncf/i, cat: 'tournage' },
+];
+const CAT = { client: ['Client', 'c-client'], monteur: ['Monteur', 'c-monteur'], outil: ['Outil', 'c-outil'], tournage: ['Tournage', 'c-tournage'], autre: ['Autre', 'c-autre'], check: ['À vérifier', 'c-check'] };
+const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+const fmt = (n) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const MONTHS = ['2026-08', '2026-09', '2026-10'];
+const mName = (m) => new Date(m + '-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+// Vidéos validées par monteur et par mois (viendraient du Notion / de l'outil de validation)
+const VIDEOS = { '2026-08': { Yanis: 14, Inès: 12, Tom: 8, Léa: 6 }, '2026-09': { Yanis: 16, Inès: 13, Tom: 10, Léa: 9 }, '2026-10': { Yanis: 18, Inès: 15, Tom: 11, Léa: 10 } };
+
+function seed() {
+  const t = [];
+  MONTHS.forEach((m, k) => {
+    Object.entries(CLIENTS).forEach(([c, amt], i) => { if (!(m === '2026-10' && c === 'Client Immo')) t.push({ date: `${m}-0${3 + i}`, label: `VIR SEPA ${c.toUpperCase()} - FACT ${m.replace('-', '')}-${i + 1}`, amount: amt }); });
+    Object.entries(VIDEOS[m]).forEach(([mo, n], i) => { if (!(m === '2026-10' && mo === 'Léa')) t.push({ date: `${m}-2${i}`, label: `VIR ${norm(mo).toUpperCase()} MONTAGE`, amount: -n * MONTEURS[mo] }); });
+    t.push({ date: `${m}-01`, label: 'PRLV NOTION LABS', amount: -10 }, { date: `${m}-02`, label: 'PRLV ADOBE CREATIVE CLOUD', amount: -24 }, { date: `${m}-05`, label: 'PRLV SLACK TECHNOLOGIES', amount: -8 });
+    t.push({ date: `${m}-1${k + 2}`, label: 'CB STUDIO PODCAST PARIS 11', amount: -45 * (2 + k) });
+    if (m === '2026-10') t.push({ date: `${m}-17`, label: 'CB AMAZON MKTP', amount: -63 });
+  });
+  return t.map(classify);
+}
+function classify(t) {
+  const r = RULES.find((x) => x.re.test(norm(t.label)));
+  const cat = r ? r.cat : 'check';
+  return { ...t, cat: (r && r.cat === 'client' && t.amount < 0) || (r && r.cat === 'monteur' && t.amount > 0) ? 'check' : cat, who: r?.who ?? null };
+}
+let TX = seed();
+let month = '2026-10', tab = 'dash';
+
+function stats(m) {
+  const tx = TX.filter((t) => t.date.startsWith(m));
+  const sum = (f) => tx.filter(f).reduce((a, t) => a + t.amount, 0);
+  const ca = sum((t) => t.amount > 0 && t.cat === 'client');
+  const mont = -sum((t) => t.cat === 'monteur');
+  const other = -sum((t) => t.amount < 0 && t.cat !== 'monteur');
+  const rate = +document.getElementById('statut').value;
+  const urssaf = Math.round(ca * rate);
+  return { tx, ca, mont, other, urssaf, rest: ca - mont - other - urssaf, check: tx.filter((t) => t.cat === 'check').length, rate };
+}
+
+function chart() {
+  const data = MONTHS.map((m) => ({ m, ...stats(m) }));
+  const max = Math.max(...data.map((d) => Math.max(d.ca, d.mont + d.other))) * 1.15;
+  const W = 520, H = 200, bw = 34;
+  return `<svg viewBox="0 0 ${W} ${H + 24}" width="100%">${data.map((d, i) => {
+    const x = 50 + i * 160, h1 = (d.ca / max) * H, h2 = ((d.mont + d.other) / max) * H;
+    return `<rect x="${x}" y="${H - h1}" width="${bw}" height="${h1}" rx="6" fill="#2BD47D"/><rect x="${x + bw + 8}" y="${H - h2}" width="${bw}" height="${h2}" rx="6" fill="#7C5CFF"/>
+      <text x="${x + bw + 4}" y="${H + 18}" text-anchor="middle">${new Date(d.m + '-01').toLocaleDateString('fr-FR', { month: 'short' })}</text>`;
+  }).join('')}</svg><div style="display:flex;gap:16px;font-size:13px;color:var(--muted)"><span>🟩 Encaissé</span><span>🟪 Payé (monteurs + dépenses)</span></div>`;
+}
+
+function pageDash() {
+  const s = stats(month);
+  const due = Object.entries(VIDEOS[month]).map(([mo, n]) => { const owed = n * MONTEURS[mo], paid = -s.tx.filter((t) => t.who === mo).reduce((a, t) => a + t.amount, 0); return { mo, owed, paid }; });
+  const unpaidM = due.filter((d) => d.paid < d.owed);
+  const lateClients = Object.keys(CLIENTS).filter((c) => !s.tx.some((t) => t.who === c && t.amount > 0));
+  return `${s.check ? `<div class="alert">⚠️ <div><b>${s.check} mouvement${s.check > 1 ? 's' : ''} à vérifier</b> : je n'ai pas reconnu le libellé. Un clic pour le ranger, et je m'en souviendrai. <a href="#" data-go="moves" style="color:inherit">Voir</a></div></div>` : `<div class="alert ok">✅ Tous les mouvements de ${mName(month)} sont rangés.</div>`}
+  <div class="grid kpis">
+    <div class="card kpi"><small>Encaissé</small><b class="in">${fmt(s.ca)}</b><span>factures clients payées</span></div>
+    <div class="card kpi"><small>Monteurs</small><b>${fmt(s.mont)}</b><span>${Object.values(VIDEOS[month]).reduce((a, b) => a + b, 0)} vidéos validées</span></div>
+    <div class="card kpi"><small>Autres dépenses</small><b>${fmt(s.other)}</b><span>outils, tournages…</span></div>
+    <div class="card kpi"><small>URSSAF (estimation)</small><b>${s.rate ? fmt(s.urssaf) : '—'}</b><span>${s.rate ? `${(s.rate * 100).toFixed(1).replace('.', ',')} % du CA · à mettre de côté` : 'calcul par ton comptable'}</span></div>
+    <div class="card kpi big"><small>Reste pour toi</small><b>${fmt(s.rate ? s.rest : s.ca - s.mont - s.other)}</b><span>${mName(month)}</span></div>
+  </div>
+  <div class="grid two" style="margin-top:14px">
+    <div class="card"><h2>3 derniers mois</h2><p class="sub">Calculé tout seul depuis ta banque.</p>${chart()}</div>
+    <div class="card"><h2>À faire</h2><p class="sub">Ce qui demande ton attention.</p>
+      ${lateClients.map((c) => `<div class="row"><span>🧾 <b>${c}</b> n'a pas payé ${fmt(CLIENTS[c])}</span><button class="btn sm ghost" data-remind="${c}">Relancer</button></div>`).join('')}
+      ${unpaidM.map((d) => `<div class="row"><span>🎬 <b>${d.mo}</b> : reste ${fmt(d.owed - d.paid)} à payer</span><button class="btn sm ghost" data-go="monteurs">Voir</button></div>`).join('')}
+      ${s.rate ? `<div class="row"><span>🏛️ Déclaration URSSAF : <b>${fmt(s.ca)}</b> de CA à déclarer</span></div>` : ''}
+      ${!lateClients.length && !unpaidM.length ? '<p class="sub">Rien en attente 🎉</p>' : ''}
+    </div>
+  </div>`;
+}
+
+function pageMoves() {
+  const s = stats(month);
+  const opts = (cur) => Object.entries(CAT).map(([k, [l]]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('');
+  return `<div class="row"><div><h2>Mouvements de ${mName(month)}</h2><p class="sub" style="margin:0">Rangés automatiquement. Tu peux corriger : l'outil apprend.</p></div><button class="btn ghost" id="export">⬇️ Export pour le comptable</button></div>
+  <div class="card" style="padding:6px 8px;overflow-x:auto"><table><thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th class="r">Montant</th></tr></thead><tbody>
+  ${s.tx.sort((a, b) => b.date.localeCompare(a.date)).map((t) => `<tr><td class="num" style="color:var(--muted)">${t.date.slice(8)}/${t.date.slice(5, 7)}</td>
+    <td>${t.label}${t.who ? `<span class="match">→ ${t.cat === 'client' ? 'facture de' : t.cat === 'monteur' ? 'paiement de' : ''} ${t.who}</span>` : ''}</td>
+    <td><span class="chip ${CAT[t.cat][1]}">${CAT[t.cat][0]}</span> <select class="sel noprint" data-cat="${TX.indexOf(t)}" style="padding:3px 6px;font-size:12px">${opts(t.cat)}</select></td>
+    <td class="r num ${t.amount > 0 ? 'in' : 'out'}">${t.amount > 0 ? '+' : ''}${fmt(t.amount)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+function pageMonteurs() {
+  const s = stats(month);
+  return `<h2>Monteurs · ${mName(month)}</h2><p class="sub">Vidéos validées (depuis ton process) × ton tarif = ce que tu leur dois. Les virements sont retrouvés tout seuls.</p>
+  <div class="grid kpis">${Object.entries(VIDEOS[month]).map(([mo, n]) => {
+    const owed = n * MONTEURS[mo], paid = -s.tx.filter((t) => t.who === mo).reduce((a, t) => a + t.amount, 0), left = owed - paid;
+    return `<div class="card"><div class="row" style="margin-bottom:8px"><b style="font-size:17px">🎬 ${mo}</b><span class="tag-status ${left > 0 ? 'wait' : 'paid'}">${left > 0 ? 'À payer' : 'Payé ✓'}</span></div>
+      <div class="sub" style="margin-bottom:8px">${n} vidéos × ${MONTEURS[mo]} € = <b style="color:var(--text)">${fmt(owed)}</b></div>
+      <div class="bar"><i style="width:${Math.min(100, (paid / owed) * 100)}%"></i></div>
+      <div class="row" style="margin:10px 0 0"><span class="sub" style="margin:0">Payé ${fmt(paid)}</span>${left > 0 ? `<button class="btn sm" data-pay="${mo}" data-left="${left}">Préparer le virement</button>` : ''}</div></div>`;
+  }).join('')}</div>`;
+}
+
+function pageFactures() {
+  const s = stats(month);
+  let i = 0;
+  return `<div class="row"><div><h2>Factures clients · ${mName(month)}</h2><p class="sub" style="margin:0">Créées toutes seules chaque mois. Payées = retrouvées dans ta banque.</p></div></div>
+  <div class="card" style="padding:6px 8px;overflow-x:auto"><table><thead><tr><th>N°</th><th>Client</th><th>Prestation</th><th>Statut</th><th class="r">Montant</th><th></th></tr></thead><tbody>
+  ${Object.entries(CLIENTS).map(([c, amt]) => { i++; const paid = s.tx.some((t) => t.who === c && t.amount > 0); const num = `F-${month.replace('-', '')}-${i}`;
+    return `<tr><td class="num">${num}</td><td><b>${c}</b></td><td style="color:var(--muted)">Head of Content · ${mName(month)}</td>
+      <td><span class="tag-status ${paid ? 'paid' : 'late'}">${paid ? 'Payée ✓' : 'En attente'}</span></td><td class="r num">${fmt(amt)}</td>
+      <td class="r" style="white-space:nowrap"><button class="btn sm ghost" data-inv="${c}|${num}|${amt}">Voir la facture</button>${paid ? '' : ` <button class="btn sm" data-remind="${c}">Relancer</button>`}</td></tr>`; }).join('')}
+  </tbody></table></div>
+  <div id="invwrap" class="hidden" style="margin-top:20px"></div>`;
+}
+
+function invoice(c, num, amt) {
+  const micro = +document.getElementById('statut').value > 0;
+  return `<div class="row noprint" style="max-width:760px;margin:0 auto 10px"><span class="sub" style="margin:0">Aperçu (tes vraies infos seront remplies une fois)</span><button class="btn sm" onclick="window.print()">🖨️ Imprimer / PDF</button></div>
+  <div id="invoice"><div class="row"><div><h1>Facture</h1><div class="muted">N° ${num} · ${new Date().toLocaleDateString('fr-FR')}</div></div><div style="text-align:right"><b>Ton entreprise</b><div class="muted">Adresse · SIRET</div></div></div>
+  <div style="margin:24px 0"><div class="muted">Facturé à</div><b>${c}</b></div>
+  <table><thead><tr><th>Prestation</th><th class="r">Montant</th></tr></thead><tbody><tr><td>Head of Content · ${mName(month)} (stratégie, scripting, suivi du montage, publication)</td><td class="r">${fmt(amt)}</td></tr></tbody></table>
+  <div style="text-align:right;margin-top:16px;font-size:20px"><b>Total : ${fmt(amt)}</b></div>
+  <p class="muted" style="margin-top:24px">${micro ? 'TVA non applicable, art. 293 B du CGI. ' : ''}Paiement à réception par virement. En cas de retard : pénalités au taux légal et indemnité forfaitaire de 40 €.</p></div>`;
+}
+
+function pageBank() {
+  return `<h2>Connecter ta banque</h2><p class="sub">2 façons. Dans les 2 cas, personne ne peut toucher à ton argent.</p>
+  <div class="grid two">
+    <div class="card"><h2>📄 Déposer ton relevé</h2><p class="sub">Une fois par mois : dans ton appli bancaire, exporte tes opérations en CSV, puis dépose le fichier ici. 10 secondes.</p>
+      <label class="drop" id="drop">⬆️ <b>Dépose ton fichier CSV</b><br><span style="font-size:13px">(essaie avec n'importe quel export de banque : ça marche déjà dans la démo)</span><input type="file" accept=".csv,text/csv" id="csv" hidden></label>
+      <div id="csvres" class="sub" style="margin-top:10px"></div></div>
+    <div class="card"><h2>🔑 Banque pro (Qonto…)</h2><p class="sub">Tout est automatique. Dans Qonto : Paramètres → Intégrations → <b>Clé API en lecture seule</b>, puis colle-la ici.</p>
+      <div class="field"><span class="sub" style="margin:0">Identifiant</span><input placeholder="ton-entreprise-1234" disabled></div>
+      <div class="field"><span class="sub" style="margin:0">Clé secrète (lecture seule)</span><input type="password" placeholder="••••••••••••" disabled></div>
+      <button class="btn" disabled style="opacity:.6">Connecter (pas actif dans la démo)</button>
+      <p class="lock">🔒 La clé est enregistrée chiffrée, directement dans l'outil. Personne ne la voit, et elle ne permet <b>que de lire</b> : aucun virement possible. Tu peux la supprimer quand tu veux depuis Qonto.</p></div>
+  </div>`;
+}
+
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/); const sep = (lines[0].match(/;/g) || []).length >= (lines[0].match(/,/g) || []).length ? ';' : ',';
+  const head = lines[0].split(sep).map((h) => norm(h.toLowerCase().replace(/"/g, '')));
+  const idx = (re) => head.findIndex((h) => re.test(h));
+  const iD = idx(/date/), iL = idx(/libel|label|description|intitul|operation/), iA = idx(/montant|amount|valeur/), iDeb = idx(/debit/), iCre = idx(/credit/);
+  const num = (v) => parseFloat((v || '0').replace(/"/g, '').replace(/\s/g, '').replace(',', '.')) || 0;
+  return lines.slice(1).map((l) => l.split(sep).map((c) => c.replace(/^"|"$/g, ''))).map((c) => {
+    let d = c[iD] || ''; const m = d.match(/(\d{2})\/(\d{2})\/(\d{4})/); if (m) d = `${m[3]}-${m[2]}-${m[1]}`;
+    const amount = iA >= 0 ? num(c[iA]) : num(c[iCre]) - Math.abs(num(c[iDeb]));
+    return classify({ date: d.slice(0, 10), label: c[iL] || '(sans libellé)', amount });
+  }).filter((t) => /^\d{4}-\d{2}-\d{2}$/.test(t.date));
+}
+
+function render() {
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
+  document.getElementById('app').innerHTML = { dash: pageDash, moves: pageMoves, monteurs: pageMonteurs, factures: pageFactures, bank: pageBank }[tab]();
+  const app = document.getElementById('app');
+  app.querySelectorAll('[data-go]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); tab = a.dataset.go; render(); }));
+  app.querySelectorAll('[data-cat]').forEach((s) => (s.onchange = () => { TX[+s.dataset.cat].cat = s.value; render(); }));
+  app.querySelectorAll('[data-remind]').forEach((b) => (b.onclick = () => { b.textContent = 'Relance envoyée ✓'; b.disabled = true; }));
+  app.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(`Virement ${b.dataset.pay} : ${b.dataset.left} € (montage ${mName(month)})`); b.textContent = 'Copié ✓ (à coller dans ta banque)'; }));
+  app.querySelectorAll('[data-inv]').forEach((b) => (b.onclick = () => { const [c, n, a] = b.dataset.inv.split('|'); const w = document.getElementById('invwrap'); w.innerHTML = invoice(c, n, +a); w.classList.remove('hidden'); w.scrollIntoView({ behavior: 'smooth' }); }));
+  const ex = document.getElementById('export');
+  if (ex) ex.onclick = () => { const rows = [['Date', 'Libellé', 'Catégorie', 'Qui', 'Montant'], ...stats(month).tx.map((t) => [t.date, t.label, CAT[t.cat][0], t.who ?? '', String(t.amount).replace('.', ',')])]; const blob = new Blob(['﻿' + rows.map((r) => r.map((v) => `"${v}"`).join(';')).join('\n')], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `compta-${month}.csv`; a.click(); };
+  const csv = document.getElementById('csv');
+  if (csv) csv.onchange = async () => { const f = csv.files[0]; if (!f) return; try { const rows = parseCsv(await f.text()); if (!rows.length) throw new Error('Aucune opération reconnue'); TX = rows; const ms = [...new Set(rows.map((r) => r.date.slice(0, 7)))].sort(); month = ms.at(-1); fillMonths(ms); document.getElementById('csvres').innerHTML = `✅ <b>${rows.length} opérations</b> importées et rangées (${rows.filter((r) => r.cat === 'check').length} à vérifier). <a href="#" data-go2>Voir le tableau de bord</a>`; document.querySelector('[data-go2]').onclick = (e) => { e.preventDefault(); tab = 'dash'; render(); }; } catch (err) { document.getElementById('csvres').textContent = '❌ ' + err.message; } };
+}
+function fillMonths(ms) {
+  const sel = document.getElementById('month');
+  sel.innerHTML = ms.map((m) => `<option value="${m}" ${m === month ? 'selected' : ''}>${mName(m)}</option>`).join('');
+  MONTHS.splice(0, MONTHS.length, ...ms.slice(-3));
+  ms.forEach((m) => { VIDEOS[m] ??= {}; });
+}
+document.getElementById('tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; render(); } };
+document.getElementById('month').onchange = (e) => { month = e.target.value; render(); };
+document.getElementById('statut').onchange = render;
+fillMonths(MONTHS.slice());
+render();
+</script>
+</body>
+</html>
