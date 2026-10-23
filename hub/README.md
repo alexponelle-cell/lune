@@ -32,7 +32,7 @@ SEED_DEMO=1 ADMIN_PASSWORD=test1234 SESSION_SECRET=une-longue-phrase-secrete npm
 
 ## À brancher ensuite
 
-- **Notion** : synchro des vidéos et statuts (intégration installée par Adrien, propriétaire de l'espace).
+- ~~Notion~~ : fait (page Connexions : clé collée par Adrien, synchro toutes les 10 min, « Validé » / modif renvoyés dans Notion).
 - **Qonto** : mouvements en lecture seule (clé collée par Adrien dans l'outil).
 - **Instagram** des clients : vues des reels (connexion officielle quand Meta aura validé l'app ; sinon Apify).
 - Ajout / modification des clients et monteurs depuis l'interface (pour l'instant : données d'exemple).

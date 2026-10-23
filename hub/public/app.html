@@ -565,10 +565,22 @@ function pSpots() {
       <p class="muted small">Démo : spots inventés. La vraie version cherche en direct sur les sites de location (type Peerspace).</p>` : '<div class="muted" style="display:grid;place-items:center;min-height:300px;text-align:center">Dépose une référence et lance la recherche ✨</div>'}</div></div>`;
 }
 
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+/** Carte Notion : coller la clé (une fois), puis synchro auto toutes les 10 min + bouton « Synchroniser ». */
+function notionCard() {
+  const n = RAW.notion ?? { connected: false, bases: [] };
+  if (!n.connected) return `<div class="card c6 in" style="--i:0"><div class="conn" style="margin-bottom:10px"><div class="ci">🗂️</div><div style="flex:1"><b>Notion</b><div class="muted small">Tes vidéos et leurs étapes arrivent ici, et « Validé » repart dans Notion.</div></div></div>
+    <ol class="small muted" style="margin:0 0 10px;padding-left:18px"><li>notion.so/my-integrations → <b>Nouvelle intégration</b> (interne) → copie la clé.</li><li>Sur chaque page client : <b>•••</b> → <b>Connexions</b> → ajoute l'intégration.</li><li>Colle la clé ici (jamais par message).</li></ol>
+    <div style="display:flex;gap:8px"><input id="ntok" type="password" placeholder="Clé secrète Notion" autocomplete="off" style="flex:1;border:1px solid #e6e3dc;border-radius:999px;padding:8px 14px;font:inherit;background:#faf9f6"><button class="btn sm y" id="ngo">Connecter</button></div></div>`;
+  const last = n.lastSync ? new Date(n.lastSync).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'jamais';
+  return `<div class="card c6 in" style="--i:0"><div class="conn" style="margin-bottom:10px"><div class="ci">🗂️</div><div style="flex:1"><b>Notion</b><div class="muted small">Synchro toutes les 10 min · dernière : ${last}</div></div><span class="pill up">connecté</span></div>
+    ${n.bases.length ? n.bases.map((b) => `<div class="small" style="padding:3px 0">✓ <b>${esc(b.client)}</b> <span class="muted">· ${esc(b.title)}</span></div>`).join('') : '<div class="small muted">Aucune base trouvée : partage tes pages clients avec l’intégration (••• → Connexions).</div>'}
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm y" id="nsync">Synchroniser</button><button class="btn sm" id="noff">Déconnecter</button></div></div>`;
+}
 function pConnect() {
   const c = (icn, t, d, st, i) => `<div class="card c6 in conn" style="--i:${i}"><div class="ci">${icn}</div><div style="flex:1"><b>${t}</b><div class="muted small">${d}</div></div>${st}</div>`;
   return `<div class="page-h"><div><h2>Connexions</h2><p>5 branchements, une seule fois. Ensuite tout se remplit tout seul.</p></div></div>
-  <div class="bento">${c('🗂️', 'Notion', 'Statuts des vidéos lus et mis à jour (Validé, Publié).', '<span class="pill g">bientôt</span>', 0)}
+  <div class="bento">${notionCard()}
     ${c('📸', 'Instagram de tes clients', 'Chaque client clique « Autoriser » (officiel, gratuit). Vues chaque nuit.', '<span class="pill g">bientôt</span>', 1)}
     ${c('💬', 'Slack', 'Relances monteurs, feedbacks, briefs : webhook dans Railway (SLACK_WEBHOOK_URL).', '<span class="pill up">prêt</span>', 2)}
     ${c('📊', 'Ton Google Sheet', 'Exporte-le en CSV et dépose-le dans Compta → Banque.', '<button class="btn sm" data-go="compta" data-sub="bank">Importer</button>', 3)}
@@ -694,6 +706,9 @@ function bind(app) {
   app.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(`Virement ${b.dataset.pay} : ${b.dataset.left} €`); b.textContent = 'Copié ✓ · à coller dans Qonto'; }));
   app.querySelectorAll('[data-inv]').forEach((b) => (b.onclick = () => { const [c, n, a] = b.dataset.inv.split('|'); const w = document.getElementById('invwrap'); w.innerHTML = invoice(c, n, +a); w.scrollIntoView({ behavior: 'smooth' }); }));
   const ex = document.getElementById('export'); if (ex) ex.onclick = () => { const rows = [['Date', 'Libellé', 'Catégorie', 'Qui', 'Montant'], ...stats(month).tx.map((t) => [t.date, t.label, CAT[t.cat], t.who ?? '', String(t.amount).replace('.', ',')])]; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + rows.map((r) => r.map((v) => `"${v}"`).join(';')).join('\n')], { type: 'text/csv' })); a.download = `compta-${month}.csv`; a.click(); };
+  const ngo = document.getElementById('ngo'); if (ngo) ngo.onclick = () => act(ngo, async () => { const r = await post('/api/notion/token', { token: document.getElementById('ntok').value }); toast(`✅ Notion connecté : ${r.bases} base(s), ${r.created} vidéo(s)`); });
+  const nsync = document.getElementById('nsync'); if (nsync) nsync.onclick = () => act(nsync, async () => { const r = await post('/api/notion/sync'); toast(`🔄 ${r.created} nouvelle(s), ${r.updated} mise(s) à jour`); });
+  const noff = document.getElementById('noff'); if (noff) noff.onclick = () => act(noff, () => post('/api/notion/disconnect'));
   const csv = document.getElementById('csv'); if (csv) csv.onchange = async () => { const f = csv.files[0]; if (!f) return; const out = document.getElementById('csvres'); out.textContent = 'Import…';
     try { const r = await fetch('/api/import', { method: 'POST', body: await f.text() }); const j = await r.json(); if (!r.ok) throw new Error(j.error); load(j.state); out.innerHTML = `✅ <b>${j.added} nouvelles opérations</b> rangées (${j.total - j.added} déjà présentes).`; setTimeout(() => { sub = 'resume'; render(); }, 1400); } catch (err) { out.textContent = '❌ ' + err.message; } };
   const sd = document.getElementById('spfile'); if (sd) sd.onchange = () => { const f = sd.files[0]; if (!f) return; if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = () => { spotImg = r.result; render(); }; r.readAsDataURL(f); } else document.getElementById('spdrop').innerHTML = `🎞 <b>${f.name}</b><br><span class="small">vidéo reçue</span>`; };

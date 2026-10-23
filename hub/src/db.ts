@@ -15,6 +15,8 @@ const MIGRATIONS = [
    CREATE TABLE learned (key TEXT PRIMARY KEY, cat TEXT NOT NULL);
    CREATE TABLE events (id INTEGER PRIMARY KEY, at INTEGER NOT NULL, kind TEXT NOT NULL, who TEXT, text TEXT NOT NULL, auto INTEGER NOT NULL DEFAULT 1);
    CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+  // v2 : base Notion d'origine de chaque vidéo (un client peut avoir une base Instagram et une base YouTube)
+  `ALTER TABLE videos ADD COLUMN notion_db TEXT;`,
 ];
 
 export const STATUSES = ['idee', 'script', 'afilmer', 'filme', 'montage', 'avalider', 'modif', 'valide', 'planifie', 'publie'] as const;
@@ -22,7 +24,7 @@ export type Status = (typeof STATUSES)[number];
 
 export interface Client { id: number; name: string; fee: number; color: string; token: string; instagram: string | null }
 export interface Monteur { id: number; name: string; rate: number; slack: string | null }
-export interface Video { id: number; client_id: number; title: string; status: Status; tag: string | null; monteur_id: number | null; tournage_id: number | null; due_at: number | null; sent_at: number | null; reminded_at: number | null; validated_at: number | null; planned_at: number | null; published_at: number | null; views: number; url: string | null; comment: string | null; notion_id: string | null }
+export interface Video { id: number; client_id: number; title: string; status: Status; tag: string | null; monteur_id: number | null; tournage_id: number | null; due_at: number | null; sent_at: number | null; reminded_at: number | null; validated_at: number | null; planned_at: number | null; published_at: number | null; views: number; url: string | null; comment: string | null; notion_id: string | null; notion_db: string | null }
 export interface Tournage { id: number; code: string; client_id: number; date: number; hours: number; spot_name: string | null; spot_place: string | null; spot_price: number | null }
 export interface Tx { id: number; date: string; label: string; amount: number; cat: Cat; who: string | null; source: string }
 export interface Event { id: number; at: number; kind: string; who: string | null; text: string; auto: number }
@@ -65,9 +67,9 @@ export class Hub {
     return Number(this.db.prepare('INSERT INTO tournages (code, client_id, date, hours, spot_name, spot_place, spot_price) VALUES (@code, @client_id, @date, @hours, @spot_name, @spot_place, @spot_price)').run(t).lastInsertRowid);
   }
   addVideo(v: Partial<Video> & { client_id: number; title: string; status: Status }, now = Date.now()): number {
-    const row = { tag: null, monteur_id: null, tournage_id: null, due_at: null, sent_at: null, reminded_at: null, validated_at: null, planned_at: null, published_at: null, views: 0, url: null, comment: null, notion_id: null, ...v, updated_at: now };
-    return Number(this.db.prepare(`INSERT INTO videos (client_id, title, status, tag, monteur_id, tournage_id, due_at, sent_at, reminded_at, validated_at, planned_at, published_at, views, url, comment, notion_id, updated_at)
-      VALUES (@client_id, @title, @status, @tag, @monteur_id, @tournage_id, @due_at, @sent_at, @reminded_at, @validated_at, @planned_at, @published_at, @views, @url, @comment, @notion_id, @updated_at)`).run(row).lastInsertRowid);
+    const row = { tag: null, monteur_id: null, tournage_id: null, due_at: null, sent_at: null, reminded_at: null, validated_at: null, planned_at: null, published_at: null, views: 0, url: null, comment: null, notion_id: null, notion_db: null, ...v, updated_at: now };
+    return Number(this.db.prepare(`INSERT INTO videos (client_id, title, status, tag, monteur_id, tournage_id, due_at, sent_at, reminded_at, validated_at, planned_at, published_at, views, url, comment, notion_id, notion_db, updated_at)
+      VALUES (@client_id, @title, @status, @tag, @monteur_id, @tournage_id, @due_at, @sent_at, @reminded_at, @validated_at, @planned_at, @published_at, @views, @url, @comment, @notion_id, @notion_db, @updated_at)`).run(row).lastInsertRowid);
   }
   log(kind: string, text: string, who: string | null = null, auto = true, at = Date.now()) {
     this.db.prepare('INSERT INTO events (at, kind, who, text, auto) VALUES (?, ?, ?, ?, ?)').run(at, kind, who, text, auto ? 1 : 0);

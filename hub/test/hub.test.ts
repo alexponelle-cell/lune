@@ -5,6 +5,7 @@ import { runReminders } from '../src/jobs.js';
 import { createApp } from '../src/server.js';
 import { seedDemo } from '../src/seed.js';
 import { loadConfig } from '../src/config.js';
+import { Notion, mapStatus, syncNotion } from '../src/integrations/notion.js';
 
 const H = 3_600_000;
 
@@ -114,5 +115,62 @@ describe('serveur', () => {
     expect(hub.video(mine.id)!.status).toBe('valide');
     expect(notes[0]).toContain('a validé');
     expect((await app.request('/api/portal/faux-lien')).status).toBe(404);
+  });
+});
+
+describe('notion', () => {
+  const opts = ['Idée', 'Scripting', 'À filmer', 'Filmé', 'En montage', 'Monté à valider', 'Validé', 'Planifié', 'Publié'];
+  it('reconnaît les étapes du process', () => {
+    expect(opts.map(mapStatus)).toEqual(['idee', 'script', 'afilmer', 'filme', 'montage', 'avalider', 'valide', 'planifie', 'publie']);
+    expect(mapStatus('Modifs demandées')).toBe('modif');
+    expect(mapStatus('Archives')).toBeNull();
+  });
+
+  /** Faux Notion : une base « Short Form » sous la page « Elie Attia », 2 vidéos. */
+  function fakeNotion() {
+    const calls: Array<{ method: string; path: string; body: any }> = [];
+    const pages = [
+      { id: 'p1', url: 'https://notion.so/p1', properties: { Nom: { type: 'title', title: [{ plain_text: 'Reel budget' }] }, Étape: { type: 'status', status: { name: 'Monté à valider' } }, Type: { type: 'select', select: { name: 'TOFU' } }, Monteur: { type: 'people', people: [{ name: 'Inès' }] } } },
+      { id: 'p2', url: 'https://notion.so/p2', properties: { Nom: { type: 'title', title: [{ plain_text: 'Reel bourse' }] }, Étape: { type: 'status', status: { name: 'Publié' } }, 'Date de publication': { type: 'date', date: { start: '2026-10-20' } } } },
+    ];
+    const f = (async (url: string, init: RequestInit) => {
+      const path = url.replace('https://api.notion.com/v1', ''), body = init.body ? JSON.parse(String(init.body)) : null;
+      calls.push({ method: init.method!, path, body });
+      const json = (j: unknown) => new Response(JSON.stringify(j), { status: 200 });
+      if (path === '/search') return json({ results: [{ id: 'db1', title: [{ plain_text: 'Short Form' }], parent: { type: 'page_id', page_id: 'elie' }, properties: {
+        Nom: { type: 'title' }, Étape: { type: 'status', status: { options: opts.map((name) => ({ name })) } }, Type: { type: 'select', select: { options: [{ name: 'TOFU' }, { name: 'MOFU' }] } },
+        'Date de publication': { type: 'date' }, Monteur: { type: 'people' } } }] });
+      if (path === '/pages/elie') return json({ properties: { title: { type: 'title', title: [{ plain_text: 'Elie Attia' }] } } });
+      if (path === '/databases/db1/query') return json({ results: pages });
+      return json({});
+    }) as unknown as typeof fetch;
+    return { notion: new Notion('secret_test', f), calls, pages };
+  }
+
+  it('importe les vidéos, puis suit les changements d’étape', async () => {
+    const hub = new Hub(':memory:');
+    const { notion, pages } = fakeNotion();
+    expect(await syncNotion(hub, notion, 1000)).toEqual({ bases: 1, created: 2, updated: 0 });
+    const elie = hub.clients().find((c) => c.name === 'Elie Attia')!;
+    const vids = hub.videos(elie.id);
+    expect(vids.map((v) => [v.title, v.status, v.tag])).toEqual(expect.arrayContaining([['Reel budget', 'avalider', 'TOFU'], ['Reel bourse', 'publie', null]]));
+    expect(hub.monteurs().map((m) => m.name)).toEqual(['Inès']);
+    pages[0]!.properties.Étape = { type: 'status', status: { name: 'Validé' } };
+    expect(await syncNotion(hub, notion, 2000)).toEqual({ bases: 1, created: 0, updated: 1 });
+    expect(hub.videos(elie.id).find((v) => v.title === 'Reel budget')!.status).toBe('valide');
+  });
+
+  it('la validation du client repart dans Notion, la modif ajoute un commentaire', async () => {
+    const hub = new Hub(':memory:');
+    const { notion, calls } = fakeNotion();
+    await syncNotion(hub, notion);
+    hub.setSetting('notion_token', 'secret_test');
+    const app = createApp(hub, loadConfig({}), async () => {}, () => notion);
+    const c = hub.clients()[0]!, v = hub.videos(c.id).find((x) => x.status === 'avalider')!;
+    expect((await app.request(`/api/portal/${c.token}/videos/${v.id}/modif`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ comment: 'Coupe la fin' }) })).status).toBe(200);
+    expect(calls.find((x) => x.method === 'PATCH')!.body).toEqual({ properties: { Étape: { status: { name: 'En montage' } } } });
+    expect(calls.find((x) => x.path === '/comments')!.body.rich_text[0].text.content).toContain('Coupe la fin');
+    expect((await app.request(`/api/portal/${c.token}/videos/${v.id}/validate`, { method: 'POST' })).status).toBe(200);
+    expect(calls.filter((x) => x.method === 'PATCH').at(-1)!.body).toEqual({ properties: { Étape: { status: { name: 'Validé' } } } });
   });
 });

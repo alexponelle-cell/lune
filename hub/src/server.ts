@@ -6,11 +6,15 @@ import { STATUSES, type Hub, type Video } from './db.js';
 import { parseCsv } from './domain/money.js';
 import { checkSession, makeSession, samePassword } from './auth.js';
 import type { Notify } from './integrations/slack.js';
+import { Notion, syncNotion, mapOfDb, type DbMap } from './integrations/notion.js';
 import type { Config } from './config.js';
 
 const page = (name: string) => readFileSync(new URL(`../public/${name}`, import.meta.url), 'utf8');
 
-export function createApp(hub: Hub, cfg: Config, notify: Notify) {
+export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (token: string) => Notion = (t) => new Notion(t)) {
+  /** Clé Notion : collée par Adrien dans le hub (Connexions), sinon variable NOTION_TOKEN. */
+  const notionToken = () => hub.setting('notion_token') ?? cfg.NOTION_TOKEN ?? null;
+  const notion = () => { const t = notionToken(); return t ? makeNotion(t) : null; };
   const app = new Hono();
   const secret = cfg.SESSION_SECRET ?? 'dev-only-secret-change-me';
   const open = !cfg.ADMIN_PASSWORD; // sans mot de passe (dev) : accès libre
@@ -54,6 +58,21 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify) {
   api.post('/slack', async (c) => {
     try { const { text, kind } = z.object({ text: z.string().min(1).max(2000), kind: z.string().default('message') }).parse(await c.req.json()); await notify(text); hub.log(kind, text.replace(/\*/g, ''), null, false); return c.json({ ok: true }); } catch (e) { return fail(c, e); }
   });
+  api.post('/notion/token', async (c) => {
+    try {
+      const { token } = z.object({ token: z.string().min(20) }).parse(await c.req.json());
+      const r = await syncNotion(hub, makeNotion(token.trim())); // vérifie la clé en faisant une 1re synchro
+      hub.setSetting('notion_token', token.trim());
+      hub.log('notion', `Notion connecté : ${r.bases} base(s), ${r.created} vidéo(s) importée(s)`, null, false);
+      return c.json({ ...r, state: state() });
+    } catch (e) { return fail(c, e); }
+  });
+  api.post('/notion/sync', async (c) => {
+    const n = notion();
+    if (!n) return fail(c, new Error('Notion n’est pas encore connecté'));
+    try { const r = await syncNotion(hub, n); return c.json({ ...r, state: state() }); } catch (e) { return fail(c, e); }
+  });
+  api.post('/notion/disconnect', (c) => { hub.db.prepare("DELETE FROM settings WHERE key IN ('notion_token', 'notion_dbs')").run(); return c.json(state()); });
   // --- Espace client (lien perso, sans compte) ------------------------------------------
   app.get('/api/portal/:token', (c) => { const cl = hub.clientByToken(c.req.param('token')); return cl ? c.json(portalState(cl.id)) : c.json({ error: 'Lien invalide' }, 404); });
   app.post('/api/portal/:token/videos/:id/:action', async (c) => {
@@ -76,16 +95,29 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify) {
     const n = names(), m = v.monteur_id ? n.m.get(v.monteur_id) : undefined;
     hub.log('validation', `${n.c.get(v.client_id)} a validé « ${v.title} »${m ? ` (+${m.rate} € pour ${m.name})` : ''}`, n.c.get(v.client_id) ?? null);
     await notify(`✅ *${n.c.get(v.client_id)}* a validé « ${v.title} »${m ? ` · ${m.slack ? `<@${m.slack}>` : m.name} +${m.rate} €` : ''}`);
+    await toNotion(v, 'valide');
   }
   async function onModif(v: Video) {
     const n = names(), m = v.monteur_id ? n.m.get(v.monteur_id) : undefined;
     hub.log('modif', `${n.c.get(v.client_id)} demande une modif sur « ${v.title} » : ${v.comment}`, n.c.get(v.client_id) ?? null);
     await notify(`✏️ ${m ? (m.slack ? `<@${m.slack}>` : m.name) : 'Équipe'} : *${n.c.get(v.client_id)}* demande une modif sur « ${v.title} » : ${v.comment}`);
+    await toNotion(v, 'modif');
+  }
+  /** Reporte le nouveau statut dans Notion (« Validé », ou retour au montage avec la remarque du client en commentaire). */
+  async function toNotion(v: Video, status: 'valide' | 'modif') {
+    const n = notion(), map = mapOfDb(hub, v.notion_db);
+    if (!n || !map || !v.notion_id) return;
+    try {
+      const ok = (await n.setStatus(v.notion_id, map, status)) || (status === 'modif' && (await n.setStatus(v.notion_id, map, 'montage')));
+      if (status === 'modif' && v.comment) await n.comment(v.notion_id, `Retour client : ${v.comment}`);
+      if (!ok) hub.log('notion', `Pas d’étape « ${status === 'valide' ? 'Validé' : 'modif'} » dans la base Notion de « ${v.title} »`, null, true);
+    } catch (e) { hub.log('notion', `Notion n’a pas pu être mis à jour pour « ${v.title} » : ${e instanceof Error ? e.message : e}`, null, true); }
   }
 
   function state() {
-    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand() };
+    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo() };
   }
+  const notionInfo = () => ({ connected: !!notionToken(), lastSync: Number(hub.setting('notion_last_sync') ?? 0) || null, bases: (JSON.parse(hub.setting('notion_dbs') ?? '[]') as DbMap[]).map((m) => ({ client: m.client, title: m.title })) });
   function portalState(clientId: number) {
     const cl = hub.clients().find((x) => x.id === clientId)!;
     const vids = hub.videos(clientId).filter((v) => ['avalider', 'modif', 'valide', 'planifie', 'publie'].includes(v.status));
