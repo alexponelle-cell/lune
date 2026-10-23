@@ -80,7 +80,30 @@ describe('vidéos', () => {
     expect(await runReminders(hub, notify, now)).toEqual({ clients: 1, monteurs: 1 });
     expect(await runReminders(hub, notify, now + H)).toEqual({ clients: 0, monteurs: 0 });
     expect(sent).toHaveLength(2);
-    expect(hub.events().map((e) => e.kind).sort()).toEqual(['relance-client', 'relance-monteur']);
+    // Pas d'e-mail renseigné : Adrien est prévenu de relancer lui-même (on ne dit pas « relancé »)
+    expect(hub.events().map((e) => e.kind).sort()).toEqual(['a-relancer', 'relance-monteur']);
+  });
+
+  it('relance client par e-mail avec son lien perso', async () => {
+    const { hub } = setup();
+    const c = hub.addClient('Client Mail', 1000, '#FCCA09', null, 'client@exemple.fr');
+    hub.addVideo({ client_id: c.id, title: 'A', status: 'avalider', sent_at: Date.now() - 50 * H });
+    const mails: Array<[string, string]> = [];
+    await runReminders(hub, async () => {}, Date.now(), async (to, _s, text) => { mails.push([to, text]); }, 'https://hub.test');
+    expect(mails[0]![0]).toBe('client@exemple.fr');
+    expect(mails[0]![1]).toContain(`https://hub.test/c/${c.token}`);
+    expect(hub.events()[0]!.kind).toBe('relance-client');
+  });
+
+  it('planifier, annuler une validation (15 min max)', () => {
+    const { hub, c, m } = setup();
+    const id = hub.addVideo({ client_id: c.id, title: 'A', status: 'avalider', monteur_id: m.id });
+    expect(() => hub.plan(id, Date.now())).toThrow();
+    hub.validate(id, 1000);
+    expect(hub.undoValidate(id, 1000 + 60_000)).toMatchObject({ status: 'avalider', validated_at: null });
+    hub.validate(id, 1000);
+    expect(() => hub.undoValidate(id, 1000 + 20 * 60_000)).toThrow(/Trop tard/);
+    expect(hub.plan(id, 5000)).toMatchObject({ status: 'planifie', planned_at: 5000 });
   });
 });
 
@@ -130,21 +153,23 @@ describe('notion', () => {
   function fakeNotion() {
     const calls: Array<{ method: string; path: string; body: any }> = [];
     const pages = [
-      { id: 'p1', url: 'https://notion.so/p1', properties: { Nom: { type: 'title', title: [{ plain_text: 'Reel budget' }] }, Étape: { type: 'status', status: { name: 'Monté à valider' } }, Type: { type: 'select', select: { name: 'TOFU' } }, Monteur: { type: 'people', people: [{ name: 'Inès' }] } } },
+      { id: 'p1', url: 'https://notion.so/p1', properties: { Nom: { type: 'title', title: [{ plain_text: 'Reel budget' }] }, Étape: { type: 'status', status: { name: 'Monté à valider' } }, Type: { type: 'select', select: { name: 'TOFU' } }, Monteur: { type: 'people', people: [{ name: 'Inès' }] }, 'Lien vidéo': { type: 'url', url: 'https://drive.google.com/file/d/abc/view' }, 'Date de rendu': { type: 'date', date: { start: '2026-10-24' } } } },
       { id: 'p2', url: 'https://notion.so/p2', properties: { Nom: { type: 'title', title: [{ plain_text: 'Reel bourse' }] }, Étape: { type: 'status', status: { name: 'Publié' } }, 'Date de publication': { type: 'date', date: { start: '2026-10-20' } } } },
     ];
+    const ctl = { down: false };
     const f = (async (url: string, init: RequestInit) => {
       const path = url.replace('https://api.notion.com/v1', ''), body = init.body ? JSON.parse(String(init.body)) : null;
       calls.push({ method: init.method!, path, body });
+      if (ctl.down && init.method === 'PATCH') return new Response('{"message":"panne"}', { status: 503 });
       const json = (j: unknown) => new Response(JSON.stringify(j), { status: 200 });
       if (path === '/search') return json({ results: [{ id: 'db1', title: [{ plain_text: 'Short Form' }], parent: { type: 'page_id', page_id: 'elie' }, properties: {
         Nom: { type: 'title' }, Étape: { type: 'status', status: { options: opts.map((name) => ({ name })) } }, Type: { type: 'select', select: { options: [{ name: 'TOFU' }, { name: 'MOFU' }] } },
-        'Date de publication': { type: 'date' }, Monteur: { type: 'people' } } }] });
+        'Date de publication': { type: 'date' }, 'Date de rendu': { type: 'date' }, 'Lien vidéo': { type: 'url' }, Monteur: { type: 'people' } } }] });
       if (path === '/pages/elie') return json({ properties: { title: { type: 'title', title: [{ plain_text: 'Elie Attia' }] } } });
       if (path === '/databases/db1/query') return json({ results: pages });
       return json({});
     }) as unknown as typeof fetch;
-    return { notion: new Notion('secret_test', f), calls, pages };
+    return { notion: new Notion('secret_test', f), calls, pages, ctl };
   }
 
   it('importe les vidéos, puis suit les changements d’étape', async () => {
@@ -155,6 +180,11 @@ describe('notion', () => {
     const vids = hub.videos(elie.id);
     expect(vids.map((v) => [v.title, v.status, v.tag])).toEqual(expect.arrayContaining([['Reel budget', 'avalider', 'TOFU'], ['Reel bourse', 'publie', null]]));
     expect(hub.monteurs().map((m) => m.name)).toEqual(['Inès']);
+    const budget = vids.find((v) => v.title === 'Reel budget')!;
+    expect(budget.video_url).toBe('https://drive.google.com/file/d/abc/view');
+    expect(budget.due_at).toBe(Date.parse('2026-10-24'));
+    // Les vidéos déjà validées / publiées dans Notion ne comptent pas dans la paie du mois
+    expect(vids.every((v) => v.validated_at === null)).toBe(true);
     pages[0]!.properties.Étape = { type: 'status', status: { name: 'Validé' } };
     expect(await syncNotion(hub, notion, 2000)).toEqual({ bases: 1, created: 0, updated: 1 });
     expect(hub.videos(elie.id).find((v) => v.title === 'Reel budget')!.status).toBe('valide');
@@ -172,5 +202,61 @@ describe('notion', () => {
     expect(calls.find((x) => x.path === '/comments')!.body.rich_text[0].text.content).toContain('Coupe la fin');
     expect((await app.request(`/api/portal/${c.token}/videos/${v.id}/validate`, { method: 'POST' })).status).toBe(200);
     expect(calls.filter((x) => x.method === 'PATCH').at(-1)!.body).toEqual({ properties: { Étape: { status: { name: 'Validé' } } } });
+  });
+
+  it('si Notion est en panne, le statut du hub est renvoyé ensuite et pas écrasé', async () => {
+    const hub = new Hub(':memory:');
+    const { notion, calls, ctl } = fakeNotion();
+    await syncNotion(hub, notion);
+    hub.setSetting('notion_token', 'secret_test');
+    const app = createApp(hub, loadConfig({}), async () => {}, () => notion);
+    const c = hub.clients()[0]!, v = hub.videos(c.id).find((x) => x.status === 'avalider')!;
+    ctl.down = true;
+    expect((await app.request(`/api/portal/${c.token}/videos/${v.id}/validate`, { method: 'POST' })).status).toBe(200);
+    expect(hub.video(v.id)!.notion_push).toBe('valide');
+    await syncNotion(hub, notion); // Notion dit encore « Monté à valider » et refuse l'écriture
+    expect(hub.video(v.id)!.status).toBe('valide');
+    ctl.down = false;
+    await syncNotion(hub, notion);
+    expect(hub.video(v.id)!.notion_push).toBeNull();
+    expect(calls.filter((x) => x.method === 'PATCH').at(-1)!.body).toEqual({ properties: { Étape: { status: { name: 'Validé' } } } });
+  });
+});
+
+describe('serveur (suite)', () => {
+  const cfg = loadConfig({});
+  it('refuse de démarrer avec un mot de passe mais sans SESSION_SECRET', () => {
+    expect(() => createApp(new Hub(':memory:'), loadConfig({ ADMIN_PASSWORD: 'secret-adrien' }), async () => {})).toThrow(/SESSION_SECRET/);
+  });
+
+  it('ajoute / modifie un client et un monteur', async () => {
+    const hub = new Hub(':memory:'), app = createApp(hub, cfg, async () => {});
+    const post = (path: string, body: unknown) => app.request(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    expect((await post('/api/clients', { name: 'Elie Attia', fee: 1500, email: 'elie@exemple.fr', instagram: '@elie' })).status).toBe(200);
+    expect((await post('/api/clients', { name: 'Elie Attia', fee: 1 })).status).toBe(400);
+    const c = hub.clients()[0]!;
+    expect(c).toMatchObject({ fee: 1500, email: 'elie@exemple.fr', instagram: 'elie' });
+    await post(`/api/clients/${c.id}`, { name: 'Elie Attia', fee: 1800, email: '', instagram: '' });
+    expect(hub.clients()[0]).toMatchObject({ fee: 1800, email: null });
+    await post('/api/monteurs', { name: 'Inès', rate: 25, slack: 'U123' });
+    await post(`/api/monteurs/${hub.monteurs()[0]!.id}`, { name: 'Inès', rate: 30, slack: '' });
+    expect(hub.monteurs()[0]).toMatchObject({ rate: 30, slack: null });
+    // Relance de paiement sans e-mail : erreur claire, rien n'est faussement « envoyé »
+    const r = await post(`/api/clients/${c.id}/remind-invoice`, { month: 'octobre 2026', amount: 1800 });
+    expect(r.status).toBe(400);
+    expect(((await r.json()) as { error: string }).error).toContain('e-mail');
+  });
+
+  it('le client voit le lien de sa vidéo mais pas la page Notion, et peut annuler', async () => {
+    const hub = new Hub(':memory:'), app = createApp(hub, cfg, async () => {});
+    const c = hub.addClient('Elie', 1000);
+    const id = hub.addVideo({ client_id: c.id, title: 'A', status: 'avalider', url: 'https://notion.so/prive', video_url: 'https://drive.google.com/x', notion_id: 'p1' });
+    const data = (await (await app.request(`/api/portal/${c.token}`)).json()) as { videos: Array<Record<string, unknown>> };
+    expect(data.videos[0]).toMatchObject({ video_url: 'https://drive.google.com/x' });
+    expect(data.videos[0]!.url).toBeUndefined();
+    expect(data.videos[0]!.notion_id).toBeUndefined();
+    await app.request(`/api/portal/${c.token}/videos/${id}/validate`, { method: 'POST' });
+    expect((await app.request(`/api/portal/${c.token}/videos/${id}/undo`, { method: 'POST' })).status).toBe(200);
+    expect(hub.video(id)!.status).toBe('avalider');
   });
 });

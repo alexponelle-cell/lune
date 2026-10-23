@@ -17,17 +17,23 @@ const MIGRATIONS = [
    CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
   // v2 : base Notion d'origine de chaque vidéo (un client peut avoir une base Instagram et une base YouTube)
   `ALTER TABLE videos ADD COLUMN notion_db TEXT;`,
+  // v3 : e-mail du client (relances), lien de la vidéo à regarder, statut à renvoyer dans Notion si l'envoi a raté
+  `ALTER TABLE clients ADD COLUMN email TEXT;
+   ALTER TABLE videos ADD COLUMN video_url TEXT;
+   ALTER TABLE videos ADD COLUMN notion_push TEXT;`,
 ];
 
 export const STATUSES = ['idee', 'script', 'afilmer', 'filme', 'montage', 'avalider', 'modif', 'valide', 'planifie', 'publie'] as const;
 export type Status = (typeof STATUSES)[number];
 
-export interface Client { id: number; name: string; fee: number; color: string; token: string; instagram: string | null }
+export interface Client { id: number; name: string; fee: number; color: string; token: string; instagram: string | null; email: string | null }
 export interface Monteur { id: number; name: string; rate: number; slack: string | null }
-export interface Video { id: number; client_id: number; title: string; status: Status; tag: string | null; monteur_id: number | null; tournage_id: number | null; due_at: number | null; sent_at: number | null; reminded_at: number | null; validated_at: number | null; planned_at: number | null; published_at: number | null; views: number; url: string | null; comment: string | null; notion_id: string | null; notion_db: string | null }
+export interface Video { id: number; client_id: number; title: string; status: Status; tag: string | null; monteur_id: number | null; tournage_id: number | null; due_at: number | null; sent_at: number | null; reminded_at: number | null; validated_at: number | null; planned_at: number | null; published_at: number | null; views: number; url: string | null; comment: string | null; notion_id: string | null; notion_db: string | null; video_url: string | null; notion_push: string | null }
 export interface Tournage { id: number; code: string; client_id: number; date: number; hours: number; spot_name: string | null; spot_place: string | null; spot_price: number | null }
 export interface Tx { id: number; date: string; label: string; amount: number; cat: Cat; who: string | null; source: string }
 export interface Event { id: number; at: number; kind: string; who: string | null; text: string; auto: number }
+
+export const UNDO_MS = 15 * 60_000;
 
 export class Hub {
   readonly db: Database.Database;
@@ -41,8 +47,8 @@ export class Hub {
   }
 
   // --- Lecture -----------------------------------------------------------------
-  clients = () => this.db.prepare('SELECT id, name, fee, color, token, instagram FROM clients WHERE active = 1 ORDER BY id').all() as Client[];
-  clientByToken = (token: string) => this.db.prepare('SELECT id, name, fee, color, token, instagram FROM clients WHERE token = ? AND active = 1').get(token) as Client | undefined;
+  clients = () => this.db.prepare('SELECT id, name, fee, color, token, instagram, email FROM clients WHERE active = 1 ORDER BY id').all() as Client[];
+  clientByToken = (token: string) => this.db.prepare('SELECT id, name, fee, color, token, instagram, email FROM clients WHERE token = ? AND active = 1').get(token) as Client | undefined;
   monteurs = () => this.db.prepare('SELECT id, name, rate, slack FROM monteurs WHERE active = 1 ORDER BY id').all() as Monteur[];
   videos = (clientId?: number) => (clientId ? this.db.prepare('SELECT * FROM videos WHERE client_id = ? ORDER BY id').all(clientId) : this.db.prepare('SELECT * FROM videos ORDER BY id').all()) as Video[];
   video = (id: number) => this.db.prepare('SELECT * FROM videos WHERE id = ?').get(id) as Video | undefined;
@@ -54,10 +60,22 @@ export class Hub {
   learned = () => Object.fromEntries((this.db.prepare('SELECT key, cat FROM learned').all() as Array<{ key: string; cat: Cat }>).map((r) => [r.key, r.cat]));
 
   // --- Écriture ------------------------------------------------------------------
-  addClient(name: string, fee: number, color = '#FCCA09', instagram: string | null = null): Client {
+  addClient(name: string, fee: number, color = '#FCCA09', instagram: string | null = null, email: string | null = null): Client {
     const token = randomBytes(12).toString('base64url');
-    const r = this.db.prepare('INSERT INTO clients (name, fee, color, token, instagram) VALUES (?, ?, ?, ?, ?)').run(name, fee, color, token, instagram);
-    return { id: Number(r.lastInsertRowid), name, fee, color, token, instagram };
+    const r = this.db.prepare('INSERT INTO clients (name, fee, color, token, instagram, email) VALUES (?, ?, ?, ?, ?, ?)').run(name, fee, color, token, instagram, email);
+    return { id: Number(r.lastInsertRowid), name, fee, color, token, instagram, email };
+  }
+  updateClient(id: number, c: { name: string; fee: number; color: string; instagram: string | null; email: string | null }) {
+    if (!this.db.prepare('UPDATE clients SET name = @name, fee = @fee, color = @color, instagram = @instagram, email = @email WHERE id = @id AND active = 1').run({ ...c, id }).changes) throw new Error('Client introuvable');
+  }
+  updateMonteur(id: number, m: { name: string; rate: number; slack: string | null }) {
+    if (!this.db.prepare('UPDATE monteurs SET name = @name, rate = @rate, slack = @slack WHERE id = @id AND active = 1').run({ ...m, id }).changes) throw new Error('Monteur introuvable');
+  }
+  /** Retire un client ou un monteur (gardé en base pour l'historique de la compta). */
+  archive(table: 'clients' | 'monteurs', id: number) { this.db.prepare(`UPDATE ${table} SET active = 0 WHERE id = ?`).run(id); }
+  addTournageFor(clientId: number, date: number, hours: number) {
+    const n = (this.db.prepare('SELECT COUNT(*) AS n FROM tournages WHERE client_id = ?').get(clientId) as { n: number }).n;
+    return this.addTournage({ code: `T${n + 1}`, client_id: clientId, date, hours, spot_name: null, spot_place: null, spot_price: null });
   }
   addMonteur(name: string, rate: number, slack: string | null = null): Monteur {
     const r = this.db.prepare('INSERT INTO monteurs (name, rate, slack) VALUES (?, ?, ?)').run(name, rate, slack);
@@ -67,9 +85,9 @@ export class Hub {
     return Number(this.db.prepare('INSERT INTO tournages (code, client_id, date, hours, spot_name, spot_place, spot_price) VALUES (@code, @client_id, @date, @hours, @spot_name, @spot_place, @spot_price)').run(t).lastInsertRowid);
   }
   addVideo(v: Partial<Video> & { client_id: number; title: string; status: Status }, now = Date.now()): number {
-    const row = { tag: null, monteur_id: null, tournage_id: null, due_at: null, sent_at: null, reminded_at: null, validated_at: null, planned_at: null, published_at: null, views: 0, url: null, comment: null, notion_id: null, notion_db: null, ...v, updated_at: now };
-    return Number(this.db.prepare(`INSERT INTO videos (client_id, title, status, tag, monteur_id, tournage_id, due_at, sent_at, reminded_at, validated_at, planned_at, published_at, views, url, comment, notion_id, notion_db, updated_at)
-      VALUES (@client_id, @title, @status, @tag, @monteur_id, @tournage_id, @due_at, @sent_at, @reminded_at, @validated_at, @planned_at, @published_at, @views, @url, @comment, @notion_id, @notion_db, @updated_at)`).run(row).lastInsertRowid);
+    const row = { tag: null, monteur_id: null, tournage_id: null, due_at: null, sent_at: null, reminded_at: null, validated_at: null, planned_at: null, published_at: null, views: 0, url: null, comment: null, notion_id: null, notion_db: null, video_url: null, ...v, updated_at: now };
+    return Number(this.db.prepare(`INSERT INTO videos (client_id, title, status, tag, monteur_id, tournage_id, due_at, sent_at, reminded_at, validated_at, planned_at, published_at, views, url, comment, notion_id, notion_db, video_url, updated_at)
+      VALUES (@client_id, @title, @status, @tag, @monteur_id, @tournage_id, @due_at, @sent_at, @reminded_at, @validated_at, @planned_at, @published_at, @views, @url, @comment, @notion_id, @notion_db, @video_url, @updated_at)`).run(row).lastInsertRowid);
   }
   log(kind: string, text: string, who: string | null = null, auto = true, at = Date.now()) {
     this.db.prepare('INSERT INTO events (at, kind, who, text, auto) VALUES (?, ?, ?, ?, ?)').run(at, kind, who, text, auto ? 1 : 0);
@@ -91,6 +109,23 @@ export class Hub {
     this.db.prepare("UPDATE videos SET status = 'modif', comment = ?, updated_at = ? WHERE id = ?").run(comment.slice(0, 500), now, id);
     return this.video(id)!;
   }
+  /** Validée → planifiée à une date de publication. */
+  plan(id: number, at: number, now = Date.now()): Video {
+    const v = this.video(id);
+    if (!v) throw new Error('Vidéo introuvable');
+    if (v.status !== 'valide' && v.status !== 'planifie') throw new Error('La vidéo doit être validée avant d’être planifiée');
+    this.db.prepare("UPDATE videos SET status = 'planifie', planned_at = ?, updated_at = ? WHERE id = ?").run(at, now, id);
+    return this.video(id)!;
+  }
+  /** Clic par erreur : une validation peut être annulée pendant 15 minutes (la paie du monteur est retirée). */
+  undoValidate(id: number, now = Date.now()): Video {
+    const v = this.video(id);
+    if (!v || v.status !== 'valide' || !v.validated_at || now - v.validated_at > UNDO_MS) throw new Error('Trop tard pour annuler : écris à l’équipe');
+    this.db.prepare("UPDATE videos SET status = 'avalider', validated_at = NULL, updated_at = ? WHERE id = ?").run(now, id);
+    return this.video(id)!;
+  }
+  /** Statut à renvoyer dans Notion plus tard (l'envoi a raté) ; null = rien en attente. */
+  setNotionPush(id: number, status: Status | null) { this.db.prepare('UPDATE videos SET notion_push = ? WHERE id = ?').run(status, id); }
   setStatus(id: number, status: Status, now = Date.now()) {
     const extra = status === 'avalider' ? ', sent_at = @now, reminded_at = NULL' : status === 'publie' ? ', published_at = COALESCE(published_at, @now)' : '';
     this.db.prepare(`UPDATE videos SET status = @status, updated_at = @now${extra} WHERE id = @id`).run({ id, status, now });

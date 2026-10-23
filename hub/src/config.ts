@@ -11,6 +11,10 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(16).optional(),
   /** Webhook Slack « Incoming Webhook » : relances, feedbacks, briefs. */
   SLACK_WEBHOOK_URL: z.string().url().optional(),
+  /** SMTP pour écrire aux clients (relances). Ex. Gmail + mot de passe d'application. */
+  SMTP_URL: z.string().optional(),
+  /** Expéditeur affiché, ex. « Adrien · PersonalBrand360 <adrien@…> » (sinon l'adresse du SMTP). */
+  MAIL_FROM: z.string().optional(),
   /** Clé d'intégration Notion (sinon collée par Adrien dans le hub, page Connexions). */
   NOTION_TOKEN: z.string().optional(),
   /** 1 = remplit la base avec des données d'exemple si elle est vide (démo). */

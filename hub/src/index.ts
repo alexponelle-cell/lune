@@ -6,17 +6,20 @@ import { slackNotifier } from './integrations/slack.js';
 import { runReminders } from './jobs.js';
 import { createApp } from './server.js';
 import { Notion, syncNotion } from './integrations/notion.js';
+import { smtpMailer } from './integrations/mail.js';
 
 const cfg = loadConfig();
 const hub = new Hub(cfg.DATABASE_PATH);
 if (cfg.SEED_DEMO === '1') seedDemo(hub);
+if (cfg.ADMIN_PASSWORD && !cfg.SESSION_SECRET) { console.error('❌ SESSION_SECRET manquant (Railway → Variables) : le hub ne démarre pas sans lui.'); process.exit(1); }
 if (!cfg.ADMIN_PASSWORD) console.warn('⚠️ ADMIN_PASSWORD absent : le hub est ouvert à tous (à mettre dans Railway → Variables)');
 const notify = slackNotifier(cfg.SLACK_WEBHOOK_URL);
+const mail = smtpMailer(cfg.SMTP_URL, cfg.MAIL_FROM);
 
-serve({ fetch: createApp(hub, cfg, notify).fetch, port: cfg.PORT }, () => console.log(`P360 Hub sur le port ${cfg.PORT}`));
+serve({ fetch: createApp(hub, cfg, notify, undefined, mail).fetch, port: cfg.PORT }, () => console.log(`P360 Hub sur le port ${cfg.PORT}`));
 
 // Relances automatiques toutes les heures
-const tick = () => runReminders(hub, notify).then((r) => (r.clients || r.monteurs) && console.log('[relances]', r)).catch((e) => console.error('[relances]', e));
+const tick = () => runReminders(hub, notify, Date.now(), mail, cfg.PUBLIC_URL.replace(/\/$/, '')).then((r) => (r.clients || r.monteurs) && console.log('[relances]', r)).catch((e) => console.error('[relances]', e));
 setTimeout(tick, 30_000);
 setInterval(tick, 3_600_000);
 

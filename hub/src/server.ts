@@ -2,16 +2,19 @@ import { Hono, type Context } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
-import { STATUSES, type Hub, type Video } from './db.js';
+import { STATUSES, UNDO_MS, type Hub, type Status, type Video } from './db.js';
 import { parseCsv } from './domain/money.js';
 import { checkSession, makeSession, samePassword } from './auth.js';
 import type { Notify } from './integrations/slack.js';
 import { Notion, syncNotion, mapOfDb, type DbMap } from './integrations/notion.js';
 import type { Config } from './config.js';
+import type { Mailer } from './integrations/mail.js';
 
+const ST_NAME: Record<Status, string> = { idee: 'Idée', script: 'Scripting', afilmer: 'À filmer', filme: 'Filmé', montage: 'En montage', avalider: 'À valider', modif: 'Modif', valide: 'Validé', planifie: 'Planifié', publie: 'Publié' };
 const page = (name: string) => readFileSync(new URL(`../public/${name}`, import.meta.url), 'utf8');
 
-export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (token: string) => Notion = (t) => new Notion(t)) {
+export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (token: string) => Notion = (t) => new Notion(t), mail: Mailer | null = null) {
+  if (cfg.ADMIN_PASSWORD && !cfg.SESSION_SECRET) throw new Error('SESSION_SECRET manquant : sans lui, n’importe qui pourrait fabriquer une session (Railway → Variables)');
   /** Clé Notion : collée par Adrien dans le hub (Connexions), sinon variable NOTION_TOKEN. */
   const notionToken = () => hub.setting('notion_token') ?? cfg.NOTION_TOKEN ?? null;
   const notion = () => { const t = notionToken(); return t ? makeNotion(t) : null; };
@@ -42,6 +45,42 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
   api.post('/videos/:id/validate', async (c) => { try { await onValidate(hub.validate(+c.req.param('id'))); return c.json(state()); } catch (e) { return fail(c, e); } });
   api.post('/videos/:id/modif', async (c) => {
     try { const { comment } = z.object({ comment: z.string().min(1) }).parse(await c.req.json()); await onModif(hub.requestChange(+c.req.param('id'), comment)); return c.json(state()); } catch (e) { return fail(c, e); }
+  });
+  api.post('/videos/:id/undo', async (c) => { try { await onUndo(hub.undoValidate(+c.req.param('id'))); return c.json(state()); } catch (e) { return fail(c, e); } });
+  api.post('/videos/:id/plan', async (c) => {
+    try {
+      const { at } = z.object({ at: z.number().int().positive() }).parse(await c.req.json());
+      const v = hub.plan(+c.req.param('id'), at), n = names();
+      hub.log('planif', `« ${v.title} » (${n.c.get(v.client_id)}) planifiée le ${new Date(at).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long' })}`, n.c.get(v.client_id) ?? null, false);
+      await toNotion(v, 'planifie', at);
+      return c.json(state());
+    } catch (e) { return fail(c, e); }
+  });
+  // --- Clients et monteurs ---
+  const clientBody = z.object({ name: z.string().trim().min(1).max(80), fee: z.number().min(0), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#FCCA09'),
+    email: z.string().trim().email().or(z.literal('')).transform((x) => x || null).default(''), instagram: z.string().trim().max(80).transform((x) => x.replace(/^@/, '') || null).default('') });
+  const monteurBody = z.object({ name: z.string().trim().min(1).max(80), rate: z.number().min(0), slack: z.string().trim().max(40).transform((x) => x || null).default('') });
+  api.post('/clients', async (c) => { try { const b = clientBody.parse(await c.req.json()); hub.addClient(b.name, b.fee, b.color, b.instagram, b.email); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });
+  api.post('/clients/:id', async (c) => { try { hub.updateClient(+c.req.param('id'), clientBody.parse(await c.req.json())); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });
+  api.post('/clients/:id/archive', (c) => { hub.archive('clients', +c.req.param('id')); return c.json(state()); });
+  api.post('/monteurs', async (c) => { try { const b = monteurBody.parse(await c.req.json()); hub.addMonteur(b.name, b.rate, b.slack); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });
+  api.post('/monteurs/:id', async (c) => { try { hub.updateMonteur(+c.req.param('id'), monteurBody.parse(await c.req.json())); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });
+  api.post('/monteurs/:id/archive', (c) => { hub.archive('monteurs', +c.req.param('id')); return c.json(state()); });
+  api.post('/tournages', async (c) => {
+    try { const b = z.object({ client_id: z.number().int(), date: z.number().int().positive(), hours: z.number().positive().max(24) }).parse(await c.req.json()); hub.addTournageFor(b.client_id, b.date, b.hours); return c.json(state()); } catch (e) { return fail(c, e); }
+  });
+  /** Relance de paiement : e-mail au client si possible, sinon erreur claire (pas de faux « envoyé »). */
+  api.post('/clients/:id/remind-invoice', async (c) => {
+    try {
+      const { month, amount } = z.object({ month: z.string().min(1).max(40), amount: z.number().positive() }).parse(await c.req.json());
+      const cl = hub.clients().find((x) => x.id === +c.req.param('id'));
+      if (!cl) throw new Error('Client introuvable');
+      if (!cl.email) throw new Error(`Ajoute l’e-mail de ${cl.name} (page Clients & monteurs) pour le relancer`);
+      if (!mail) throw new Error('E-mails pas encore branchés (SMTP_URL dans Railway)');
+      await mail(cl.email, `Petit rappel : facture de ${month}`, `Hello !\n\nPetit rappel pour la facture de ${month} (${amount.toLocaleString('fr-FR')} €), on ne l'a pas encore reçue de notre côté.\nSi c'est déjà fait, ignore ce message 🙏\n\nMerci !`);
+      hub.log('relance', `Relance de paiement envoyée à ${cl.name} (${month}, ${amount} €)`, cl.name, false);
+      return c.json({ ok: true, state: state() });
+    } catch (e) { return fail(c, e); }
   });
   api.post('/videos/:id/status', async (c) => {
     try { const { status } = z.object({ status: z.enum(STATUSES) }).parse(await c.req.json()); hub.setStatus(+c.req.param('id'), status); return c.json(state()); } catch (e) { return fail(c, e); }
@@ -80,7 +119,9 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
     const v = hub.video(+c.req.param('id'));
     if (!cl || !v || v.client_id !== cl.id) return c.json({ error: 'Vidéo introuvable' }, 404);
     try {
-      if (c.req.param('action') === 'validate') await onValidate(hub.validate(v.id));
+      const action = c.req.param('action');
+      if (action === 'validate') await onValidate(hub.validate(v.id));
+      else if (action === 'undo') await onUndo(hub.undoValidate(v.id));
       else { const { comment } = z.object({ comment: z.string().min(1) }).parse(await c.req.json()); await onModif(hub.requestChange(v.id, comment)); }
       return c.json(portalState(cl.id));
     } catch (e) { return fail(c, e); }
@@ -95,7 +136,14 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
     const n = names(), m = v.monteur_id ? n.m.get(v.monteur_id) : undefined;
     hub.log('validation', `${n.c.get(v.client_id)} a validé « ${v.title} »${m ? ` (+${m.rate} € pour ${m.name})` : ''}`, n.c.get(v.client_id) ?? null);
     await notify(`✅ *${n.c.get(v.client_id)}* a validé « ${v.title} »${m ? ` · ${m.slack ? `<@${m.slack}>` : m.name} +${m.rate} €` : ''}`);
+    await notify(`📅 À planifier : « ${v.title} » (${n.c.get(v.client_id)}) → hub, page Planning`);
     await toNotion(v, 'valide');
+  }
+  async function onUndo(v: Video) {
+    const n = names();
+    hub.log('annulation', `${n.c.get(v.client_id)} a annulé la validation de « ${v.title} »`, n.c.get(v.client_id) ?? null);
+    await notify(`↩️ *${n.c.get(v.client_id)}* a annulé sa validation de « ${v.title} » (clic par erreur) : elle repasse « à valider ».`);
+    await toNotion(v, 'avalider');
   }
   async function onModif(v: Video) {
     const n = names(), m = v.monteur_id ? n.m.get(v.monteur_id) : undefined;
@@ -104,24 +152,33 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
     await toNotion(v, 'modif');
   }
   /** Reporte le nouveau statut dans Notion (« Validé », ou retour au montage avec la remarque du client en commentaire). */
-  async function toNotion(v: Video, status: 'valide' | 'modif') {
+  async function toNotion(v: Video, status: Status, date?: number) {
     const n = notion(), map = mapOfDb(hub, v.notion_db);
     if (!n || !map || !v.notion_id) return;
+    // « modif » n'existe pas toujours dans Notion : on renvoie alors en « En montage »
+    const target: Status = status === 'modif' && !map.options.modif ? 'montage' : status;
     try {
-      const ok = (await n.setStatus(v.notion_id, map, status)) || (status === 'modif' && (await n.setStatus(v.notion_id, map, 'montage')));
+      const ok = await n.setStatus(v.notion_id, map, target, date);
       if (status === 'modif' && v.comment) await n.comment(v.notion_id, `Retour client : ${v.comment}`);
-      if (!ok) hub.log('notion', `Pas d’étape « ${status === 'valide' ? 'Validé' : 'modif'} » dans la base Notion de « ${v.title} »`, null, true);
-    } catch (e) { hub.log('notion', `Notion n’a pas pu être mis à jour pour « ${v.title} » : ${e instanceof Error ? e.message : e}`, null, true); }
+      hub.setNotionPush(v.id, null);
+      if (!ok) hub.log('notion', `Pas d’étape « ${ST_NAME[target]} » dans la base Notion de « ${v.title} »`, null, true);
+    } catch (e) {
+      hub.setNotionPush(v.id, target); // renvoyé à la prochaine synchro, sans être écrasé par l'ancien statut de Notion
+      hub.log('notion', `Notion pas encore à jour pour « ${v.title} » (nouvel essai dans 10 min) : ${e instanceof Error ? e.message : e}`, null, true);
+    }
   }
+  const dup = (e: unknown) => (e instanceof Error && /UNIQUE/.test(e.message) ? new Error('Ce nom existe déjà') : e);
 
   function state() {
-    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo() };
+    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo(), undoMs: UNDO_MS, integrations: { slack: !!cfg.SLACK_WEBHOOK_URL, mail: !!mail } };
   }
   const notionInfo = () => ({ connected: !!notionToken(), lastSync: Number(hub.setting('notion_last_sync') ?? 0) || null, bases: (JSON.parse(hub.setting('notion_dbs') ?? '[]') as DbMap[]).map((m) => ({ client: m.client, title: m.title })) });
   function portalState(clientId: number) {
     const cl = hub.clients().find((x) => x.id === clientId)!;
     const vids = hub.videos(clientId).filter((v) => ['avalider', 'modif', 'valide', 'planifie', 'publie'].includes(v.status));
-    return { client: { id: cl.id, name: cl.name, color: cl.color, fee: cl.fee }, videos: vids, monteurs: hub.monteurs().map((m) => ({ id: m.id, name: m.name })), tournages: hub.tournages().filter((t) => t.client_id === clientId), now: Date.now(), brand: brand() };
+    // Le client ne voit pas les liens internes (page Notion d'Adrien)
+    const safe = vids.map(({ url: _u, notion_id: _n, notion_db: _d, notion_push: _p, ...v }) => v);
+    return { client: { id: cl.id, name: cl.name, color: cl.color, fee: cl.fee }, videos: safe, undoMs: UNDO_MS, monteurs: hub.monteurs().map((m) => ({ id: m.id, name: m.name })), tournages: hub.tournages().filter((t) => t.client_id === clientId), now: Date.now(), brand: brand() };
   }
   const brand = () => ({ name: hub.setting('brand_name') ?? 'Agence PersonalBrand360', owner: hub.setting('owner_name') ?? 'Adrien' });
   return app;
