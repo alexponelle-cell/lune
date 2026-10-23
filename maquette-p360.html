@@ -37,7 +37,7 @@
   .topbar { display:flex; align-items:center; gap:16px; margin-bottom:22px; }
   .hello h1 { margin:0; font-size:26px; font-weight:800; letter-spacing:-.03em; }
   .hello p { margin:2px 0 0; color:var(--muted); font-size:13.5px; }
-  .ask { margin-left:auto; display:flex; align-items:center; gap:10px; background:var(--card); border-radius:99px; padding:6px 6px 6px 18px; width:min(440px,42vw); box-shadow:var(--sh); cursor:text; transition:.25s; }
+  .cpick { margin-left:auto; } .ask { display:flex; align-items:center; gap:10px; background:var(--card); border-radius:99px; padding:6px 6px 6px 18px; width:min(440px,42vw); box-shadow:var(--sh); cursor:text; transition:.25s; }
   .ask:hover { box-shadow:0 0 0 4px rgba(252,202,9,.18), var(--sh); }
   .ask span { color:var(--muted); flex:1; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ask kbd { font:600 11px 'Plus Jakarta Sans'; color:var(--muted); background:var(--soft); border:1px solid var(--line); border-radius:7px; padding:2px 7px; }
@@ -47,6 +47,13 @@
   @keyframes blink { 0%, 92%, 100% { transform:scaleY(1);} 95% { transform:scaleY(.15);} }
   .iconbtn { position:relative; width:44px; height:44px; border-radius:50%; background:var(--card); border:0; display:grid; place-items:center; box-shadow:var(--sh); cursor:pointer; }
   .iconbtn svg { width:19px; height:19px; } .iconbtn b { position:absolute; top:-2px; right:-2px; background:var(--ink); color:#fff; font-size:10.5px; min-width:18px; height:18px; border-radius:9px; display:grid; place-items:center; }
+  .cpick { position:relative; } .cpbtn { display:flex; align-items:center; gap:10px; background:var(--card); border:0; border-radius:99px; padding:6px 14px 6px 6px; box-shadow:var(--sh); cursor:pointer; font-weight:700; font-size:13.5px; white-space:nowrap; transition:.2s; }
+  .cpbtn:hover { box-shadow:0 0 0 4px rgba(20,20,20,.05), var(--sh); } .cpbtn .av { width:32px; height:32px; border:0; } .cpbtn svg { width:14px; height:14px; color:var(--muted); transition:.2s; }
+  .cpick.open .cpbtn svg { transform:rotate(180deg); }
+  .cpmenu { position:absolute; top:calc(100% + 8px); left:0; min-width:250px; background:var(--card); border-radius:20px; padding:8px; box-shadow:0 20px 50px rgba(0,0,0,.14); z-index:35; opacity:0; transform:translateY(-6px) scale(.98); pointer-events:none; transition:.2s; }
+  .cpick.open .cpmenu { opacity:1; transform:none; pointer-events:auto; }
+  .cpmenu button { width:100%; display:flex; align-items:center; gap:10px; border:0; background:transparent; padding:9px 10px; border-radius:14px; cursor:pointer; text-align:left; font-weight:600; }
+  .cpmenu button:hover { background:var(--soft); } .cpmenu button.on { background:var(--soft); } .cpmenu button .av { width:30px; height:30px; border:0; } .cpmenu small { display:block; color:var(--muted); font-weight:500; font-size:11.5px; } .cpmenu .ck2 { margin-left:auto; color:var(--text); }
   .demo { font-size:10.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#8A6D00; background:var(--ysoft); padding:4px 10px; border-radius:99px; }
 
   /* Grille bento */
@@ -180,6 +187,7 @@
   <div class="main">
     <div class="topbar">
       <div class="hello"><h1 id="ttl">Bonjour Adrien</h1><p id="sub"></p></div>
+      <div class="cpick" id="cpick"></div>
       <div class="ask" id="askbar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8C8C85" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Rechercher ou demander à P360…</span><kbd>⌘K</kbd><button class="orb" aria-label="Assistant P360"><i></i><i></i></button></div>
       <button class="iconbtn" id="bell" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><b>4</b></button>
     </div>
@@ -304,7 +312,10 @@ const I = {
 const ic = (k, s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
 const arrowBtn = (go, sub) => `<button class="arrow" data-go="${go}"${sub ? ` data-sub="${sub}"` : ''} aria-label="Ouvrir">${ic('arrow', 15)}</button>`;
 const PAGES = [['home', 'Accueil', 'home'], ['videos', 'Vidéos', 'video'], ['client', 'Espace client', 'check'], ['perfs', 'Performances', 'chart'], ['sav', 'SAV', 'chat'], ['compta', 'Compta', 'wallet'], ['spots', 'Spots tournage', 'mic'], ['connect', 'Connexions', 'plug']];
-let page = 'home', sub = 'resume', vf = 'all', vc = 'Client Finance';
+let page = 'home', sub = 'resume', cf = 'all'; // cf = client choisi dans le menu du haut
+const inC = (c) => cf === 'all' || c === cf;
+const vcOf = () => (cf === 'all' ? 'Client Finance' : cf);
+const cLabel = () => (cf === 'all' ? 'tous clients' : cf);
 
 // ================= Graphiques =================
 function lineChart(points, w = 560, h = 170) {
@@ -329,43 +340,48 @@ const count = (n, f = 'eur') => `<span data-count="${n}" data-f="${f}">0</span>`
 
 // ================= Pages =================
 function pHome() {
-  const s = stats(month), mg = margins(month), tot = mg.reduce((a, r) => ({ fee: a.fee + r.fee, m: a.m + r.marge }), { fee: 0, m: 0 });
-  const prev = stats('2026-09');
-  const trend = [...HISTORY.map(([m, v]) => [mShort(m), v]), ...MONTHS.map((m) => [mShort(m), stats(m).rest])];
-  const toVal = VIDS.filter((v) => v.status === 'avalider'), lt = VIDS.filter(late), modif = VIDS.filter((v) => v.status === 'modif');
-  const wk = weekReels(), wkViews = wk.reduce((a, v) => a + v.views, 0);
-  const days = [...Array(7)].map((_, i) => { const d = dAgo(6 - i); return [d.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 2), VIDS.filter((v) => v.published && v.published.toDateString() === d.toDateString()).reduce((a, v) => a + v.views, 0)]; });
-  const delta = Math.round(((s.rest - prev.rest) / Math.abs(prev.rest || 1)) * 100);
-  const due = monteurDue(month);
+  const s = stats(month), mgAll = margins(month), mg = mgAll.filter((r) => inC(r.c)), tot = mg.reduce((a, r) => ({ fee: a.fee + r.fee, m: a.m + r.marge }), { fee: 0, m: 0 });
+  const one = cf !== 'all' ? mgAll.find((r) => r.c === cf) : null;
+  // Montant principal : « reste pour toi » (tous clients) ou marge du client choisi
+  const val = (m) => (one ? margins(m).find((r) => r.c === cf).marge : stats(m).rest);
+  const shareOf = one ? one.marge / mgAll.reduce((a, r) => a + r.marge, 0) : 1;
+  const trend = [...HISTORY.map(([m, v]) => [mShort(m), Math.round(v * shareOf)]), ...MONTHS.map((m) => [mShort(m), val(m)])];
+  const main = val(month), prevV = val('2026-09');
+  const V = VIDS.filter((v) => inC(v.client));
+  const toVal = V.filter((v) => v.status === 'avalider'), lt = V.filter(late), modif = V.filter((v) => v.status === 'modif');
+  const wk = weekReels().filter((v) => inC(v.client)), wkViews = wk.reduce((a, v) => a + v.views, 0);
+  const days = [...Array(7)].map((_, i) => { const d = dAgo(6 - i); return [d.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 2), V.filter((v) => v.published && v.published.toDateString() === d.toDateString()).reduce((a, v) => a + v.views, 0)]; });
+  const delta = Math.round(((main - prevV) / Math.abs(prevV || 1)) * 100);
+  const mset = new Set(V.map((v) => v.monteur)), due = monteurDue(month).filter((d) => mset.has(d.mo));
   return `<div class="bento">
-    <div class="card c8 in" style="--i:0"><div class="ch"><h3><span class="ic">${ic('euro', 16)}</span>Reste pour toi · ${mName(month)}</h3>${arrowBtn('compta')}</div>
-      <div class="row" style="align-items:flex-end"><div><div class="big">${count(s.rest)}</div><div class="muted small" style="margin-top:6px">sur le facturé, après monteurs, dépenses et URSSAF <span class="pill ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)} %</span> vs septembre</div></div>
-      <div class="row" style="gap:22px"><div><div class="muted small">Facturé</div><b class="num">${fmt(s.fact)}</b></div><div><div class="muted small">Monteurs</div><b class="num">${fmt(s.mont)}</b></div><div><div class="muted small">Encaissé</div><b class="num">${fmt(s.ca)}</b></div></div></div>
+    <div class="card c8 in" style="--i:0"><div class="ch"><h3><span class="ic">${ic('euro', 16)}</span>${one ? `Marge · ${cf}` : 'Reste pour toi'} · ${mName(month)}</h3>${arrowBtn('compta')}</div>
+      <div class="row" style="align-items:flex-end"><div><div class="big">${count(main)}</div><div class="muted small" style="margin-top:6px">${one ? `${one.pc} % de ce que tu lui factures` : 'sur le facturé, après monteurs, dépenses et URSSAF'} <span class="pill ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)} %</span> vs septembre</div></div>
+      <div class="row" style="gap:22px">${one ? `<div><div class="muted small">Facturé</div><b class="num">${fmt(one.fee)}</b></div><div><div class="muted small">Monteurs</div><b class="num">${fmt(one.cm)}</b></div><div><div class="muted small">Autres</div><b class="num">${fmt(one.co)}</b></div>` : `<div><div class="muted small">Facturé</div><b class="num">${fmt(s.fact)}</b></div><div><div class="muted small">Monteurs</div><b class="num">${fmt(s.mont)}</b></div><div><div class="muted small">Encaissé</div><b class="num">${fmt(s.ca)}</b></div>`}</div></div>
       <div style="margin-top:10px">${lineChart(trend)}</div></div>
-    <div class="card c4 in" style="--i:1"><div class="ch"><h3><span class="ic">${ic('chart', 16)}</span>Marge globale</h3>${arrowBtn('compta')}</div>${gauge(Math.round((tot.m / tot.fee) * 100), 'de ton CA')}
+    <div class="card c4 in" style="--i:1"><div class="ch"><h3><span class="ic">${ic('chart', 16)}</span>${one ? 'Rentabilité' : 'Marge globale'}</h3>${arrowBtn('compta')}</div>${gauge(Math.round((tot.m / tot.fee) * 100), one ? 'de marge' : 'de ton CA')}
       ${mg.map((r) => `<div style="margin-top:12px"><div class="row small"><span>${r.c}</span><b>${r.pc} %</b></div><div class="bar yl" style="margin-top:5px"><i data-w="${r.pc}"></i></div></div>`).join('')}</div>
     <div class="card dark c4 in" style="--i:2"><div class="ch"><h3><span class="ic">${ic('check', 16)}</span>À valider par tes clients</h3>${arrowBtn('client')}</div>
       <div class="big">${toVal.length}</div><p class="muted small" style="margin:4px 0 16px">${toVal.filter((v) => waitD(v) >= 2).length} relancée(s) automatiquement · ${modif.length} modif(s) demandée(s)</p>
-      <div class="avs">${Object.keys(CLIENTS).map((c) => `<div class="av" style="background:${CCOL[c][0]}">${initials(c)}</div>`).join('')}</div></div>
+      <div class="avs">${Object.keys(CLIENTS).filter(inC).map((c) => `<div class="av" style="background:${CCOL[c][0]}">${initials(c)}</div>`).join('')}</div></div>
     <div class="card c4 in" style="--i:3"><div class="ch"><h3><span class="ic">${ic('eye', 16)}</span>Vues cette semaine</h3>${arrowBtn('perfs')}</div>
-      <div class="mid">${count(wkViews, 'k')}</div><p class="muted small" style="margin:2px 0 14px">${wk.length} reels publiés · tous clients</p>${bars(days.map((d) => d[1]), days.map((d) => d[0]))}</div>
+      <div class="mid">${count(wkViews, 'k')}</div><p class="muted small" style="margin:2px 0 14px">${wk.length} reels publiés · ${cLabel()}</p>${bars(days.map((d) => d[1]), days.map((d) => d[0]))}</div>
     <div class="card yellow c4 in" style="--i:4"><div class="ch"><h3><span class="ic" style="background:rgba(0,0,0,.08)">${ic('chat', 16)}</span>SAV automatique</h3>${arrowBtn('sav')}</div>
       <div class="big">~4 h</div><p class="muted small" style="margin:4px 0 14px">gagnées pour Romain cette semaine</p><div class="row small"><span>🤖 24 réponses auto</span><span>⏰ 7 relances monteurs</span></div></div>
     <div class="card c7 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>À faire aujourd'hui</h3><span class="pill g">le reste est géré tout seul</span></div>
       ${modif.map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>${v.client} demande une modif</b><small>« ${v.title} » · ${v.comment}</small></div><button class="btn sm" data-go="videos">Voir</button></div>`).join('')}
-      ${unpaidClients(month).map((c) => `<div class="li"><div class="av" style="background:${CCOL[c][0]};width:44px;height:44px">${initials(c)}</div><div class="grow"><b>${c} n'a pas payé ${fmt(CLIENTS[c])}</b><small>Relance automatique envoyée hier</small></div><button class="btn sm ghost" data-go="compta" data-sub="factures">Facture</button></div>`).join('')}
+      ${unpaidClients(month).filter(inC).map((c) => `<div class="li"><div class="av" style="background:${CCOL[c][0]};width:44px;height:44px">${initials(c)}</div><div class="grow"><b>${c} n'a pas payé ${fmt(CLIENTS[c])}</b><small>Relance automatique envoyée hier</small></div><button class="btn sm ghost" data-go="compta" data-sub="factures">Facture</button></div>`).join('')}
       ${lt.slice(0, 2).map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>Montage en retard · ${v.monteur}</b><small>« ${v.title} » · relancé sur Slack</small></div><span class="pill down">retard</span></div>`).join('')}</div>
     <div class="card c5 in" style="--i:6"><div class="ch"><h3><span class="ic">${ic('video', 16)}</span>Top reels de la semaine</h3>${arrowBtn('perfs')}</div>
       ${wk.slice(0, 4).map((v, i) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>${v.title}</b><small>${v.client} · ${v.tag} · ${dFmt(v.published)}</small></div><b class="num">${kFmt(v.views)}</b></div>`).join('')}</div>
     <div class="card c12 in" style="--i:7"><div class="ch"><h3><span class="ic">${ic('users', 16)}</span>Monteurs · ${mName(month)}</h3>${arrowBtn('compta', 'monteurs')}</div>
-      <div class="bento" style="gap:14px">${due.map((d) => `<div class="c3" style="grid-column:span 3"><div class="row"><div class="row" style="gap:10px"><div class="av" style="background:${MCOL[d.mo]};width:38px;height:38px">${d.mo[0]}</div><div><b>${d.mo}</b><div class="muted small">${d.n} vidéos · ${fmt(d.owed)}</div></div></div><span class="pill ${d.left > 0 ? 'y' : 'up'}">${d.left > 0 ? 'à payer' : 'payé'}</span></div><div class="bar" style="margin-top:12px"><i data-w="${Math.min(100, (d.paid / d.owed) * 100)}"></i></div></div>`).join('')}</div></div>
+      <div class="bento" style="gap:14px">${due.length ? '' : '<p class="muted">Aucun monteur sur ce client.</p>'}${due.map((d) => `<div class="c3" style="grid-column:span 3"><div class="row"><div class="row" style="gap:10px"><div class="av" style="background:${MCOL[d.mo]};width:38px;height:38px">${d.mo[0]}</div><div><b>${d.mo}</b><div class="muted small">${d.n} vidéos · ${fmt(d.owed)}</div></div></div><span class="pill ${d.left > 0 ? 'y' : 'up'}">${d.left > 0 ? 'à payer' : 'payé'}</span></div><div class="bar" style="margin-top:12px"><i data-w="${Math.min(100, (d.paid / d.owed) * 100)}"></i></div></div>`).join('')}</div></div>
   </div>`;
 }
 
 function pVideos() {
-  const list = VIDS.filter((v) => vf === 'all' || v.client === vf);
+  const list = VIDS.filter((v) => inC(v.client));
   return `<div class="page-h"><div><h2>Toutes les vidéos</h2><p>Synchronisé avec ton outil de prod. Fini les clips éparpillés.</p></div>
-    <div class="tabs">${['all', ...Object.keys(CLIENTS)].map((c) => `<button class="${vf === c ? 'on' : ''}" data-vf="${c}">${c === 'all' ? 'Tous' : c}</button>`).join('')}</div></div>
+    <span class="pill g">${list.length} vidéos · ${cLabel()}</span></div>
   <div class="kanban">${Object.keys(ST).map((s, k) => { const all = list.filter((v) => v.status === s), vs = s === 'publie' ? [...all].sort((a, b) => b.published - a.published).slice(0, 4) : all; return `<div class="col in" style="--i:${k}"><div class="colh"><i style="background:${ST[s][1]}"></i>${ST[s][0]}<span>${all.length}</span></div>
     ${vs.map((v) => `<div class="vc"><div class="vt" style="background:${grad(v)}"><em>${v.tag}</em></div><b>${v.title}</b><small>${v.client} · ${v.monteur}</small>
       ${late(v) ? '<small class="ko">⏰ en retard · monteur relancé</small>' : ''}${s === 'avalider' ? `<small>envoyé ${ago(waitD(v))}${waitD(v) >= 2 ? ' · client relancé' : ''}</small>` : ''}
@@ -373,10 +389,10 @@ function pVideos() {
 }
 
 function pClient() {
-  const vs = VIDS.filter((v) => v.client === vc), toVal = vs.filter((v) => v.status === 'avalider'), pub = vs.filter((v) => v.status === 'publie').sort((a, b) => b.views - a.views);
+  const vc = vcOf(), vs = VIDS.filter((v) => v.client === vc), toVal = vs.filter((v) => v.status === 'avalider'), pub = vs.filter((v) => v.status === 'publie').sort((a, b) => b.views - a.views);
   const slug = norm(vc).toLowerCase().replace(/\s/g, '-');
   return `<div class="page-h"><div><h2>Espace client</h2><p>Ce que voit ton client avec son lien perso. Pas de compte, pas de Notion.</p></div>
-    <div class="tabs">${Object.keys(CLIENTS).map((c) => `<button class="${vc === c ? 'on' : ''}" data-vc="${c}">${c}</button>`).join('')}</div></div>
+    ${cf === 'all' ? '<span class="pill y">Aperçu de Client Finance · choisis un client en haut</span>' : ''}</div>
   <div class="browser in"><div class="bbar"><i></i><i></i><i></i><span>p360.app/${slug}</span><button class="btn sm ghost" id="copylink">🔗 Copier le lien</button></div>
     <div class="portal"><div class="row"><div class="row" style="gap:12px"><img src="data:image/png;base64,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" style="width:42px;height:42px;border-radius:50%"><div><div class="muted small">PersonalBrand360 × ${vc}</div><div class="mid">${toVal.length ? `${toVal.length} vidéo${toVal.length > 1 ? 's' : ''} à valider` : 'Tout est validé ✨'}</div></div></div>
       <div class="row" style="gap:18px"><div><div class="muted small">Vues ce mois</div><b class="mid">${kFmt(pub.reduce((a, v) => a + v.views, 0))}</b></div><div><div class="muted small">Reels publiés</div><b class="mid">${pub.length}</b></div></div></div>
@@ -391,7 +407,7 @@ function pClient() {
 function pPerfs() {
   const pub = VIDS.filter((v) => v.status === 'publie');
   return `<div class="page-h"><div><h2>Performances</h2><p>Vues relevées chaque nuit sur l'Instagram de chaque client (connexion officielle, gratuite).</p></div></div>
-  <div class="bento">${Object.keys(CLIENTS).map((c, k) => {
+  <div class="bento">${Object.keys(CLIENTS).filter(inC).map((c, k) => {
     const vs = pub.filter((v) => v.client === c).sort((a, b) => b.views - a.views), max = vs[0]?.views || 1;
     const avg = (t) => { const x = vs.filter((v) => v.tag === t); return x.length ? Math.round(x.reduce((a, v) => a + v.views, 0) / x.length) : 0; };
     const byH = {}; vs.forEach((v) => (byH[v.published.getHours()] ??= []).push(v.views));
@@ -419,7 +435,7 @@ function pSav() {
     ${[['Réponses auto', 24, 'cette semaine'], ['Relances monteurs', 7, 'sur Slack'], ['Relances validation', 5, 'aux clients']].map(([t, n, s], i) => `<div class="card c3 in" style="--i:${i}"><div class="muted small">${t}</div><div class="big" style="margin-top:6px">${count(n, 'n')}</div><div class="muted small">${s}</div></div>`).join('')}
     <div class="card yellow c3 in" style="--i:3"><div class="muted small">Temps gagné pour Romain</div><div class="big" style="margin-top:6px">~4 h</div><div class="muted small">cette semaine</div></div>
     <div class="card c7 in" style="--i:4"><div class="ch"><h3><span class="ic">${ic('chat', 16)}</span>Aujourd'hui</h3><span class="pill g">Slack · WhatsApp · mail</span></div>
-      ${SAV.map((x) => `<div class="li" style="align-items:flex-start"><div class="av" style="background:${CCOL[x.who]?.[0] ?? '#EDEDE8'};width:36px;height:36px">${x.who === 'Robot' ? '🤖' : initials(x.who)}</div><div class="grow"><small>${x.t} · ${x.who}</small><b style="font-weight:600">${x.q}</b><div style="margin-top:6px"><span class="pill ${x.auto ? 'up' : 'y'}">${x.auto ? '🤖 ' : '👤 '}${x.a}</span></div></div></div>`).join('')}</div>
+      ${SAV.filter((x) => cf === 'all' || x.who === cf || x.q.includes(cf)).map((x) => `<div class="li" style="align-items:flex-start"><div class="av" style="background:${CCOL[x.who]?.[0] ?? '#EDEDE8'};width:36px;height:36px">${x.who === 'Robot' ? '🤖' : initials(x.who)}</div><div class="grow"><small>${x.t} · ${x.who}</small><b style="font-weight:600">${x.q}</b><div style="margin-top:6px"><span class="pill ${x.auto ? 'up' : 'y'}">${x.auto ? '🤖 ' : '👤 '}${x.a}</span></div></div></div>`).join('')}</div>
     <div class="card c5 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>Feedback en 1 clic</h3></div>
       <select class="sel" id="fbv" style="width:100%;border-radius:14px;padding:10px 12px">${VIDS.filter((v) => ['montage', 'modif', 'avalider'].includes(v.status)).map((v) => `<option value="${v.id}">${v.title} · ${v.monteur}</option>`).join('')}</select>
       <div class="row" style="justify-content:flex-start;gap:6px;margin:12px 0">${FB.map((f, i) => `<button class="btn sm ghost ${fbSel.has(i) ? 'on' : ''}" data-fb="${i}">${f}</button>`).join('')}</div>
@@ -437,7 +453,7 @@ function pCompta() {
   ${{ resume: cResume, moves: cMoves, monteurs: cMonteurs, factures: cFactures, bank: cBank }[sub]()}`;
 }
 function cResume() {
-  const s = stats(month), mg = margins(month), tot = mg.reduce((a, r) => ({ fee: a.fee + r.fee, m: a.m + r.marge }), { fee: 0, m: 0 });
+  const s = stats(month), mg = margins(month).filter((r) => inC(r.c)), tot = mg.reduce((a, r) => ({ fee: a.fee + r.fee, m: a.m + r.marge }), { fee: 0, m: 0 });
   const best = [...mg].sort((a, b) => b.pc - a.pc);
   return `${s.check ? `<div class="tip2 in" style="margin:0 0 16px">⚠️ <b>${s.check} mouvement à vérifier</b> : libellé pas reconnu. Un clic pour le ranger, et l'outil s'en souvient. <a href="#" data-sub2="moves" style="color:inherit;font-weight:700">Voir</a></div>` : ''}
   <div class="bento">
@@ -447,13 +463,13 @@ function cResume() {
     <div class="card c8 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('chart', 16)}</span>Marges par client</h3><div><span class="muted small">Marge totale </span><b class="mid">${fmt(tot.m)}</b> <span class="pill up">${Math.round((tot.m / tot.fee) * 100)} %</span></div></div>
       <table class="tbl"><thead><tr><th>Client</th><th class="r">Facturé</th><th class="r">Monteurs</th><th class="r">Autres</th><th class="r">Marge</th><th style="width:26%"></th></tr></thead><tbody>
       ${mg.map((r) => `<tr><td><div class="row" style="gap:10px;justify-content:flex-start"><div class="av" style="background:${CCOL[r.c][0]};border:0">${initials(r.c)}</div><b>${r.c}</b></div></td><td class="r num">${fmt(r.fee)}</td><td class="r num muted">−${fmt(r.cm)}</td><td class="r num muted">−${fmt(r.co)}</td><td class="r num"><b>${fmt(r.marge)}</b> <span class="muted small">${r.pc} %</span></td><td><div class="bar yl"><i data-w="${r.pc}"></i></div></td></tr>`).join('')}</tbody></table>
-      <div class="tip2">💡 <b>${best[0].c}</b> est ton client le plus rentable (${best[0].pc} %). <b>${best.at(-1).c}</b> te coûte le plus en montage : à revoir au prochain devis.</div></div>
+      ${mg.length > 1 ? `<div class="tip2">💡 <b>${best[0].c}</b> est ton client le plus rentable (${best[0].pc} %). <b>${best.at(-1).c}</b> te coûte le plus en montage : à revoir au prochain devis.</div>` : ''}</div>
   </div>`;
 }
 function cMoves() {
   const s = stats(month);
   return `<div class="card in"><div class="ch"><h3>Mouvements · ${mName(month)}</h3><button class="btn sm ghost" id="export">⬇ Export comptable</button></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th class="r">Montant</th></tr></thead><tbody>
-  ${[...s.tx].sort((a, b) => b.date.localeCompare(a.date)).map((t) => `<tr><td class="muted num">${t.date.slice(8)}/${t.date.slice(5, 7)}</td><td><b style="font-weight:600">${t.label}</b>${t.who ? `<div class="muted small">→ ${t.who}</div>` : ''}</td>
+  ${[...s.tx].filter((t) => cf === 'all' || t.who === cf).sort((a, b) => b.date.localeCompare(a.date)).map((t) => `<tr><td class="muted num">${t.date.slice(8)}/${t.date.slice(5, 7)}</td><td><b style="font-weight:600">${t.label}</b>${t.who ? `<div class="muted small">→ ${t.who}</div>` : ''}</td>
     <td><select class="sel tag t-${t.cat}" data-cat="${TX.indexOf(t)}" style="border:0">${Object.entries(CAT).map(([k, l]) => `<option value="${k}" ${k === t.cat ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
     <td class="r num" style="font-weight:700;color:${t.amount > 0 ? 'var(--ok)' : 'inherit'}">${t.amount > 0 ? '+' : '−'}${fmt(Math.abs(t.amount))}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
@@ -465,7 +481,7 @@ function cMonteurs() {
 function cFactures() {
   const s = stats(month); let i = 0;
   return `<div class="card in"><div class="ch"><h3>Factures clients · ${mName(month)}</h3><span class="pill g">créées toutes seules chaque mois</span></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>N°</th><th>Client</th><th>Statut</th><th class="r">Montant</th><th></th></tr></thead><tbody>
-  ${Object.entries(CLIENTS).map(([c, amt]) => { i++; const paid = s.tx.some((t) => t.who === c && t.amount > 0), num = `F-${month.replace('-', '')}-${i}`;
+  ${Object.entries(CLIENTS).map(([c, amt]) => { i++; if (!inC(c)) return ''; const paid = s.tx.some((t) => t.who === c && t.amount > 0), num = `F-${month.replace('-', '')}-${i}`;
     return `<tr><td class="num muted">${num}</td><td><div class="row" style="gap:10px;justify-content:flex-start"><div class="av" style="background:${CCOL[c][0]};border:0">${initials(c)}</div><b>${c}</b></div></td><td><span class="pill ${paid ? 'up' : 'down'}">${paid ? 'Payée' : 'En attente'}</span></td><td class="r num"><b>${fmt(amt)}</b></td>
       <td class="r" style="white-space:nowrap"><button class="btn sm ghost" data-inv="${c}|${num}|${amt}">Voir</button>${paid ? '' : ` <button class="btn sm" data-remind="${c}">Relancer</button>`}</td></tr>`; }).join('')}</tbody></table></div></div><div id="invwrap"></div>`;
 }
@@ -576,7 +592,19 @@ function animate(root) {
     root.querySelectorAll('.gauge .arc').forEach((el) => (el.style.strokeDashoffset = el.dataset.to));
   }, 80));
 }
+function picker() {
+  const opts = [['all', 'Tous les clients', `${Object.keys(CLIENTS).length} clients`], ...Object.keys(CLIENTS).map((c) => [c, c, `${fmt(CLIENTS[c])} / mois · ${VIDS.filter((v) => v.client === c).length} vidéos`])];
+  const av = (k) => (k === 'all' ? `<div class="av" style="background:var(--ink);color:var(--y)">∗</div>` : `<div class="av" style="background:${CCOL[k][0]}">${initials(k)}</div>`);
+  const cur = opts.find((o) => o[0] === cf);
+  document.getElementById('cpick').innerHTML = `<button class="cpbtn" id="cpb">${av(cf)}${cur[1]}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="cpmenu">${opts.map(([k, l, d]) => `<button class="${k === cf ? 'on' : ''}" data-cf="${k}">${av(k)}<span>${l}<small>${d}</small></span>${k === cf ? '<span class="ck2">✓</span>' : ''}</button>`).join('')}</div>`;
+  const box = document.getElementById('cpick');
+  document.getElementById('cpb').onclick = (e) => { e.stopPropagation(); box.classList.toggle('open'); };
+  box.querySelectorAll('[data-cf]').forEach((b) => (b.onclick = () => { cf = b.dataset.cf; box.classList.remove('open'); render(); }));
+}
+document.addEventListener('click', () => document.getElementById('cpick').classList.remove('open'));
 function render() {
+  picker();
   document.getElementById('nav').innerHTML = PAGES.map(([k, l, i]) => `<button class="nb ${page === k ? 'on' : ''}" data-go="${k}" aria-label="${l}">${ic(i)}<span class="tip">${l}</span>${k === 'client' ? '<span class="dot"></span>' : ''}</button>`).join('');
   document.getElementById('ttl').textContent = HEAD.home[0]; document.getElementById('sub').textContent = HEAD.home[1]();
   const app = document.getElementById('app');
@@ -586,12 +614,10 @@ function render() {
 function bind(app) {
   document.querySelectorAll('[data-go]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); page = b.dataset.go; if (b.dataset.sub) sub = b.dataset.sub; render(); scrollTo({ top: 0, behavior: 'smooth' }); }));
   app.querySelectorAll('[data-sub2]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); sub = b.dataset.sub2; render(); }));
-  app.querySelectorAll('[data-vf]').forEach((b) => (b.onclick = () => { vf = b.dataset.vf; render(); }));
-  app.querySelectorAll('[data-vc]').forEach((b) => (b.onclick = () => { vc = b.dataset.vc; render(); }));
   app.querySelectorAll('[data-ok]').forEach((b) => (b.onclick = () => { const v = VIDS.find((x) => x.id === +b.dataset.ok); v.status = 'valide'; b.closest('[data-card]').innerHTML = `<div class="done"><div class="ck">✓</div><b>Validée !</b><span class="muted small">Statut mis à jour · ${v.monteur} prévenu sur Slack</span></div>`; setTimeout(render, 1500); }));
   app.querySelectorAll('[data-mod]').forEach((b) => (b.onclick = () => document.getElementById('mod-' + b.dataset.mod).classList.toggle('hidden')));
   app.querySelectorAll('[data-send]').forEach((b) => (b.onclick = () => { const v = VIDS.find((x) => x.id === +b.dataset.send); v.status = 'modif'; v.comment = b.previousElementSibling.value || 'Petite modif demandée'; b.closest('[data-card]').innerHTML = `<div class="done"><div class="ck">✎</div><b>Envoyé à ${v.monteur}</b><span class="muted small">Il reçoit ta remarque sur Slack</span></div>`; setTimeout(render, 1500); }));
-  const cl = document.getElementById('copylink'); if (cl) cl.onclick = () => { navigator.clipboard?.writeText('https://p360.app/' + norm(vc).toLowerCase().replace(/\s/g, '-')); cl.textContent = 'Lien copié ✓'; };
+  const cl = document.getElementById('copylink'); if (cl) cl.onclick = () => { navigator.clipboard?.writeText('https://p360.app/' + norm(vcOf()).toLowerCase().replace(/\s/g, '-')); cl.textContent = 'Lien copié ✓'; };
   app.querySelectorAll('[data-fb]').forEach((b) => (b.onclick = () => { const i = +b.dataset.fb; fbSel.has(i) ? fbSel.delete(i) : fbSel.add(i); b.classList.toggle('on'); b.style.background = fbSel.has(i) ? 'var(--ink)' : ''; b.style.color = fbSel.has(i) ? '#fff' : ''; const v = VIDS.find((x) => x.id === +document.getElementById('fbv').value); const p = document.getElementById('fbprev'); p.classList.toggle('muted', !fbSel.size); p.innerHTML = fbSel.size ? `Yo ${v.monteur} 👋 Retours sur « ${v.title} » :<br>${[...fbSel].map((k) => '• ' + FB[k]).join('<br>')}<br>Merci 🙏` : 'Clique sur des remarques…'; }));
   const fs = document.getElementById('fbsend'); if (fs) fs.onclick = () => { fs.textContent = 'Envoyé sur Slack ✓'; fs.disabled = true; };
   const ms = document.getElementById('month'); if (ms) ms.onchange = () => { month = ms.value; render(); };
