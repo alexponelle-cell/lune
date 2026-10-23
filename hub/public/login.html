@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P360 Hub · Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:#F3F3F0; font:500 15px 'Plus Jakarta Sans', system-ui, sans-serif; color:#141414; }
+  form { background:#fff; border-radius:28px; padding:36px; width:min(380px, 92vw); box-shadow:0 30px 80px rgba(20,20,20,.08); text-align:center; animation:up .6s cubic-bezier(.2,.8,.2,1); }
+  @keyframes up { from { opacity:0; transform:translateY(16px); } }
+  .orb { width:64px; height:64px; border-radius:50%; margin:0 auto 18px; background:radial-gradient(circle at 30% 30%, #FFF3B0, #FCCA09 45%, #E09B00 80%); display:grid; place-items:center; animation:pulse 2.6s infinite; }
+  .orb i { width:7px; height:11px; border-radius:4px; background:#111; margin:0 3px; display:inline-block; }
+  @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(252,202,9,.45);} 70% { box-shadow:0 0 0 16px rgba(252,202,9,0);} 100% { box-shadow:0 0 0 0 rgba(252,202,9,0);} }
+  h1 { margin:0; font-size:24px; font-weight:800; letter-spacing:-.03em; } p { color:#8C8C85; margin:6px 0 22px; }
+  input { width:100%; border:1px solid #EAEAE5; background:#F6F6F2; border-radius:99px; padding:13px 18px; font:inherit; outline:none; }
+  input:focus { border-color:#FCCA09; box-shadow:0 0 0 4px rgba(252,202,9,.18); }
+  button { width:100%; margin-top:12px; border:0; border-radius:99px; padding:13px; background:#111; color:#fff; font:700 15px inherit; font-family:inherit; cursor:pointer; }
+  .err { color:#D9483B; margin:12px 0 0; }
+</style>
+</head>
+<body>
+<form method="post" action="/login">
+  <div class="orb"><i></i><i></i></div>
+  <h1>P360 Hub</h1>
+  <p>Agence PersonalBrand360</p>
+  <input type="password" name="password" placeholder="Mot de passe" autofocus required>
+  <button>Entrer</button>
+  <!--ERR-->
+</form>
+</body>
+</html>
