@@ -11,12 +11,15 @@ import type { Config } from './config.js';
 import type { Mailer } from './integrations/mail.js';
 import { Qonto, syncQonto } from './integrations/qonto.js';
 import { syncCalendar, type CalEvent } from './integrations/calendar.js';
+import { findSpots as realFindSpots, type SpotQuery, type SpotSearch } from './integrations/spotfinder.js';
 
 const ST_NAME: Record<Status, string> = { idee: 'Idée', script: 'Scripting', afilmer: 'À filmer', filme: 'Filmé', montage: 'En montage', avalider: 'À valider', modif: 'Modif', valide: 'Validé', planifie: 'Planifié', publie: 'Publié' };
 const page = (name: string) => readFileSync(new URL(`../public/${name}`, import.meta.url), 'utf8');
 
 export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (token: string) => Notion = (t) => new Notion(t), mail: Mailer | null = null,
-  ext: { makeQonto?: (login: string, secret: string) => Qonto; fetchImpl?: typeof fetch } = {}) {
+  ext: { makeQonto?: (login: string, secret: string) => Qonto; fetchImpl?: typeof fetch; findSpots?: (q: SpotQuery) => Promise<SpotSearch> } = {}) {
+  const findSpots = ext.findSpots ?? (cfg.ANTHROPIC_API_KEY ? (q: SpotQuery) => realFindSpots(q) : null);
+  let searching = false;
   const makeQonto = ext.makeQonto ?? ((l: string, s: string) => new Qonto(l, s));
   if (cfg.ADMIN_PASSWORD && !cfg.SESSION_SECRET) throw new Error('SESSION_SECRET manquant : sans lui, n’importe qui pourrait fabriquer une session (Railway → Variables)');
   /** Clé Notion : collée par Adrien dans le hub (Connexions), sinon variable NOTION_TOKEN. */
@@ -150,6 +153,26 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
   const mySpots = () => JSON.parse(hub.setting('my_spots') ?? '[]') as Array<z.infer<typeof spotBody>>;
   api.post('/spots', async (c) => { try { const s = spotBody.parse(await c.req.json()); hub.setSetting('my_spots', JSON.stringify([...mySpots(), s].slice(-50))); return c.json(state()); } catch (e) { return fail(c, e); } });
   api.post('/spots/:i/remove', (c) => { const l = mySpots(); l.splice(+c.req.param('i'), 1); hub.setSetting('my_spots', JSON.stringify(l)); return c.json(state()); });
+  // Recherche par photo de référence (Claude + recherche web) : 30 par jour max pour plafonner le coût
+  api.post('/spots/find', async (c) => {
+    if (!findSpots) return fail(c, new Error('Recherche par photo pas encore branchée (ANTHROPIC_API_KEY dans Railway)'));
+    if (searching) return fail(c, new Error('Une recherche est déjà en cours, patiente quelques secondes'));
+    let mine = false;
+    try {
+      const b = z.object({ image: z.string().max(6_000_000).optional(), text: z.string().trim().max(500).default(''), city: z.string().trim().min(2).max(60).default('Paris'),
+        budget: z.string().trim().max(60).default('30-50 €/h'), people: z.number().int().min(1).max(20).default(2), when: z.string().trim().max(60).optional() }).parse(await c.req.json());
+      const m = b.image?.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/);
+      if (b.image && !m) throw new Error('Image non reconnue (jpg, png ou webp)');
+      if (!m && !b.text) throw new Error('Envoie une photo de référence ou décris ce que tu veux');
+      const day = new Date().toISOString().slice(0, 10), used = JSON.parse(hub.setting('spot_quota') ?? '{}') as Record<string, number>;
+      if ((used[day] ?? 0) >= 30) throw new Error('30 recherches aujourd’hui : reprends demain');
+      hub.setSetting('spot_quota', JSON.stringify({ [day]: (used[day] ?? 0) + 1 }));
+      searching = true; mine = true;
+      const result = await findSpots({ text: b.text, city: b.city, budget: b.budget, people: b.people, when: b.when, ...(m ? { image: { mediaType: m[1] as 'image/jpeg', data: m[2]! } } : {}) });
+      hub.setSetting('spot_last', JSON.stringify({ at: Date.now(), query: { text: b.text, city: b.city, budget: b.budget, people: b.people }, result }));
+      return c.json({ result, state: state() });
+    } catch (e) { return fail(c, e); } finally { if (mine) searching = false; }
+  });
   api.post('/calendar/disconnect', (c) => { hub.db.prepare("DELETE FROM settings WHERE key IN ('gcal_url', 'gcal_events')").run(); return c.json(state()); });
   // --- Espace client (lien perso, sans compte) ------------------------------------------
   app.get('/api/portal/:token', (c) => { const cl = hub.clientByToken(c.req.param('token')); return cl ? c.json(portalState(cl.id)) : c.json({ error: 'Lien invalide' }, 404); });
@@ -209,7 +232,7 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
   const dup = (e: unknown) => (e instanceof Error && /UNIQUE/.test(e.message) ? new Error('Ce nom existe déjà') : e);
 
   function state() {
-    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo(), undoMs: UNDO_MS, integrations: { slack: !!cfg.SLACK_WEBHOOK_URL, mail: !!mail }, mode: cfg.HUB_MODE, mySpots: JSON.parse(hub.setting('my_spots') ?? '[]'),
+    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo(), undoMs: UNDO_MS, integrations: { slack: !!cfg.SLACK_WEBHOOK_URL, mail: !!mail }, mode: cfg.HUB_MODE, spotAI: !!findSpots, spotLast: JSON.parse(hub.setting('spot_last') ?? 'null'), mySpots: JSON.parse(hub.setting('my_spots') ?? '[]'),
       qonto: { connected: !!hub.setting('qonto_secret'), lastSync: Number(hub.setting('qonto_last_sync') ?? 0) || null },
       calendar: { connected: !!hub.setting('gcal_url'), lastSync: Number(hub.setting('gcal_last_sync') ?? 0) || null, events: JSON.parse(hub.setting('gcal_events') ?? '[]') as CalEvent[] } };
   }

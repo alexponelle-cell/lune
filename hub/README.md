@@ -41,6 +41,8 @@ SEED_DEMO=1 ADMIN_PASSWORD=test1234 SESSION_SECRET=une-longue-phrase-secrete npm
 - **Qonto** (API officielle, lecture seule) : identifiant + clé secrète collés par Adrien dans Connexions, import toutes les heures, sans doublons.
 - **Google Agenda** : « adresse secrète au format iCal » collée dans Connexions, événements dans le Planning (toutes les 15 min). Les événements répétés ne sont pas dépliés.
 
+- **Spots par photo de référence** : Adrien dépose une capture (« je veux comme lui ») → Claude décrit le style, cherche de vrais lieux à louer sur le web (Peerspace, Giggster, studios…), les classe par ressemblance et rédige le message pour le studio. Variable `ANTHROPIC_API_KEY` (≈ 10-25 centimes par recherche, 30 par jour max). Sans la clé : liste des studios + recherche rapide.
+
 ## À brancher ensuite
 
 - ~~Notion~~ : fait (page Connexions : clé collée par Adrien, synchro toutes les 10 min, « Validé » / modif renvoyés dans Notion).

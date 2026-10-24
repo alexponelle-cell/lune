@@ -308,3 +308,41 @@ describe('banque et agenda', () => {
     expect((await app.request('/api/calendar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: 'http://exemple.fr/a.ics' }) })).status).toBe(400);
   });
 });
+
+describe('spots par photo de référence', () => {
+  const result = { style: 'Bureau boisé, lumière chaude', tags: ['bois', 'lumière chaude'], keywords: ['studio podcast bois Paris'], brief: 'Bonjour…',
+    spots: [{ name: 'Studio Test', place: 'Paris 11e', pricePerHour: 45, priceText: '45 €/h', url: 'https://exemple.fr/studio', match: 88, why: 'Étagères en bois' }] };
+
+  it('cherche avec la photo, garde le dernier résultat, refuse sans photo ni texte', async () => {
+    const hub = new Hub(':memory:');
+    const seen: Array<{ image?: { mediaType: string }; text: string }> = [];
+    const app = createApp(hub, loadConfig({}), async () => {}, undefined, null, { findSpots: async (q) => { seen.push(q); return result; } });
+    const post = (body: unknown) => app.request('/api/spots/find', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await post({ image: 'data:image/jpeg;base64,AAAA', text: '', people: 2 });
+    expect(r.status).toBe(200);
+    expect(seen[0]!.image!.mediaType).toBe('image/jpeg');
+    const st = ((await r.json()) as { state: { spotAI: boolean; spotLast: { result: typeof result } } }).state;
+    expect(st.spotAI).toBe(true);
+    expect(st.spotLast.result.spots[0]!.name).toBe('Studio Test');
+    expect((await post({ text: '' })).status).toBe(400);
+    expect((await post({ image: 'data:text/html;base64,AAAA' })).status).toBe(400);
+  });
+
+  it('sans clé Claude : fonction indiquée « à brancher »', async () => {
+    const app = createApp(new Hub(':memory:'), loadConfig({}), async () => {});
+    const r = await app.request('/api/spots/find', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'bois' }) });
+    expect(r.status).toBe(400);
+    expect(((await r.json()) as { error: string }).error).toContain('ANTHROPIC_API_KEY');
+  });
+
+  it('relance après une pause de la recherche web, puis lit le JSON', async () => {
+    const { findSpots } = await import('../src/integrations/spotfinder.js');
+    const calls: Array<{ messages: unknown[]; model: string }> = [];
+    const replies = [{ stop_reason: 'pause_turn', content: [{ type: 'text', text: '…' }], parsed_output: null }, { stop_reason: 'end_turn', content: [], parsed_output: result }];
+    const client = { beta: { messages: { parse: async (p: { messages: unknown[]; model: string }) => { calls.push({ ...p, messages: [...p.messages] }); return replies.shift(); } } } };
+    expect(await findSpots({ text: 'bois', city: 'Paris', budget: '30-50 €/h', people: 2 }, client as never)).toEqual(result);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]!.model).toBe('claude-opus-5-5');
+    expect(calls[1]!.messages).toHaveLength(2);
+  });
+});
