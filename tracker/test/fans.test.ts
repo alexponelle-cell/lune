@@ -921,6 +921,13 @@ describe('parcours complet d’un nouveau clippeur SQUIDUU (réglages par défau
     expect([...fans.firstClipDone()]).toEqual(['111']);
     expect(fans.balance(fan.id)).toMatchObject({ views: 2_000_000, earned: 20_000 });
     expect(fans.overview().fans[0]!.refused).toHaveLength(1);
+    // Le staff vérifie le clip refusé à la main : il compte, et la revérification ne l'annule pas
+    const clipId = fans.overview().fans[0]!.refused[0]!.videoId;
+    expect(fans.fans.approveClip(clipId, fans.settings().clientId!)).toBe(true);
+    fans.checkClips();
+    expect(fans.overview().fans[0]!.refused).toHaveLength(0);
+    expect(fans.balance(fan.id).views).toBe(2_500_000);
+    expect(fans.fans.approveClip(clipId, 999_999)).toBe(false); // pas un clip de ce créateur
 
     // 5. Achat → à valider (pas livré) → validé → part à l'API e-mail
     const item = fans.fans.items()[0]!;
@@ -932,7 +939,7 @@ describe('parcours complet d’un nouveau clippeur SQUIDUU (réglages par défau
     expect(fans.fans.pendingForEmail().map((o) => o.email)).toEqual(['paul@mail.com']);
     const grant = new EmailGrantClient('https://api.test', 'k', (async () => new Response('{}', { status: 200 })) as never);
     expect(await deliverEmailOrders(grant, fans.fans)).toEqual({ livrées: 1, échecs: 0 });
-    expect(fans.balance(fan.id).balance).toBe(10_000);
+    expect(fans.balance(fan.id).balance).toBe(15_000); // 25 000 gagnés (dont le clip validé à la main) − 10 000
   });
 });
 

@@ -843,7 +843,7 @@ export class FanService {
       const from = this.countFrom();
       if (clip.publishedAt !== null && clip.publishedAt < clip.accountCreatedAt && (from === null || clip.publishedAt < from))
         reasons.push(from === null ? 'il a été publié **avant ton inscription** (seuls les nouveaux clips rapportent)' : `il a été publié **avant le ${this.countFromLabel()}**`);
-      if (ruleSince && clip.publishedAt !== null && clip.publishedAt >= ruleSince && clip.clipCheck !== 'ok') reasons.push(`sa légende ne contient pas **${tag}** (ajoute-le, il sera repris au prochain relevé)`);
+      if (ruleSince && clip.publishedAt !== null && clip.publishedAt >= ruleSince && clip.clipCheck !== 'ok') reasons.push(`sa légende ne contient pas **${tag}** (ajoute-le : relu au prochain relevé, ou demande au staff)`);
       const gained = from !== null && clip.publishedAt !== null && clip.publishedAt >= from ? clip.views : clip.gained;
       if (!reasons.length) return [`✅ Ce clip compte ! **${fmt(clip.views)} vues**${gained === clip.views ? '' : ` dont ${fmt(gained)} depuis le suivi`} → **+${fmt(this.points(gained))} coins** 🪙`];
       return [`❌ Ce clip (${fmt(clip.views)} vues) ne rapporte pas de coins parce que :`, ...reasons.map((r) => `• ${r}`)];

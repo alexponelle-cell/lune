@@ -163,7 +163,8 @@ export class FanRepo {
         `SELECT v.id, v.title, v.clip_check AS "check" FROM videos v
            JOIN accounts a ON a.id = v.account_id AND a.active = 1
            JOIN clippers c ON c.id = a.clipper_id
-          WHERE c.client_id = ? AND v.published_at >= ? AND v.published_at >= a.created_at`,
+          WHERE c.client_id = ? AND v.published_at >= ? AND v.published_at >= a.created_at
+            AND COALESCE(v.clip_reason, '') <> 'validé par le staff'`,
       )
       .all(clientId, since) as Array<{ id: number; title: string | null; check: 'ok' | 'no' | null }>;
   }
@@ -173,16 +174,22 @@ export class FanRepo {
   }
 
   /** Clips refusés (légende sans le créateur), par fan (affichés dans Mars). */
-  refusedClips(clientId: number): Map<number, Array<{ title: string | null; url: string | null; reason: string | null }>> {
+  /** Le staff a vérifié le clip à la main (ex. légende corrigée mais plus relue par Apify) : il compte, et n'est plus revérifié. */
+  approveClip(videoId: number, clientId: number): boolean {
+    return this.db.prepare(`UPDATE videos SET clip_check = 'ok', clip_reason = 'validé par le staff'
+      WHERE id = ? AND account_id IN (SELECT a.id FROM accounts a JOIN clippers c ON c.id = a.clipper_id WHERE c.client_id = ?)`).run(videoId, clientId).changes > 0;
+  }
+
+  refusedClips(clientId: number): Map<number, Array<{ videoId: number; title: string | null; url: string | null; reason: string | null }>> {
     const rows = this.db
       .prepare(
-        `SELECT a.clipper_id AS id, v.title, v.url, v.clip_reason AS reason FROM videos v
+        `SELECT a.clipper_id AS id, v.id AS videoId, v.title, v.url, v.clip_reason AS reason FROM videos v
            JOIN accounts a ON a.id = v.account_id JOIN clippers c ON c.id = a.clipper_id
           WHERE c.client_id = ? AND v.clip_check = 'no' ORDER BY v.views DESC`,
       )
-      .all(clientId) as Array<{ id: number; title: string | null; url: string | null; reason: string | null }>;
-    const out = new Map<number, Array<{ title: string | null; url: string | null; reason: string | null }>>();
-    for (const r of rows) out.set(r.id, [...(out.get(r.id) ?? []), { title: r.title, url: r.url, reason: r.reason }]);
+      .all(clientId) as Array<{ id: number; videoId: number; title: string | null; url: string | null; reason: string | null }>;
+    const out = new Map<number, Array<{ videoId: number; title: string | null; url: string | null; reason: string | null }>>();
+    for (const r of rows) out.set(r.id, [...(out.get(r.id) ?? []), { videoId: r.videoId, title: r.title, url: r.url, reason: r.reason }]);
     return out;
   }
 

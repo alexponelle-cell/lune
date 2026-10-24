@@ -96,7 +96,7 @@ export function faqAnswer(intent: FaqIntent, info: FaqInfo, diagnosis: string[] 
         : `Pour qu'un clip rapporte des coins 🪙 :\n• il est posté sur un compte **relié** (et vérifié)\n• il est ${after}${tagLine}\nLes vues sont relevées **chaque nuit**, donc les coins arrivent le lendemain.`;
     case 'tag':
       if (!info.tag) return `Pas de #tag obligatoire ici 🙌 Poste tes clips de ${info.creatorName} sur un compte relié, ils comptent tous.`;
-      return `Mets **${info.tag}** dans la légende de **chaque clip** ✍️ Sans ça, le clip ne rapporte aucun coin (c'est comme ça qu'on sait qu'il parle de ${info.creatorName}).\nTu peux modifier la légende d'un clip déjà posté : il sera repris au prochain relevé.`;
+      return `Mets **${info.tag}** dans la légende de **chaque clip** ✍️ Sans ça, le clip ne rapporte aucun coin (c'est comme ça qu'on sait qu'il parle de ${info.creatorName}).\nTu peux modifier la légende d'un clip déjà posté : elle est relue au prochain relevé (si ton TikTok n'est pas **connecté** sur le site, seuls tes 5 derniers clips sont relus : connecte-le, ou demande au staff de valider le clip).`;
     case 'link':
       return `Pour relier tes comptes TikTok / Insta / YouTube : va dans **📝│inscription** et clique sur **S'inscrire** 🔗\n${info.countFrom ? `Tous tes clips postés **depuis le ${info.countFrom}** comptent, même ceux d'avant ton inscription.` : `Seules les vues des clips postés **après** l'inscription comptent.`}${official}`;
     case 'connect':

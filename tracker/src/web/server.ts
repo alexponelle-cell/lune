@@ -1090,6 +1090,11 @@ export function createApp(deps: WebDeps): Hono {
     fans.fans.addBonus(Number(c.req.param('id')), amount);
     return c.json({ ok: true });
   });
+  // Clip refusé (pas de #tag lu) vérifié à la main par le staff : il compte
+  app.post('/api/fans/clips/:id/approve', (c) => {
+    const clientId = fans.settings().clientId;
+    return clientId && fans.fans.approveClip(Number(c.req.param('id')), clientId) ? c.json({ ok: true }) : c.json({ error: 'Clip introuvable' }, 404);
+  });
   // Nouveau compte d'un fan : validé (ses vues comptent) ou refusé (retiré du suivi)
   app.post('/api/fans/accounts/:id/review', async (c) => {
     const { ok } = z.object({ ok: z.boolean() }).parse(await c.req.json());
