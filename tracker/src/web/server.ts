@@ -338,6 +338,9 @@ export function createApp(deps: WebDeps): Hono {
     app.get(`/${v.file.replace(/^\/+/, '')}`, (c) => c.text(v.content));
   }
 
+  // Vérification du site par Google (Search Console, exigée pour valider « Connecter mon YouTube ») : pas secret
+  app.get('/googleb4c9e6a13d5b1d3b.html', (c) => c.text('google-site-verification: googleb4c9e6a13d5b1d3b.html'));
+
   // Maquettes pour les calls prospects : le vrai site fans à la charte du prospect, données d'exemple, sans connexion
   app.get('/demo/:slug', (c) => {
     const html = demoPage(ASSETS.fanSober, c.req.param('slug'), (f) => `/demo/assets/${f}`);
