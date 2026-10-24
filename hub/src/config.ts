@@ -17,6 +17,8 @@ const schema = z.object({
   MAIL_FROM: z.string().optional(),
   /** Clé d'intégration Notion (sinon collée par Adrien dans le hub, page Connexions). */
   NOTION_TOKEN: z.string().optional(),
+  /** « perso » = espace perso d'Adrien (compta, planning, spots, clients) ; « agence » = tout (vidéos, espace client, SAV). */
+  HUB_MODE: z.enum(['perso', 'agence']).default('agence'),
   /** 1 = remplit la base avec des données d'exemple si elle est vide (démo). */
   SEED_DEMO: z.string().optional(),
 });

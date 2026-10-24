@@ -260,3 +260,51 @@ describe('serveur (suite)', () => {
     expect(hub.video(id)!.status).toBe('avalider');
   });
 });
+
+describe('banque et agenda', () => {
+  it('lit un agenda Google (.ics) : heure de Paris, journée entière, lignes coupées, annulés ignorés', async () => {
+    const { parseIcs } = await import('../src/integrations/calendar.js');
+    const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART;TZID=Europe/Paris:20261025T140000', 'DTEND;TZID=Europe/Paris:20261025T170000', 'SUMMARY:Tournage T6 Elie', 'LOCATION:Studio\\, Paris 9e', 'END:VEVENT',
+      'BEGIN:VEVENT', 'DTSTART:20261028T090000Z', 'SUMMARY:Call Sabrina avec un titre tr', ' ès long', 'END:VEVENT',
+      'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20261101', 'SUMMARY:Férié', 'END:VEVENT',
+      'BEGIN:VEVENT', 'DTSTART:20261029T090000Z', 'SUMMARY:Annulé', 'STATUS:CANCELLED', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    const ev = parseIcs(ics);
+    expect(ev.map((e) => e.title)).toEqual(['Tournage T6 Elie', 'Call Sabrina avec un titre très long', 'Férié']);
+    expect(ev[0]).toMatchObject({ start: Date.UTC(2026, 9, 25, 13), place: 'Studio, Paris 9e', allDay: false }); // 14 h à Paris = 13 h UTC (heure d'hiver le 25 oct)
+    expect(ev[1]!.start).toBe(Date.UTC(2026, 9, 28, 9));
+    expect(ev[2]).toMatchObject({ allDay: true, start: Date.UTC(2026, 9, 31, 23) });
+  });
+
+  it('Qonto : importe les mouvements (débit / crédit), sans doublon à la synchro suivante', async () => {
+    const { Qonto, syncQonto } = await import('../src/integrations/qonto.js');
+    const seen: string[] = [];
+    const f = (async (url: string, init: RequestInit) => {
+      seen.push(String((init.headers as Record<string, string>).authorization));
+      const json = (j: unknown) => new Response(JSON.stringify(j), { status: 200 });
+      if (url.includes('/organization')) return json({ organization: { bank_accounts: [{ id: 'acc1', iban: 'FR76' }] } });
+      return json({ transactions: [
+        { transaction_id: 't1', amount: 1500, side: 'credit', label: 'ELIE ATTIA', settled_at: '2026-10-03T10:00:00Z' },
+        { transaction_id: 't2', amount: 10, side: 'debit', label: 'NOTION LABS', settled_at: '2026-10-05T10:00:00Z' },
+      ], meta: { next_page: null } });
+    }) as unknown as typeof fetch;
+    const hub = new Hub(':memory:');
+    hub.addClient('Elie Attia', 1500);
+    const q = new Qonto('agence-1234', 'cle-secrete', f);
+    expect(await syncQonto(hub, q)).toEqual({ added: 2, total: 2 });
+    expect(await syncQonto(hub, q)).toEqual({ added: 0, total: 2 });
+    expect(hub.transactions()).toMatchObject([{ amount: 1500, cat: 'client', who: 'Elie Attia', source: 'qonto' }, { amount: -10, cat: 'outil' }]);
+    expect(seen[0]).toBe('agence-1234:cle-secrete');
+  });
+
+  it('mode perso et agenda relié via le hub', async () => {
+    const hub = new Hub(':memory:');
+    const f = (async () => new Response('BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:' + new Date(Date.now() + 86_400_000).toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z\nSUMMARY:Tournage\nEND:VEVENT\nEND:VCALENDAR', { status: 200 })) as unknown as typeof fetch;
+    const app = createApp(hub, loadConfig({ HUB_MODE: 'perso' }), async () => {}, undefined, null, { fetchImpl: f });
+    const r = await app.request('/api/calendar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: 'https://calendar.google.com/calendar/ical/x/private-y/basic.ics' }) });
+    const j = (await r.json()) as { events: number; state: { mode: string; calendar: { events: Array<{ title: string }> } } };
+    expect(j.events).toBe(1);
+    expect(j.state.mode).toBe('perso');
+    expect(j.state.calendar.events[0]!.title).toBe('Tournage');
+    expect((await app.request('/api/calendar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: 'http://exemple.fr/a.ics' }) })).status).toBe(400);
+  });
+});

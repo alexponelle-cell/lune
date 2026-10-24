@@ -142,14 +142,14 @@ export class Hub {
   }
 
   /** Importe des mouvements bancaires (CSV ou Qonto). Les doublons (même date, libellé, montant) sont ignorés. Renvoie le nombre ajouté. */
-  importTx(rows: TxInput[], source = 'csv'): number {
+  importTx(rows: Array<TxInput & { id?: string }>, source = 'csv'): number {
     const clients = this.clients().map((c) => c.name), monteurs = this.monteurs().map((m) => m.name), learned = this.learned();
     const ins = this.db.prepare('INSERT OR IGNORE INTO transactions (date, label, amount, cat, who, source, ext_id) VALUES (?, ?, ?, ?, ?, ?, ?)');
     let n = 0;
     this.db.transaction(() => {
       for (const r of rows) {
         const c = classify(r, clients, monteurs, learned);
-        n += ins.run(c.date, c.label, c.amount, c.cat, c.who, source, `${source}:${c.date}:${c.amount}:${c.label}`).changes;
+        n += ins.run(c.date, c.label, c.amount, c.cat, c.who, source, r.id ? `${source}:${r.id}` : `${source}:${c.date}:${c.amount}:${c.label}`).changes;
       }
     })();
     return n;

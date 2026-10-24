@@ -20,6 +20,7 @@ SEED_DEMO=1 ADMIN_PASSWORD=test1234 SESSION_SECRET=une-longue-phrase-secrete npm
 3. Variables : `DATABASE_PATH=/data/hub.db`, `ADMIN_PASSWORD` (choisi par Adrien), `SESSION_SECRET` (longue phrase au hasard),
    `PUBLIC_URL` (adresse du service), `SLACK_WEBHOOK_URL` (facultatif), `SEED_DEMO=1` seulement pour une démo.
    E-mails aux clients (relances) : `SMTP_URL` (ex. Gmail + mot de passe d'application : `smtps://adresse%40gmail.com:motdepasse@smtp.gmail.com:465`), `MAIL_FROM` facultatif.
+   `HUB_MODE=perso` pour l'espace perso d'Adrien (Compta, Planning, Spots, Clients & monteurs, Connexions) ; par défaut tout est affiché.
    Sans `SESSION_SECRET`, le hub refuse de démarrer (sinon n'importe qui pourrait fabriquer une session).
 4. Start command : `npm start`.
 
@@ -37,9 +38,11 @@ SEED_DEMO=1 ADMIN_PASSWORD=test1234 SESSION_SECRET=une-longue-phrase-secrete npm
 - Page **Clients & monteurs** : prix / mois, e-mail, Instagram, tarif par vidéo, ID Slack.
 - Notion : statut du hub renvoyé à la synchro suivante si Notion était en panne ; les vidéos déjà validées à l'import ne comptent pas dans la paie ; date de rendu → relance monteur.
 
+- **Qonto** (API officielle, lecture seule) : identifiant + clé secrète collés par Adrien dans Connexions, import toutes les heures, sans doublons.
+- **Google Agenda** : « adresse secrète au format iCal » collée dans Connexions, événements dans le Planning (toutes les 15 min). Les événements répétés ne sont pas dépliés.
+
 ## À brancher ensuite
 
 - ~~Notion~~ : fait (page Connexions : clé collée par Adrien, synchro toutes les 10 min, « Validé » / modif renvoyés dans Notion).
-- **Qonto** : mouvements en lecture seule (clé collée par Adrien dans l'outil).
 - **Instagram** des clients : vues des reels (connexion officielle quand Meta aura validé l'app ; sinon Apify).
 - Envoi du rapport mensuel par e-mail (aujourd'hui : lien sur Slack).

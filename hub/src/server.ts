@@ -9,11 +9,15 @@ import type { Notify } from './integrations/slack.js';
 import { Notion, syncNotion, mapOfDb, type DbMap } from './integrations/notion.js';
 import type { Config } from './config.js';
 import type { Mailer } from './integrations/mail.js';
+import { Qonto, syncQonto } from './integrations/qonto.js';
+import { syncCalendar, type CalEvent } from './integrations/calendar.js';
 
 const ST_NAME: Record<Status, string> = { idee: 'Idée', script: 'Scripting', afilmer: 'À filmer', filme: 'Filmé', montage: 'En montage', avalider: 'À valider', modif: 'Modif', valide: 'Validé', planifie: 'Planifié', publie: 'Publié' };
 const page = (name: string) => readFileSync(new URL(`../public/${name}`, import.meta.url), 'utf8');
 
-export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (token: string) => Notion = (t) => new Notion(t), mail: Mailer | null = null) {
+export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (token: string) => Notion = (t) => new Notion(t), mail: Mailer | null = null,
+  ext: { makeQonto?: (login: string, secret: string) => Qonto; fetchImpl?: typeof fetch } = {}) {
+  const makeQonto = ext.makeQonto ?? ((l: string, s: string) => new Qonto(l, s));
   if (cfg.ADMIN_PASSWORD && !cfg.SESSION_SECRET) throw new Error('SESSION_SECRET manquant : sans lui, n’importe qui pourrait fabriquer une session (Railway → Variables)');
   /** Clé Notion : collée par Adrien dans le hub (Connexions), sinon variable NOTION_TOKEN. */
   const notionToken = () => hub.setting('notion_token') ?? cfg.NOTION_TOKEN ?? null;
@@ -112,6 +116,36 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
     try { const r = await syncNotion(hub, n); return c.json({ ...r, state: state() }); } catch (e) { return fail(c, e); }
   });
   api.post('/notion/disconnect', (c) => { hub.db.prepare("DELETE FROM settings WHERE key IN ('notion_token', 'notion_dbs')").run(); return c.json(state()); });
+  // --- Banque Qonto (lecture seule) et Google Agenda : clés collées par Adrien, gardées dans la base ---
+  api.post('/qonto', async (c) => {
+    try {
+      const { login, secret } = z.object({ login: z.string().trim().min(3).max(200), secret: z.string().trim().min(8).max(200) }).parse(await c.req.json());
+      const r = await syncQonto(hub, makeQonto(login, secret)); // vérifie la clé en important tout de suite
+      hub.setSetting('qonto_login', login); hub.setSetting('qonto_secret', secret);
+      hub.log('qonto', `Qonto connecté : ${r.added} mouvement(s) importé(s)`, null, false);
+      return c.json({ ...r, state: state() });
+    } catch (e) { return fail(c, e); }
+  });
+  api.post('/qonto/sync', async (c) => {
+    const l = hub.setting('qonto_login'), s = hub.setting('qonto_secret');
+    if (!l || !s) return fail(c, new Error('Qonto n’est pas encore connecté'));
+    try { const r = await syncQonto(hub, makeQonto(l, s)); return c.json({ ...r, state: state() }); } catch (e) { return fail(c, e); }
+  });
+  api.post('/qonto/disconnect', (c) => { hub.db.prepare("DELETE FROM settings WHERE key IN ('qonto_login', 'qonto_secret')").run(); return c.json(state()); });
+  api.post('/calendar', async (c) => {
+    try {
+      const { url } = z.object({ url: z.string().trim().url().max(1000) }).parse(await c.req.json());
+      const n = await syncCalendar(hub, url, Date.now(), ext.fetchImpl);
+      hub.setSetting('gcal_url', url);
+      return c.json({ events: n, state: state() });
+    } catch (e) { return fail(c, e); }
+  });
+  api.post('/calendar/sync', async (c) => {
+    const url = hub.setting('gcal_url');
+    if (!url) return fail(c, new Error('Google Agenda n’est pas encore relié'));
+    try { const n = await syncCalendar(hub, url, Date.now(), ext.fetchImpl); return c.json({ events: n, state: state() }); } catch (e) { return fail(c, e); }
+  });
+  api.post('/calendar/disconnect', (c) => { hub.db.prepare("DELETE FROM settings WHERE key IN ('gcal_url', 'gcal_events')").run(); return c.json(state()); });
   // --- Espace client (lien perso, sans compte) ------------------------------------------
   app.get('/api/portal/:token', (c) => { const cl = hub.clientByToken(c.req.param('token')); return cl ? c.json(portalState(cl.id)) : c.json({ error: 'Lien invalide' }, 404); });
   app.post('/api/portal/:token/videos/:id/:action', async (c) => {
@@ -170,7 +204,9 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
   const dup = (e: unknown) => (e instanceof Error && /UNIQUE/.test(e.message) ? new Error('Ce nom existe déjà') : e);
 
   function state() {
-    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo(), undoMs: UNDO_MS, integrations: { slack: !!cfg.SLACK_WEBHOOK_URL, mail: !!mail } };
+    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo(), undoMs: UNDO_MS, integrations: { slack: !!cfg.SLACK_WEBHOOK_URL, mail: !!mail }, mode: cfg.HUB_MODE,
+      qonto: { connected: !!hub.setting('qonto_secret'), lastSync: Number(hub.setting('qonto_last_sync') ?? 0) || null },
+      calendar: { connected: !!hub.setting('gcal_url'), lastSync: Number(hub.setting('gcal_last_sync') ?? 0) || null, events: JSON.parse(hub.setting('gcal_events') ?? '[]') as CalEvent[] } };
   }
   const notionInfo = () => ({ connected: !!notionToken(), lastSync: Number(hub.setting('notion_last_sync') ?? 0) || null, bases: (JSON.parse(hub.setting('notion_dbs') ?? '[]') as DbMap[]).map((m) => ({ client: m.client, title: m.title })) });
   function portalState(clientId: number) {

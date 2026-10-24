@@ -7,6 +7,8 @@ import { runReminders } from './jobs.js';
 import { createApp } from './server.js';
 import { Notion, syncNotion } from './integrations/notion.js';
 import { smtpMailer } from './integrations/mail.js';
+import { Qonto, syncQonto } from './integrations/qonto.js';
+import { syncCalendar } from './integrations/calendar.js';
 
 const cfg = loadConfig();
 const hub = new Hub(cfg.DATABASE_PATH);
@@ -27,3 +29,10 @@ setInterval(tick, 3_600_000);
 const syncTick = () => { const t = hub.setting('notion_token') ?? cfg.NOTION_TOKEN; if (t) syncNotion(hub, new Notion(t)).catch((e) => console.error('[notion]', e instanceof Error ? e.message : e)); };
 setInterval(syncTick, 600_000);
 setTimeout(syncTick, 15_000);
+
+// Banque Qonto toutes les heures, Google Agenda toutes les 15 minutes (si reliés)
+const log = (what: string) => (e: unknown) => console.error(`[${what}]`, e instanceof Error ? e.message : e);
+const qontoTick = () => { const l = hub.setting('qonto_login'), s = hub.setting('qonto_secret'); if (l && s) syncQonto(hub, new Qonto(l, s)).catch(log('qonto')); };
+const calTick = () => { const u = hub.setting('gcal_url'); if (u) syncCalendar(hub, u).catch(log('agenda')); };
+setInterval(qontoTick, 3_600_000); setTimeout(qontoTick, 20_000);
+setInterval(calTick, 900_000); setTimeout(calTick, 10_000);
