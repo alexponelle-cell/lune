@@ -584,9 +584,34 @@ const SPOTS = [
   { n: 'Loft Lumière', q: 'Paris 18e', p: 35, pl: 6, eq: 'lumière naturelle · micros', h: 38 }, { n: 'Bureau Club', q: 'Paris 8e', p: 50, pl: 4, eq: 'fauteuils cuir · 3 caméras', h: 20 }, { n: 'Podcast Box', q: 'Paris 2e', p: 30, pl: 2, eq: 'cabine insonorisée', h: 220 },
 ];
 let spotImg = null, spotDone = false;
+/** Studios podcast à Paris : prix relevés sur leurs sites le 24 oct 2026 (à revérifier avant de réserver). */
+const STUDIOS = [
+  { n: 'Studiomatic', q: 'Bastille (11e)', p: 35, l: '35 €/h', inc: 'Libre-service · 3 caméras Mevo 1080p', u: 'https://www.studiomatic.co/en/studio-podcast-paris' },
+  { n: 'ForCast.studio', q: 'Paris 12e', p: 60, l: 'dès 60 € TTC/h (1 caméra) · 99 € TTC/h (3 caméras 4K + montage)', inc: '1 à 3 caméras', u: 'https://www.forcast.studio/' },
+  { n: 'Virtual Podcast Studio', q: 'Paris 19e', p: 80, l: '80 €/h en autonomie · 100 €/h avec technicien (TTC)', inc: '2 ou 3 caméras', u: 'https://www.virtualpodcaststudio.fr/' },
+  { n: 'Studio Podcast & Vidéo', q: 'Paris 6e', p: 102, l: '85 € HT (102 € TTC)/h · fichiers bruts', inc: '3 caméras + opérateur', u: 'https://studiosdepodcast.fr/' },
+  { n: 'Podmax', q: 'Paris 9e', p: 99, l: '99 € la 1re heure', inc: '3 caméras Sony 4K + opérateur', u: 'https://www.podmax.fr/' },
+  { n: 'Mumbo', q: 'Paris 2e', p: 120, l: '100 € HT/h', inc: '3 caméras Sony A7IV, 4 micros, opérateur', u: 'https://www.mumbo.fr/' },
+  { n: 'Underground Podcast', q: 'Paris', p: 125, l: 'dès 125 €/h', inc: '4 décors · 3 caméras + technicien', u: 'https://undergroundpodcast.fr/studio-podcast-paris/' },
+  { n: 'Paris Anim’ Beaujon (Ville de Paris)', q: 'Paris 8e', p: 0, l: 'tarif municipal sur demande', inc: 'Plusieurs caméras · souvent le moins cher', u: 'https://www.paris.fr/activites/studio-podcast-125739' },
+  { n: 'Peerspace (annonces)', q: 'tout Paris', p: 0, l: 'variable selon l’annonce', inc: 'Lofts, bureaux, studios à l’heure', u: 'https://www.peerspace.com/fr/spaces/fr/paris--%C3%AEle-de-france/podcast-studio' },
+];
+let spotMax = 0;
+function studiosCard() {
+  const mine = (RAW.mySpots ?? []).map((s, i) => ({ n: s.name, q: s.place, p: s.price, l: s.price ? `${s.price} €/h` : '', inc: s.note || 'Ton favori', u: s.url, mine: i }));
+  const list = [...mine, ...STUDIOS.filter((s) => !spotMax || (s.p && s.p <= spotMax)).sort((a, b) => (a.p || 999) - (b.p || 999))];
+  return `<div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3><span class="ic">${ic('mic', 16)}</span>Studios podcast à Paris</h3>
+      <select id="spmax" class="sel">${[[0, 'Tous les prix'], [50, '≤ 50 €/h'], [100, '≤ 100 €/h']].map(([v, l]) => `<option value="${v}" ${spotMax === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    ${list.map((s) => `<div class="li" style="flex-wrap:wrap"><div class="grow" style="min-width:220px"><b>${s.mine !== undefined ? '⭐ ' : ''}${esc(s.n)}</b> <span class="muted small">· ${esc(s.q)}</span><small>${esc(s.inc)}</small></div>
+      <b class="small" style="max-width:260px;text-align:right">${esc(s.l)}</b>
+      <div class="row" style="gap:6px;flex-wrap:nowrap">${s.u ? `<a class="btn sm" href="${esc(s.u)}" target="_blank" rel="noopener">Voir / réserver</a>` : ''}<button class="btn sm y" data-note="${esc(JSON.stringify({ n: s.n, q: s.q, p: s.p }))}">J'ai réservé</button>${s.mine !== undefined ? `<button class="btn sm ghost" data-unfav="${s.mine}">✕</button>` : ''}</div></div>`).join('')}
+    <p class="muted small" style="margin-top:8px">Prix relevés sur les sites des studios le 24 oct 2026 : vérifie avant de réserver (HT / TTC, opérateur, montage).</p>
+    <details style="margin-top:6px"><summary class="small" style="cursor:pointer"><b>+ Ajouter un favori</b> (ex. le studio de Bobby)</summary>
+      <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${['fvn|Nom', 'fvq|Quartier', 'fvp|€/h', 'fvu|Lien (facultatif)', 'fvo|Note'].map((x) => { const [id, ph] = x.split('|'); return `<input id="${id}" placeholder="${ph}" ${id === 'fvp' ? 'type="number" style="width:80px' : 'style="flex:1;min-width:120px'};border:1px solid var(--line);border-radius:10px;padding:7px 9px;font:inherit;font-size:13px">`; }).join('')}<button class="btn sm y" id="fvgo">Ajouter</button></div></details></div>`;
+}
 function pSpots() {
   const upcoming = TOURN.filter((t) => inC(t.client) && t.date >= dAgo(0, 0)).sort((a, b) => a.date - b.date);
-  return `<div class="page-h"><div><h2>Spots de tournage</h2><p>Trouve un lieu dans ton budget, puis note-le : il part dans le planning et dans la compta.</p></div></div>
+  return `<div class="page-h"><div><h2>Spots de tournage</h2><p>Les studios podcast de Paris, tes favoris, et ce que tu as réservé : ça part dans le planning et dans la compta.</p></div></div>
   <div class="bento"><div class="card c6 in"><div class="ch"><h3><span class="ic">${ic('eye', 16)}</span>1. Chercher</h3></div>
       <div class="field"><span class="muted small">Ce que tu veux</span><input id="spq" placeholder="Bureau, étagères en bois, lumière chaude"></div>
       <div class="row small" style="gap:8px"><span>Ville</span><input id="spv" value="Paris" style="width:110px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit"><span>Budget <b>30-50 €/h</b></span></div>
@@ -597,7 +622,8 @@ function pSpots() {
       <div class="field"><span class="muted small">Nom du lieu</span><input id="spn" placeholder="Studio Lumière"></div>
       <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="spa" placeholder="Adresse / quartier" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:8px;font:inherit"><input id="spp" type="number" placeholder="€/h" style="width:80px;border:1px solid var(--line);border-radius:12px;padding:8px;font:inherit"></div>
       <button class="btn y w" id="spsave" style="margin-top:12px">Enregistrer le spot</button>` : '<p class="muted small">Aucun tournage à venir : ajoute-le d’abord dans Planning → Nouveau tournage.</p><button class="btn sm" data-go="planning">Aller au planning</button>'}</div>
-    <div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3>Spots réservés</h3></div>${TOURN.filter((t) => t.spot && inC(t.client)).map((t) => `<div class="li"><div class="grow"><b>📍 ${esc(t.spot.n)}</b><small>${esc(t.spot.q)} · ${t.id} · ${esc(t.client)} · ${dFmt(t.date)}</small></div><b>${fmt(t.spot.p * t.hours)}</b></div>`).join('') || '<p class="muted small">Aucun pour l’instant.</p>'}</div></div>`;
+    ${studiosCard()}
+    <div class="card c12 in" style="grid-column:span 12;--i:3"><div class="ch"><h3>Spots réservés</h3></div>${TOURN.filter((t) => t.spot && inC(t.client)).map((t) => `<div class="li"><div class="grow"><b>📍 ${esc(t.spot.n)}</b><small>${esc(t.spot.q)} · ${t.id} · ${esc(t.client)} · ${dFmt(t.date)}</small></div><b>${fmt(t.spot.p * t.hours)}</b></div>`).join('') || '<p class="muted small">Aucun pour l’instant.</p>'}</div></div>`;
 }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -806,6 +832,12 @@ function bind(app) {
     try { const r = await fetch('/api/import', { method: 'POST', body: await f.text() }); const j = await r.json(); if (!r.ok) throw new Error(j.error); load(j.state); out.innerHTML = `✅ <b>${j.added} nouvelles opérations</b> rangées (${j.total - j.added} déjà présentes).`; setTimeout(() => { sub = 'resume'; render(); }, 1400); } catch (err) { out.textContent = '❌ ' + err.message; } };
   const sd = document.getElementById('spfile'); if (sd) sd.onchange = () => { const f = sd.files[0]; if (!f) return; if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = () => { spotImg = r.result; render(); }; r.readAsDataURL(f); } else document.getElementById('spdrop').innerHTML = `🎞 <b>${f.name}</b><br><span class="small">vidéo reçue</span>`; };
 app.querySelectorAll('[data-sp]').forEach((b) => (b.onclick = () => { const q = `${document.getElementById('spq').value} ${document.getElementById('spv').value}`.trim(); open(b.dataset.sp === 'peerspace' ? `https://www.google.com/search?q=${encodeURIComponent('site:peerspace.com ' + q)}` : `https://www.google.com/search?q=${encodeURIComponent('location studio tournage ' + q)}`, '_blank', 'noopener'); }));
+  const smx = document.getElementById('spmax'); if (smx) smx.onchange = () => { spotMax = +smx.value; render(); };
+  app.querySelectorAll('[data-note]').forEach((b) => (b.onclick = () => { const d = JSON.parse(b.dataset.note), set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    set('spn', d.n); set('spa', d.q); set('spp', d.p || ''); const f = document.getElementById('spn'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); f.focus(); } else toast('Ajoute d’abord un tournage dans le Planning'); }));
+  app.querySelectorAll('[data-unfav]').forEach((b) => (b.onclick = () => act(b, () => post(`/api/spots/${b.dataset.unfav}/remove`))));
+  const fvg = document.getElementById('fvgo'); if (fvg) fvg.onclick = () => act(fvg, async () => { const v = (id) => document.getElementById(id).value.trim();
+    await post('/api/spots', { name: v('fvn'), place: v('fvq'), price: +v('fvp') || 0, url: v('fvu'), note: v('fvo') }); toast('⭐ Favori ajouté'); });
   const sps = document.getElementById('spsave'); if (sps) sps.onclick = () => act(sps, async () => {
     const name = document.getElementById('spn').value.trim(), price = +document.getElementById('spp').value; if (!name || !price) throw new Error('Nom et prix à l’heure');
     await post(`/api/tournages/${document.getElementById('spt').value}/spot`, { name, place: document.getElementById('spa').value.trim(), price }); toast(`📍 ${esc(name)} enregistré · ajouté en compta`);

@@ -145,6 +145,11 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
     if (!url) return fail(c, new Error('Google Agenda n’est pas encore relié'));
     try { const n = await syncCalendar(hub, url, Date.now(), ext.fetchImpl); return c.json({ events: n, state: state() }); } catch (e) { return fail(c, e); }
   });
+  // --- Spots favoris d'Adrien (ex. le studio de Bobby) ---
+  const spotBody = z.object({ name: z.string().trim().min(1).max(80), place: z.string().trim().max(80).default(''), price: z.number().min(0).max(10_000), url: z.string().trim().url().max(500).or(z.literal('')).default(''), note: z.string().trim().max(200).default('') });
+  const mySpots = () => JSON.parse(hub.setting('my_spots') ?? '[]') as Array<z.infer<typeof spotBody>>;
+  api.post('/spots', async (c) => { try { const s = spotBody.parse(await c.req.json()); hub.setSetting('my_spots', JSON.stringify([...mySpots(), s].slice(-50))); return c.json(state()); } catch (e) { return fail(c, e); } });
+  api.post('/spots/:i/remove', (c) => { const l = mySpots(); l.splice(+c.req.param('i'), 1); hub.setSetting('my_spots', JSON.stringify(l)); return c.json(state()); });
   api.post('/calendar/disconnect', (c) => { hub.db.prepare("DELETE FROM settings WHERE key IN ('gcal_url', 'gcal_events')").run(); return c.json(state()); });
   // --- Espace client (lien perso, sans compte) ------------------------------------------
   app.get('/api/portal/:token', (c) => { const cl = hub.clientByToken(c.req.param('token')); return cl ? c.json(portalState(cl.id)) : c.json({ error: 'Lien invalide' }, 404); });
@@ -204,7 +209,7 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
   const dup = (e: unknown) => (e instanceof Error && /UNIQUE/.test(e.message) ? new Error('Ce nom existe déjà') : e);
 
   function state() {
-    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo(), undoMs: UNDO_MS, integrations: { slack: !!cfg.SLACK_WEBHOOK_URL, mail: !!mail }, mode: cfg.HUB_MODE,
+    return { clients: hub.clients(), monteurs: hub.monteurs(), videos: hub.videos(), tournages: hub.tournages(), transactions: hub.transactions(), events: hub.events(), now: Date.now(), brand: brand(), notion: notionInfo(), undoMs: UNDO_MS, integrations: { slack: !!cfg.SLACK_WEBHOOK_URL, mail: !!mail }, mode: cfg.HUB_MODE, mySpots: JSON.parse(hub.setting('my_spots') ?? '[]'),
       qonto: { connected: !!hub.setting('qonto_secret'), lastSync: Number(hub.setting('qonto_last_sync') ?? 0) || null },
       calendar: { connected: !!hub.setting('gcal_url'), lastSync: Number(hub.setting('gcal_last_sync') ?? 0) || null, events: JSON.parse(hub.setting('gcal_events') ?? '[]') as CalEvent[] } };
   }
