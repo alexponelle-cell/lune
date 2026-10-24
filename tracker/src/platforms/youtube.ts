@@ -99,9 +99,15 @@ export class YouTubeFetcher implements PlatformFetcher {
   }
 }
 
-/** Titre + début de la description (+ tags) : c'est souvent là que le clippeur met le #tag du créateur. */
+/**
+ * Titre + début de la description + tous les #hashtags de la description (même tout en bas) + tags :
+ * c'est souvent là que le clippeur met le #tag du créateur.
+ */
 export function withDescription(title: string, description?: string, tags?: string[]): string {
-  const extra = [description?.replace(/\s+/g, ' ').trim().slice(0, 200), tags?.length ? tags.map((t) => `#${t.replace(/\s+/g, '')}`).join(' ') : '']
+  const desc = description?.replace(/\s+/g, ' ').trim() ?? '';
+  const head = desc.slice(0, 200);
+  const lateTags = [...new Set(desc.slice(200).match(/#[\p{L}\p{N}_]+/gu) ?? [])].filter((h) => !head.includes(h)).join(' ');
+  const extra = [head, lateTags, tags?.length ? tags.map((t) => `#${t.replace(/\s+/g, '')}`).join(' ') : '']
     .filter(Boolean)
     .join(' ');
   return extra ? `${title} · ${extra}` : title;

@@ -83,5 +83,7 @@ describe('YouTube : #tag dans la description', () => {
     expect(t.startsWith('HACK AZAR · ')).toBe(true);
     expect(citesCreator(t, ['squiduu'])).toBe(true);
     expect(withDescription('Titre', '')).toBe('Titre');
+    // #tag tout en bas d'une longue description : retrouvé quand même
+    expect(withDescription('Short', 'blabla '.repeat(60) + '\n\n#beone #fyp')).toContain('#beone');
   });
 });
