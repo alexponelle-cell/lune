@@ -16,6 +16,7 @@ import { FanRepo } from '../db/fans.js';
 import { FanService } from '../services/fans.js';
 import { type InstagramCredentials, type InstagramTokenStore, instagramAuthorizeUrl, instagramExchangeCode, instagramUser } from '../platforms/instagramOfficial.js';
 import { type TikTokCredentials, type TikTokTokenStore, tiktokAuthorizeUrl, tiktokExchangeCode, tiktokUser } from '../platforms/tiktokOfficial.js';
+import { type GoogleCredentials, type YouTubeTokenStore, youtubeAuthorizeUrl, youtubeConnectChannel } from '../platforms/youtubeOfficial.js';
 import { legalPage, PRIVACY_HTML, TERMS_HTML } from './legal.js';
 import { demoPage, soberPage } from './sober.js';
 import type { GameClient } from '../services/game.js';
@@ -87,6 +88,8 @@ export interface WebDeps {
   tiktokOAuth?: { creds: TikTokCredentials; redirectUri: string; store: TikTokTokenStore; fetchFn?: typeof fetch };
   /** « Connecter mon Instagram » (API Instagram officielle gratuite, compte pro / créateur). */
   instagramOAuth?: { creds: InstagramCredentials; redirectUri: string; store: InstagramTokenStore; fetchFn?: typeof fetch };
+  /** « Connecter mon YouTube » (connexion Google gratuite) : prouve que la chaîne est au fan. */
+  youtubeOAuth?: { creds: GoogleCredentials; redirectUri: string; store: YouTubeTokenStore; fetchFn?: typeof fetch };
   /** Rempli quand le bot est connecté (sinon les actions Discord sont indisponibles). */
   bot: { current?: BotBridge };
 }
@@ -256,7 +259,7 @@ export function createApp(deps: WebDeps): Hono {
       return fanError(c, err instanceof Error ? err.message : String(err));
     }
   });
-  // « Connecter mon TikTok / Instagram » : le fan autorise la lecture de ses vidéos (gratuit, prouve que le compte est à lui)
+  // « Connecter mon TikTok / Instagram / YouTube » : le fan autorise la lecture de ses vidéos (gratuit, prouve que le compte est à lui)
   const officialLogins = {
     tiktok: deps.tiktokOAuth && {
       authorize: (state: string) => tiktokAuthorizeUrl(deps.tiktokOAuth!.creds, deps.tiktokOAuth!.redirectUri, state),
@@ -274,6 +277,16 @@ export function createApp(deps: WebDeps): Hono {
         return { tokens, username: (await instagramUser(tokens.accessToken, t.fetchFn)).username, store: t.store };
       },
     },
+    youtube: deps.youtubeOAuth && {
+      authorize: (state: string) => youtubeAuthorizeUrl(deps.youtubeOAuth!.creds, deps.youtubeOAuth!.redirectUri, state),
+      finish: async (code: string) => {
+        const t = deps.youtubeOAuth!;
+        const channel = await youtubeConnectChannel(t.creds, code, t.redirectUri, t.fetchFn);
+        // Aucun jeton gardé (révoqué) : la ligne sert de preuve, valable sans limite
+        const tokens = { openId: channel.id, accessToken: '', refreshToken: '', expiresAt: Number.MAX_SAFE_INTEGER, refreshExpiresAt: Number.MAX_SAFE_INTEGER };
+        return { tokens, username: channel.handle, store: t.store };
+      },
+    },
   };
   /** Site d'origine d'une connexion TikTok / Instagram (dans le state), s'il fait partie de nos sites et que ce n'est pas celui-ci. */
   const relayOrigin = (state: string | undefined) => {
@@ -283,8 +296,8 @@ export function createApp(deps: WebDeps): Hono {
     if (!target || target === deps.selfUrl) return undefined;
     return (deps.marsSites ?? []).some((s) => s.url.replace(/\/+$/, '') === target) ? target : undefined;
   };
-  for (const platform of ['tiktok', 'instagram'] as const) {
-    const name = platform === 'tiktok' ? 'TikTok' : 'Instagram';
+  for (const platform of ['tiktok', 'instagram', 'youtube'] as const) {
+    const name = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }[platform];
     app.get(`/fan/${platform}/connect`, (c) => {
       const o = officialLogins[platform];
       if (!o) return fanError(c, `Connexion ${name} pas encore disponible.`);

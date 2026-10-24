@@ -1010,12 +1010,12 @@ export class FanService {
   }
 
   /**
-   * Le clippeur vient de connecter son compte (OAuth TikTok / Instagram) : ce compte devient celui suivi pour
+   * Le clippeur vient de connecter son compte (OAuth TikTok / Instagram / YouTube) : ce compte devient celui suivi pour
    * cette plateforme, déjà vérifié (la connexion prouve qu'il est à lui). Renvoie l'ID du compte (jetons).
    */
-  connectOfficial(clipper: Clipper, platform: 'tiktok' | 'instagram', username: string, now = Date.now()): number {
+  connectOfficial(clipper: Clipper, platform: Platform, username: string, now = Date.now()): number {
     const link = parseAccountInput(platform, username);
-    if (!link) throw new Error(`Pseudo ${platform === 'tiktok' ? 'TikTok' : 'Instagram'} invalide : ${username}`);
+    if (!link) throw new Error(`Pseudo ${{ tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }[platform]} invalide : ${username}`);
     const current = this.repo.listAccountsForClipper(clipper.id).filter((a) => a.platform === platform);
     const r = this.repo.registerAccount({ clipperId: clipper.id, clientId: clipper.clientId, ...link, now });
     if (r.conflict) throw new Error(`Le compte @${link.handle} est déjà relié à un autre clippeur : contacte le staff.`);

@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-/** Jetons d'une connexion officielle (TikTok, Instagram) : un par compte suivi. */
+/** Jetons d'une connexion officielle (TikTok, Instagram, YouTube) : un par compte suivi. */
 export interface OAuthTokens {
   /** ID du compte côté plateforme. */
   openId: string;
@@ -14,7 +14,7 @@ export interface OAuthTokens {
 export class OAuthTokenStore {
   constructor(
     private readonly db: Database.Database,
-    private readonly table: 'tiktok_tokens' | 'instagram_tokens',
+    private readonly table: 'tiktok_tokens' | 'instagram_tokens' | 'youtube_tokens',
   ) {}
 
   get(accountId: number): OAuthTokens | undefined {

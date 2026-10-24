@@ -12,12 +12,22 @@ export const legalPage = (title: string, body: string) => `<!doctype html>
 <body><main><p><a href="/" style="display:inline-flex;align-items:center;gap:10px;color:inherit;text-decoration:none;font-weight:800"><img src="/neptune-logo.png" alt="" width="32" height="32" style="border-radius:8px">Neptune Clipping</a></p><h1>${title}</h1>${body}<p style="margin-top:40px;opacity:.6">Neptune Clipping · programme de clipping</p></main></body></html>`;
 
 export const PRIVACY_HTML = `
-<p>Ce site permet aux clippeurs de suivre les vues de leurs clips et d'échanger les coins gagnés contre des récompenses.</p>
+<p>Ce site permet aux clippeurs de suivre les vues de leurs clips et d'échanger les coins gagnés contre des récompenses.
+Neptune Clipping est un service de System Agency.</p>
 <h2>Données collectées</h2>
 <p>Ton identifiant et ton pseudo Discord (connexion), les pseudos de tes comptes TikTok, YouTube et Instagram que tu ajoutes,
 l'e-mail ou le pseudo de jeu que tu donnes pour recevoir tes récompenses.</p>
 <p>Si tu connectes ton TikTok ou ton Instagram : ton pseudo, ton nom affiché, ton nombre d'abonnés, et la liste de tes vidéos publiques
 (description, date, nombre de vues, de likes et de commentaires). Rien n'est publié sur ton compte.</p>
+<h2>Connexion YouTube (Google)</h2>
+<p>Si tu connectes ton YouTube, on demande à Google l'accès en lecture seule à ta chaîne (youtube.readonly) pour lire une seule fois
+son identifiant et son pseudo @ : ça prouve que la chaîne est à toi. L'accès est révoqué aussitôt, aucun jeton n'est gardé, rien n'est publié.
+Les vues de tes vidéos publiques sont ensuite lues avec les services d'API YouTube, comme pour n'importe quelle chaîne publique.</p>
+<p>L'utilisation des données reçues des API Google respecte les <a href="https://developers.google.com/terms/api-services-user-data-policy">règles
+relatives aux données utilisateur des services d'API Google</a>, y compris les exigences d'utilisation limitée. En te connectant, tu acceptes les
+<a href="https://www.youtube.com/t/terms">conditions d'utilisation de YouTube</a> ; voir aussi les
+<a href="https://policies.google.com/privacy">règles de confidentialité de Google</a>. Tu peux retirer l'accès à tout moment sur
+<a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
 <h2>Utilisation</h2>
 <p>Ces données servent uniquement à compter les vues de tes clips, calculer tes coins, afficher le classement et livrer tes récompenses.
 Elles ne sont ni vendues ni partagées, sauf l'e-mail ou le pseudo de jeu transmis au créateur pour livrer ta récompense.</p>

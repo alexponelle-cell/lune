@@ -6,6 +6,7 @@ import { Repo } from './db/repo.js';
 import { collectAll, fanAccountDue, paidAccount, parisMidnight } from './jobs/collect.js';
 import { InstagramOfficialFetcher, InstagramTokenStore } from './platforms/instagramOfficial.js';
 import { TikTokOfficialFetcher, TikTokTokenStore, tiktokSiteVerification } from './platforms/tiktokOfficial.js';
+import { YouTubeTokenStore } from './platforms/youtubeOfficial.js';
 import { runRelances } from './jobs/relance.js';
 import { runMotivation } from './jobs/motivation.js';
 import { every } from './jobs/scheduler.js';
@@ -62,8 +63,11 @@ const backfillFetchers = (since: number) => {
   if (instagramCreds && config.FETCHER_MODE === 'live') f.instagram = fanFetchers.instagram;
   return f;
 };
-/** Comptes connectés officiellement (TikTok + Instagram) : relus gratuitement. */
-const connectedAccounts = () => new Set([...tiktokStore.connected(), ...instagramStore.connected()]);
+// YouTube : la connexion Google prouve seulement que la chaîne est au clippeur (vues lues avec la clé API, gratuites)
+const googleCreds = config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET ? { clientId: config.GOOGLE_CLIENT_ID, clientSecret: config.GOOGLE_CLIENT_SECRET } : undefined;
+const youtubeStore = new YouTubeTokenStore(db);
+/** Comptes connectés officiellement (TikTok + Instagram + YouTube) : relus gratuitement. */
+const connectedAccounts = () => new Set([...tiktokStore.connected(), ...instagramStore.connected(), ...youtubeStore.connected()]);
 
 const agency = new AgencyService(repo, {
   inactivityDays: config.INACTIVITY_DAYS,
@@ -75,7 +79,11 @@ const creator = creatorConfig(config.CREATOR);
 const fans = new FanService(repo, new FanRepo(db), agency, dashboardUrl, undefined, creator);
 // Lecture des bios à la demande (vérification des comptes par code)
 fans.fetchers = fetchers;
-const officialPlatforms = [...(tiktokCreds ? (['tiktok'] as const) : []), ...(instagramCreds ? (['instagram'] as const) : [])];
+const officialPlatforms = [
+  ...(tiktokCreds ? (['tiktok'] as const) : []),
+  ...(googleCreds ? (['youtube'] as const) : []),
+  ...(instagramCreds ? (['instagram'] as const) : []),
+];
 if (officialPlatforms.length) fans.officialLogin = { platforms: officialPlatforms, connected: connectedAccounts };
 fans.bootstrap();
 log.info(`programme fans : ${creator.programName} (${creator.id})`);
@@ -110,6 +118,7 @@ const stopWeb = startWeb(
     siteVerification: tiktokSiteVerification(config.TIKTOK_VERIFY_CONTENT, config.TIKTOK_VERIFY_FILE),
     tiktokOAuth: tiktokCreds ? { creds: tiktokCreds, redirectUri: config.TIKTOK_REDIRECT_URI ?? `${dashboardUrl.replace(/\/+$/, '')}/fan/tiktok/callback`, store: tiktokStore } : undefined,
     instagramOAuth: instagramCreds ? { creds: instagramCreds, redirectUri: config.INSTAGRAM_REDIRECT_URI ?? `${dashboardUrl.replace(/\/+$/, '')}/fan/instagram/callback`, store: instagramStore } : undefined,
+    youtubeOAuth: googleCreds ? { creds: googleCreds, redirectUri: config.YOUTUBE_REDIRECT_URI ?? `${dashboardUrl.replace(/\/+$/, '')}/fan/youtube/callback`, store: youtubeStore } : undefined,
     refreshFans,
     marsSites: (config.MARS_SITES ?? '')
       .split(',')

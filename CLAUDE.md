@@ -38,7 +38,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
 
 ## Technique (dossier `tracker/`)
 
-- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v20**),
+- Node 22, TypeScript ESM, **discord.js v14**, **better-sqlite3** (migrations dans `src/db/schema.ts`, actuellement **v21**),
   **Hono** (serveur web), **zod**, **vitest**.
 - `src/creators/*.ts` : **config de chaque créateur** (nom, couleurs, police, textes, récompense, niveaux, messages Discord).
   Choisie au démarrage par la variable `CREATOR`. Ajouter un créateur = copier `squiduu.ts`, l'adapter, l'ajouter dans `index.ts`.
@@ -50,7 +50,11 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   ajouter une entrée dans `PROSPECTS`, découper les visuels dans ses captures, générer le HTML autonome, faire une capture Playwright pour vérifier.
 - Bot : `src/bot/` (`fanServer.ts` = /setup du serveur créateur, `fans.ts` = inscription, `montage.ts`, `recruitment.ts`…).
 - Relevés des vues : `src/jobs/collect.ts` + `src/platforms/` :
-  - YouTube : API officielle (gratuite).
+  - YouTube : API officielle (gratuite, clé `YOUTUBE_API_KEY`). **« Connecter mon YouTube »** (24 oct, `platforms/youtubeOfficial.ts`) :
+    connexion Google (scope `youtube.readonly`) qui prouve seulement que la chaîne est au clippeur (jeton révoqué aussitôt, rien gardé,
+    table `youtube_tokens` v21) ; vues toujours lues avec la clé. Actif seulement si `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` sont mis
+    (projet Google Cloud « System Agency » sur le compte de la mère d'Alex). App Google en mode **Test** (100 utilisateurs test max) :
+    ne mettre les variables qu'après la validation Google. Relais comme TikTok : `YOUTUBE_REDIRECT_URI`.
   - TikTok / Instagram : **connexion officielle OAuth** (gratuite, prouve que le compte est au clippeur), sinon **Apify** (payant).
   - Fans : relevé chaque nuit après minuit (Paris). Comptes Apify : toutes les 2 nuits, moins souvent si inactifs (économies).
 - Anti-triche : un clip compte seulement si le compte est vérifié, si le clip est publié après l'ajout du compte,

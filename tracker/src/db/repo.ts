@@ -254,6 +254,7 @@ export class Repo {
         this.db.transaction(() => {
           this.db.prepare('DELETE FROM tiktok_tokens WHERE account_id = ?').run(existing.id);
           this.db.prepare('DELETE FROM instagram_tokens WHERE account_id = ?').run(existing.id);
+          this.db.prepare('DELETE FROM youtube_tokens WHERE account_id = ?').run(existing.id);
           this.db
             .prepare('UPDATE accounts SET clipper_id = ?, client_id = COALESCE(?, client_id), url = ?, active = 1, created_at = ?, verified_at = ?, slot = ? WHERE id = ?')
             .run(input.clipperId, input.clientId, input.url, now, now, input.slot ?? 1, existing.id);

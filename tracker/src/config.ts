@@ -67,7 +67,7 @@ const schema = z.object({
   TIKTOK_CLIENT_KEY: optionalString,
   TIKTOK_CLIENT_SECRET: optionalString,
   /**
-   * Adresse de retour TikTok / Instagram enregistrée chez eux, si ce n'est pas ce service (ex. celle de lune) :
+   * Adresse de retour TikTok / Instagram (et YOUTUBE_REDIRECT_URI) enregistrée chez eux, si ce n'est pas ce service (ex. celle de lune) :
    * ce service-là renvoie le clippeur ici avec son code (relais), sans redemander de validation à TikTok / Meta.
    */
   TIKTOK_REDIRECT_URI: optionalString,
@@ -88,6 +88,15 @@ const schema = z.object({
   INSTAGRAM_APP_SECRET: optionalString,
   /** Comptes Instagram pas encore connectés : relus via Apify (payant) tant que c'est « 1 », ignorés sinon. */
   INSTAGRAM_APIFY_FALLBACK: z.enum(['0', '1']).default('1'),
+  /**
+   * « Connecter mon YouTube » (connexion Google, gratuite) : client OAuth « Application Web » créé sur
+   * console.cloud.google.com (scope youtube.readonly), redirection <PUBLIC_URL>/fan/youtube/callback.
+   * Les vues restent lues avec YOUTUBE_API_KEY. Tant que l'app Google est en « Test », seuls les utilisateurs test
+   * peuvent se connecter : ne mettre ces variables qu'une fois l'app validée par Google.
+   */
+  GOOGLE_CLIENT_ID: optionalString,
+  GOOGLE_CLIENT_SECRET: optionalString,
+  YOUTUBE_REDIRECT_URI: optionalString,
 
   COLLECT_INTERVAL_MINUTES: z.coerce.number().positive().default(60),
   RELANCE_CHECK_INTERVAL_MINUTES: z.coerce.number().positive().default(180),

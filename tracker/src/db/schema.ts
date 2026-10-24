@@ -462,4 +462,17 @@ export const MIGRATIONS: ReadonlyArray<string | ((db: Database.Database) => void
   UPDATE accounts SET created_at = (SELECT since FROM fix_since f WHERE f.id = accounts.id) WHERE id IN (SELECT id FROM fix_since);
   DROP TABLE fix_since;
   `,
+
+  // v21 : YouTube connecté par le clippeur (connexion Google) : preuve que la chaîne est à lui, sans jeton gardé
+  `
+  CREATE TABLE youtube_tokens (
+    account_id         INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    open_id            TEXT NOT NULL,
+    access_token       TEXT NOT NULL,
+    refresh_token      TEXT NOT NULL,
+    expires_at         INTEGER NOT NULL,
+    refresh_expires_at INTEGER NOT NULL,
+    updated_at         INTEGER NOT NULL
+  );
+  `,
 ];

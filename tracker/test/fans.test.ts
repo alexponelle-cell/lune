@@ -1157,6 +1157,61 @@ describe('Instagram connecté (API officielle gratuite)', () => {
   });
 });
 
+describe('YouTube connecté (connexion Google gratuite)', () => {
+  it('connexion → chaîne vérifiée, jeton révoqué et pas gardé, chaîne sans @ = message clair', async () => {
+    const { YouTubeTokenStore } = await import('../src/platforms/youtubeOfficial.js');
+    const repo = new Repo(openDatabase(':memory:'));
+    const agency = new AgencyService(repo);
+    const fans = new FanService(repo, new FanRepo(repo.db), agency, 'https://site.test/');
+    const client = repo.upsertClient({ name: 'Loann', rule: { ratePer1kCents: 0, minViews: 0, capCents: null } });
+    fans.saveSettings({ clientId: client.id, accountReview: true });
+    const store = new YouTubeTokenStore(repo.db);
+    fans.officialLogin = { platforms: ['youtube'], connected: () => store.connected() };
+    const fan = fans.ensureFan('d3', 'Léo');
+    fans.setAccounts(fan, { youtube: '@leo_mal_tape' });
+    expect(fans.toConnect(fan.id)).toEqual(['youtube']);
+
+    let customUrl: string | undefined = '@LeoClips';
+    const log: string[] = [];
+    const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+    const f = (async (input: string | URL | Request) => {
+      const url = String(input);
+      log.push(url.split('?')[0]!);
+      if (url === 'https://oauth2.googleapis.com/token') return ok({ access_token: 'g1', expires_in: 3599 });
+      if (url.startsWith('https://www.googleapis.com/youtube/v3/channels')) return ok({ items: [{ id: 'UCleo', snippet: customUrl ? { customUrl } : {} }] });
+      if (url.startsWith('https://oauth2.googleapis.com/revoke')) return ok({});
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+
+    const app = createApp({ repo, agency, recruitment: new RecruitmentService(repo, new RecruitmentRepo(repo.db), agency), fans, password: 'secret', bot: {},
+      youtubeOAuth: { creds: { clientId: 'gid', clientSecret: 'gsec' }, redirectUri: 'https://site.test/fan/youtube/callback', store, fetchFn: f } });
+    const link = new URL(fans.connectUrl(fan.id));
+    const cookie = (await app.request(link.pathname + link.search)).headers.get('set-cookie')!.split(';')[0]!;
+    const connect = async () => {
+      const go = await app.request('/fan/youtube/connect', { headers: { cookie } });
+      const auth = new URL(go.headers.get('location')!);
+      expect(auth.origin + auth.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+      expect(auth.searchParams.get('scope')).toBe('https://www.googleapis.com/auth/youtube.readonly');
+      const st = go.headers.get('set-cookie')!.split(';')[0]!;
+      return app.request(`/fan/youtube/callback?code=c&state=${auth.searchParams.get('state')}`, { headers: { cookie: `${cookie}; ${st}` } });
+    };
+
+    // Chaîne sans pseudo @ : message pour en créer un
+    customUrl = undefined;
+    expect(decodeURIComponent((await connect()).headers.get('location')!)).toContain('pseudo @');
+    expect(log).toContain('https://oauth2.googleapis.com/revoke');
+    customUrl = '@LeoClips';
+    expect((await connect()).headers.get('location')).toBe('/fan?connected=youtube#clipper');
+
+    const yt = repo.listAccountsForClipper(fan.id).find((a) => a.platform === 'youtube' && a.active)!;
+    expect(yt.handle).toBe('leoclips');
+    expect(yt.verifiedAt).not.toBeNull();
+    expect(store.get(yt.id)).toMatchObject({ openId: 'UCleo', accessToken: '', refreshToken: '' });
+    expect(fans.toConnect(fan.id)).toEqual([]);
+    expect(log.filter((u) => u === 'https://oauth2.googleapis.com/revoke')).toHaveLength(2);
+  });
+});
+
 describe('coaching des clippeurs (points forts / à travailler)', () => {
   it('compare à l’équipe, repère la meilleure plateforme, la régularité, les clips refusés et les comptes en erreur', async () => {
     const { coaching, median } = await import('../src/domain/coaching.js');
