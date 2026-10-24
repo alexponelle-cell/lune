@@ -298,6 +298,9 @@ const late = (v) => v.status === 'montage' && v.due && v.due < TODAY;
 const waitD = (v) => (v.sentAt ? Math.round((TODAY - v.sentAt) / DAY) : 0);
 const ago = (n) => (n <= 0 ? 'aujourd’hui' : n === 1 ? 'hier' : `il y a ${n} j`);
 const grad = (v) => `linear-gradient(160deg, ${CCOL[v.client]?.[1] ?? '#eee'}, ${CCOL[v.client]?.[0] ?? '#ccc'})`;
+/** Photo de profil Instagram du client (gratuit, via unavatar.io) sur sa pastille ; sans @ : sa couleur + initiale. */
+const IGS = () => Object.fromEntries((RAW?.clients ?? []).filter((c) => c.instagram).map((c) => [c.name, c.instagram]));
+const avBg = (c) => { const h = IGS()[c], col = CCOL[c]?.[0] ?? '#EDEDE8'; return h ? `background:url('https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false') center/cover, ${col};color:transparent` : `background:${col}`; };
 const initials = (s) => s.replace('Client ', '').slice(0, 1);
 
 function margins(m) {
@@ -385,14 +388,14 @@ function pHome() {
       ${mg.map((r) => `<div style="margin-top:12px"><div class="row small"><span>${r.c}</span><b>${r.pc} %</b></div><div class="bar yl" style="margin-top:5px"><i data-w="${r.pc}"></i></div></div>`).join('')}</div>
     <div class="card dark c4 in" style="--i:2"><div class="ch"><h3><span class="ic">${ic('check', 16)}</span>À valider par tes clients</h3>${arrowBtn('client')}</div>
       <div class="big">${toVal.length}</div><p class="muted small" style="margin:4px 0 16px">${toVal.filter((v) => v.reminded).length} relancée(s) · ${modif.length} modif(s) demandée(s)</p>
-      <div class="avs">${Object.keys(CLIENTS).filter(inC).map((c) => `<div class="av" style="background:${CCOL[c][0]}">${initials(c)}</div>`).join('')}</div></div>
+      <div class="avs">${Object.keys(CLIENTS).filter(inC).map((c) => `<div class="av" style="${avBg(c)}">${initials(c)}</div>`).join('')}</div></div>
     <div class="card c4 in" style="--i:3"><div class="ch"><h3><span class="ic">${ic('eye', 16)}</span>Vues cette semaine</h3>${arrowBtn('perfs')}</div>
       <div class="mid">${count(wkViews, 'k')}</div><p class="muted small" style="margin:2px 0 14px">${wk.length} reels publiés · ${cLabel()}</p>${bars(days.map((d) => d[1]), days.map((d) => d[0]))}</div>
     <div class="card yellow c4 in" style="--i:4"><div class="ch"><h3><span class="ic" style="background:rgba(0,0,0,.08)">${ic('chat', 16)}</span>SAV automatique</h3>${arrowBtn('sav')}</div>
       <div class="big">${hFmt(savStats().mins)}</div><p class="muted small" style="margin:4px 0 14px">gagnées pour Romain cette semaine</p><div class="row small"><span>🤖 ${savStats().auto} actions auto</span><span>⏰ ${savStats().mont} relances monteurs</span></div></div>
     <div class="card c7 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>À faire aujourd'hui</h3><span class="pill g">le reste est géré tout seul</span></div>
       ${modif.map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>${v.client} demande une modif</b><small>« ${v.title} » · ${v.comment}</small></div><button class="btn sm" data-go="videos">Voir</button></div>`).join('')}
-      ${unpaidClients(month).filter(inC).map((c) => `<div class="li"><div class="av" style="background:${CCOL[c][0]};width:44px;height:44px">${initials(c)}</div><div class="grow"><b>${c} n'a pas payé ${fmt(CLIENTS[c])}</b><small>Relance automatique envoyée hier</small></div><button class="btn sm ghost" data-go="compta" data-sub="factures">Facture</button></div>`).join('')}
+      ${unpaidClients(month).filter(inC).map((c) => `<div class="li"><div class="av" style="${avBg(c)};width:44px;height:44px">${initials(c)}</div><div class="grow"><b>${c} n'a pas payé ${fmt(CLIENTS[c])}</b><small>Relance automatique envoyée hier</small></div><button class="btn sm ghost" data-go="compta" data-sub="factures">Facture</button></div>`).join('')}
       ${lt.slice(0, 2).map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>Montage en retard · ${v.monteur}</b><small>« ${v.title} » · relancé sur Slack</small></div><span class="pill down">retard</span></div>`).join('')}</div>
     <div class="card c5 in" style="--i:6"><div class="ch"><h3><span class="ic">${ic('video', 16)}</span>Top reels de la semaine</h3>${arrowBtn('perfs')}</div>
       ${wk.slice(0, 4).map((v, i) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>${v.title}</b><small>${v.client} · ${v.tag} · ${dFmt(v.published)}</small></div><b class="num">${kFmt(v.views)}</b></div>`).join('')}</div>
@@ -491,7 +494,7 @@ function pPerfs() {
     const avg = (t) => { const x = vs.filter((v) => v.tag === t); return x.length ? Math.round(x.reduce((a, v) => a + v.views, 0) / x.length) : 0; };
     const byH = {}; vs.filter((v) => v.published).forEach((v) => (byH[v.published.getHours()] ??= []).push(v.views));
     const bestH = Object.entries(byH).map(([h, a]) => [h, a.reduce((x, y) => x + y, 0) / a.length]).sort((a, b) => b[1] - a[1])[0];
-    return `<div class="card c4 in" style="--i:${k}"><div class="ch"><h3><span class="av" style="background:${CCOL[c][0]};border:0">${initials(c)}</span>${c}</h3><span class="pill g">${vs.length} reels</span></div>
+    return `<div class="card c4 in" style="--i:${k}"><div class="ch"><h3><span class="av" style="${avBg(c)};border:0">${initials(c)}</span>${c}</h3><span class="pill g">${vs.length} reels</span></div>
       <div class="big">${count(vs.reduce((a, v) => a + v.views, 0), 'k')}</div><p class="muted small" style="margin:2px 0 14px">vues sur les reels publiés · <b style="color:var(--text)">${(CLIENTS[c] / Math.max(1, vs.reduce((a, v) => a + v.views, 0) / 1000)).toFixed(2).replace('.', ',')} € / 1 000 vues</b></p>
       ${vs.slice(0, 4).map((v) => `<div style="margin-bottom:11px"><div class="row small" style="flex-wrap:nowrap"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.title}</span><b>${kFmt(v.views)}</b></div><div class="bar" style="margin-top:5px"><i data-w="${(v.views / max) * 100}"></i></div></div>`).join('')}
       <div class="row small" style="margin-top:14px"><span class="pill g">TOFU ${kFmt(avg('TOFU'))}/vidéo</span><span class="pill y">MOFU ${kFmt(avg('MOFU'))}/vidéo</span></div>
@@ -538,7 +541,7 @@ function cResume() {
       ${bars(MONTHS.map((m) => Math.max(0, stats(m).rest)), MONTHS.map(mShort))}</div>
     <div class="card c8 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('chart', 16)}</span>Marges par client</h3><div><span class="muted small">Marge totale </span><b class="mid">${fmt(tot.m)}</b> <span class="pill up">${Math.round((tot.m / tot.fee) * 100)} %</span></div></div>
       <table class="tbl"><thead><tr><th>Client</th><th class="r">Facturé</th><th class="r">Monteurs</th><th class="r">Autres</th><th class="r">Marge</th><th style="width:26%"></th></tr></thead><tbody>
-      ${mg.map((r) => `<tr><td><div class="row" style="gap:10px;justify-content:flex-start"><div class="av" style="background:${CCOL[r.c][0]};border:0">${initials(r.c)}</div><b>${r.c}</b></div></td><td class="r num">${fmt(r.fee)}</td><td class="r num muted">−${fmt(r.cm)}</td><td class="r num muted">−${fmt(r.co)}</td><td class="r num"><b>${fmt(r.marge)}</b> <span class="muted small">${r.pc} %</span></td><td><div class="bar yl"><i data-w="${r.pc}"></i></div></td></tr>`).join('')}</tbody></table>
+      ${mg.map((r) => `<tr><td><div class="row" style="gap:10px;justify-content:flex-start"><div class="av" style="${avBg(r.c)};border:0">${initials(r.c)}</div><b>${r.c}</b></div></td><td class="r num">${fmt(r.fee)}</td><td class="r num muted">−${fmt(r.cm)}</td><td class="r num muted">−${fmt(r.co)}</td><td class="r num"><b>${fmt(r.marge)}</b> <span class="muted small">${r.pc} %</span></td><td><div class="bar yl"><i data-w="${r.pc}"></i></div></td></tr>`).join('')}</tbody></table>
       ${mg.length > 1 ? `<div class="tip2">💡 <b>${best[0].c}</b> est ton client le plus rentable (${best[0].pc} %). <b>${best.at(-1).c}</b> te coûte le plus en montage : à revoir au prochain devis.</div>` : ''}</div>
   </div>`;
 }
@@ -558,7 +561,7 @@ function cFactures() {
   const s = stats(month); let i = 0;
   return `<div class="card in"><div class="ch"><h3>Factures clients · ${mName(month)}</h3><span class="pill g">créées toutes seules chaque mois</span></div><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>N°</th><th>Client</th><th>Statut</th><th class="r">Montant</th><th></th></tr></thead><tbody>
   ${Object.entries(CLIENTS).map(([c, amt]) => { i++; if (!inC(c)) return ''; const paid = s.tx.some((t) => t.who === c && t.amount > 0), num = `F-${month.replace('-', '')}-${i}`;
-    return `<tr><td class="num muted">${num}</td><td><div class="row" style="gap:10px;justify-content:flex-start"><div class="av" style="background:${CCOL[c][0]};border:0">${initials(c)}</div><b>${c}</b></div></td><td><span class="pill ${paid ? 'up' : 'down'}">${paid ? 'Payée' : 'En attente'}</span></td><td class="r num"><b>${fmt(amt)}</b></td>
+    return `<tr><td class="num muted">${num}</td><td><div class="row" style="gap:10px;justify-content:flex-start"><div class="av" style="${avBg(c)};border:0">${initials(c)}</div><b>${c}</b></div></td><td><span class="pill ${paid ? 'up' : 'down'}">${paid ? 'Payée' : 'En attente'}</span></td><td class="r num"><b>${fmt(amt)}</b></td>
       <td class="r" style="white-space:nowrap"><button class="btn sm ghost" data-inv="${c}|${num}|${amt}">Voir</button>${paid ? '' : ` <button class="btn sm" data-remind="${c}">Relancer</button>`}</td></tr>`; }).join('')}</tbody></table></div></div><div id="invwrap"></div>`;
 }
 function invoice(c, num, amt) {
@@ -656,7 +659,7 @@ const inp = (k, v, ph, w = '', type = 'text') => `<input data-k="${k}" type="${t
 function pTeam() {
   const cl = RAW.clients ?? [], mo = RAW.monteurs ?? [];
   const cRow = (c) => `<div class="row" data-row="client" data-id="${c?.id ?? ''}" style="gap:6px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)">
-    <input data-k="color" type="color" value="${c?.color ?? '#FCCA09'}" style="width:34px;height:34px;border:0;background:none;padding:0">${inp('name', c?.name, 'Nom du client', '170px')}${inp('fee', c?.fee, '€ / mois', '90px', 'number')}${inp('email', c?.email, 'E-mail (relances)')}${inp('instagram', c?.instagram, '@instagram', '130px')}
+    ${c ? `<div class="av" style="${avBg(c.name)};width:36px;height:36px">${initials(c.name)}</div>` : '<div class="av" style="background:var(--soft);width:36px;height:36px">+</div>'}<input data-k="color" type="color" value="${c?.color ?? '#FCCA09'}" title="Couleur du client" style="width:22px;height:22px;border:0;background:none;padding:0">${inp('name', c?.name, 'Nom du client', '170px')}${inp('fee', c?.fee, '€ / mois', '90px', 'number')}${inp('email', c?.email, 'E-mail (relances)')}${inp('instagram', c?.instagram, '@instagram (photo)', '150px')}
     <button class="btn sm y" data-save="client">${c ? 'Enregistrer' : 'Ajouter'}</button>${c ? `<button class="btn sm ghost" data-link="${c.token}">🔗 Lien</button><button class="btn sm ghost" data-arch="clients|${c.id}" title="Retirer">✕</button>` : ''}</div>`;
   const mRow = (m) => `<div class="row" data-row="monteur" data-id="${m?.id ?? ''}" style="gap:6px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)">
     ${inp('name', m?.name, 'Nom du monteur', '170px')}${inp('rate', m?.rate, '€ / vidéo', '90px', 'number')}${inp('slack', m?.slack, 'ID Slack (pour le @)')}
@@ -767,7 +770,7 @@ function animate(root) {
 }
 function picker() {
   const opts = [['all', 'Tous les clients', `${Object.keys(CLIENTS).length} clients`], ...Object.keys(CLIENTS).map((c) => [c, c, `${fmt(CLIENTS[c])} / mois · ${VIDS.filter((v) => v.client === c).length} vidéos`])];
-  const av = (k) => (k === 'all' ? `<div class="av" style="background:var(--ink);color:var(--y)">∗</div>` : `<div class="av" style="background:${CCOL[k][0]}">${initials(k)}</div>`);
+  const av = (k) => (k === 'all' ? `<div class="av" style="background:var(--ink);color:var(--y)">∗</div>` : `<div class="av" style="${avBg(k)}">${initials(k)}</div>`);
   const cur = opts.find((o) => o[0] === cf);
   document.getElementById('cpick').innerHTML = `<button class="cpbtn" id="cpb">${av(cf)}${cur[1]}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></button>
     <div class="cpmenu">${opts.map(([k, l, d]) => `<button class="${k === cf ? 'on' : ''}" data-cf="${k}">${av(k)}<span>${l}<small>${d}</small></span>${k === cf ? '<span class="ck2">✓</span>' : ''}</button>`).join('')}</div>`;
