@@ -299,8 +299,8 @@ const waitD = (v) => (v.sentAt ? Math.round((TODAY - v.sentAt) / DAY) : 0);
 const ago = (n) => (n <= 0 ? 'aujourd’hui' : n === 1 ? 'hier' : `il y a ${n} j`);
 const grad = (v) => `linear-gradient(160deg, ${CCOL[v.client]?.[1] ?? '#eee'}, ${CCOL[v.client]?.[0] ?? '#ccc'})`;
 /** Photo de profil Instagram du client (gratuit, via unavatar.io) sur sa pastille ; sans @ : sa couleur + initiale. */
-const IGS = () => Object.fromEntries((RAW?.clients ?? []).filter((c) => c.instagram).map((c) => [c.name, c.instagram]));
-const avBg = (c) => { const h = IGS()[c], col = CCOL[c]?.[0] ?? '#EDEDE8'; return h ? `background:url('https://unavatar.io/instagram/${encodeURIComponent(h)}?fallback=false') center/cover, ${col};color:transparent` : `background:${col}`; };
+const CL = (c) => (RAW?.clients ?? [RAW?.client]).find((x) => x?.name === c);
+const avBg = (c) => { const x = CL(c), col = CCOL[c]?.[0] ?? '#EDEDE8', img = x?.photo ?? (x?.instagram ? `https://unavatar.io/instagram/${encodeURIComponent(x.instagram)}?fallback=false` : null); return img ? `background:url('${img}') center/cover, ${col};color:transparent` : `background:${col}`; };
 const initials = (s) => s.replace('Client ', '').slice(0, 1);
 
 function margins(m) {
@@ -659,7 +659,7 @@ const inp = (k, v, ph, w = '', type = 'text') => `<input data-k="${k}" type="${t
 function pTeam() {
   const cl = RAW.clients ?? [], mo = RAW.monteurs ?? [];
   const cRow = (c) => `<div class="row" data-row="client" data-id="${c?.id ?? ''}" style="gap:6px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)">
-    ${c ? `<div class="av" style="${avBg(c.name)};width:36px;height:36px">${initials(c.name)}</div>` : '<div class="av" style="background:var(--soft);width:36px;height:36px">+</div>'}<input data-k="color" type="color" value="${c?.color ?? '#FCCA09'}" title="Couleur du client" style="width:22px;height:22px;border:0;background:none;padding:0">${inp('name', c?.name, 'Nom du client', '170px')}${inp('fee', c?.fee, '€ / mois', '90px', 'number')}${inp('email', c?.email, 'E-mail (relances)')}${inp('instagram', c?.instagram, '@instagram (photo)', '150px')}
+    ${c ? `<label class="av" title="Choisir sa photo" style="${avBg(c.name)};width:36px;height:36px;cursor:pointer">${initials(c.name)}<input type="file" accept="image/*" data-photo="${c.id}" hidden></label>` : '<div class="av" style="background:var(--soft);width:36px;height:36px">+</div>'}<input data-k="color" type="color" value="${c?.color ?? '#FCCA09'}" title="Couleur du client" style="width:22px;height:22px;border:0;background:none;padding:0">${inp('name', c?.name, 'Nom du client', '170px')}${inp('fee', c?.fee, '€ / mois', '90px', 'number')}${inp('email', c?.email, 'E-mail (relances)')}${inp('instagram', c?.instagram, '@instagram (photo)', '150px')}
     <button class="btn sm y" data-save="client">${c ? 'Enregistrer' : 'Ajouter'}</button>${c ? `<button class="btn sm ghost" data-link="${c.token}">🔗 Lien</button><button class="btn sm ghost" data-arch="clients|${c.id}" title="Retirer">✕</button>` : ''}</div>`;
   const mRow = (m) => `<div class="row" data-row="monteur" data-id="${m?.id ?? ''}" style="gap:6px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)">
     ${inp('name', m?.name, 'Nom du monteur', '170px')}${inp('rate', m?.rate, '€ / vidéo', '90px', 'number')}${inp('slack', m?.slack, 'ID Slack (pour le @)')}
@@ -674,6 +674,9 @@ function bindTeam(app) {
     const body = kind === 'client' ? { name: val('name'), fee: +val('fee') || 0, color: val('color'), email: val('email').trim(), instagram: val('instagram').trim() } : { name: val('name'), rate: +val('rate') || 0, slack: val('slack').trim() };
     await post(`/api/${kind}s${id ? '/' + id : ''}`, body); toast('✓ Enregistré');
   })));
+  app.querySelectorAll('[data-photo]').forEach((inp) => (inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader();
+    r.onload = () => { const im = new Image(); im.onload = () => act(null, async () => { const k = 160 / Math.min(im.width, im.height), cv = document.createElement('canvas'); cv.width = cv.height = 160;
+      cv.getContext('2d').drawImage(im, (160 - im.width * k) / 2, (160 - im.height * k) / 2, im.width * k, im.height * k); await post(`/api/clients/${inp.dataset.photo}/photo`, { photo: cv.toDataURL('image/jpeg', 0.85) }); toast('📸 Photo enregistrée'); }); im.src = r.result; }; r.readAsDataURL(f); }));
   app.querySelectorAll('[data-arch]').forEach((b) => (b.onclick = () => { const [t, id] = b.dataset.arch.split('|'); if (confirm('Retirer ? (son historique reste dans la compta)')) act(b, () => post(`/api/${t}/${id}/archive`)); }));
   app.querySelectorAll('[data-link]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(`${location.origin}/c/${b.dataset.link}`); toast('🔗 Lien client copié'); }));
 }

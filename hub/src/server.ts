@@ -69,6 +69,9 @@ export function createApp(hub: Hub, cfg: Config, notify: Notify, makeNotion: (to
   const monteurBody = z.object({ name: z.string().trim().min(1).max(80), rate: z.number().min(0), slack: z.string().trim().max(40).transform((x) => x || null).default('') });
   api.post('/clients', async (c) => { try { const b = clientBody.parse(await c.req.json()); hub.addClient(b.name, b.fee, b.color, b.instagram, b.email); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });
   api.post('/clients/:id', async (c) => { try { hub.updateClient(+c.req.param('id'), clientBody.parse(await c.req.json())); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });
+  api.post('/clients/:id/photo', async (c) => {
+    try { const { photo } = z.object({ photo: z.string().regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/).max(300_000).nullable() }).parse(await c.req.json()); hub.setClientPhoto(+c.req.param('id'), photo); return c.json(state()); } catch (e) { return fail(c, e); }
+  });
   api.post('/clients/:id/archive', (c) => { hub.archive('clients', +c.req.param('id')); return c.json(state()); });
   api.post('/monteurs', async (c) => { try { const b = monteurBody.parse(await c.req.json()); hub.addMonteur(b.name, b.rate, b.slack); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });
   api.post('/monteurs/:id', async (c) => { try { hub.updateMonteur(+c.req.param('id'), monteurBody.parse(await c.req.json())); return c.json(state()); } catch (e) { return fail(c, dup(e)); } });

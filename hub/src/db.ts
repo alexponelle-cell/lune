@@ -21,12 +21,14 @@ const MIGRATIONS = [
   `ALTER TABLE clients ADD COLUMN email TEXT;
    ALTER TABLE videos ADD COLUMN video_url TEXT;
    ALTER TABLE videos ADD COLUMN notion_push TEXT;`,
+  // v4 : photo de profil du client (petite image choisie par Adrien)
+  `ALTER TABLE clients ADD COLUMN photo TEXT;`,
 ];
 
 export const STATUSES = ['idee', 'script', 'afilmer', 'filme', 'montage', 'avalider', 'modif', 'valide', 'planifie', 'publie'] as const;
 export type Status = (typeof STATUSES)[number];
 
-export interface Client { id: number; name: string; fee: number; color: string; token: string; instagram: string | null; email: string | null }
+export interface Client { id: number; name: string; fee: number; color: string; token: string; instagram: string | null; email: string | null; photo?: string | null }
 export interface Monteur { id: number; name: string; rate: number; slack: string | null }
 export interface Video { id: number; client_id: number; title: string; status: Status; tag: string | null; monteur_id: number | null; tournage_id: number | null; due_at: number | null; sent_at: number | null; reminded_at: number | null; validated_at: number | null; planned_at: number | null; published_at: number | null; views: number; url: string | null; comment: string | null; notion_id: string | null; notion_db: string | null; video_url: string | null; notion_push: string | null }
 export interface Tournage { id: number; code: string; client_id: number; date: number; hours: number; spot_name: string | null; spot_place: string | null; spot_price: number | null }
@@ -47,8 +49,8 @@ export class Hub {
   }
 
   // --- Lecture -----------------------------------------------------------------
-  clients = () => this.db.prepare('SELECT id, name, fee, color, token, instagram, email FROM clients WHERE active = 1 ORDER BY id').all() as Client[];
-  clientByToken = (token: string) => this.db.prepare('SELECT id, name, fee, color, token, instagram, email FROM clients WHERE token = ? AND active = 1').get(token) as Client | undefined;
+  clients = () => this.db.prepare('SELECT id, name, fee, color, token, instagram, email, photo FROM clients WHERE active = 1 ORDER BY id').all() as Client[];
+  clientByToken = (token: string) => this.db.prepare('SELECT id, name, fee, color, token, instagram, email, photo FROM clients WHERE token = ? AND active = 1').get(token) as Client | undefined;
   monteurs = () => this.db.prepare('SELECT id, name, rate, slack FROM monteurs WHERE active = 1 ORDER BY id').all() as Monteur[];
   videos = (clientId?: number) => (clientId ? this.db.prepare('SELECT * FROM videos WHERE client_id = ? ORDER BY id').all(clientId) : this.db.prepare('SELECT * FROM videos ORDER BY id').all()) as Video[];
   video = (id: number) => this.db.prepare('SELECT * FROM videos WHERE id = ?').get(id) as Video | undefined;
@@ -68,6 +70,7 @@ export class Hub {
   updateClient(id: number, c: { name: string; fee: number; color: string; instagram: string | null; email: string | null }) {
     if (!this.db.prepare('UPDATE clients SET name = @name, fee = @fee, color = @color, instagram = @instagram, email = @email WHERE id = @id AND active = 1').run({ ...c, id }).changes) throw new Error('Client introuvable');
   }
+  setClientPhoto(id: number, photo: string | null) { this.db.prepare('UPDATE clients SET photo = ? WHERE id = ?').run(photo, id); }
   updateMonteur(id: number, m: { name: string; rate: number; slack: string | null }) {
     if (!this.db.prepare('UPDATE monteurs SET name = @name, rate = @rate, slack = @slack WHERE id = @id AND active = 1').run({ ...m, id }).changes) throw new Error('Monteur introuvable');
   }
