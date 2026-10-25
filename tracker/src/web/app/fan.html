@@ -693,7 +693,7 @@ async function init() {
   const error = new URLSearchParams(location.search).get('error');
   if (error) { toast(error, 'err'); history.replaceState(null, '', location.pathname + location.hash); }
   const connected = new URLSearchParams(location.search).get('connected');
-  if (connected) { toast(`${connected === 'tiktok' ? 'TikTok' : 'Instagram'} connecté ✅ Tes vues sont maintenant comptées.`, 'ok'); history.replaceState(null, '', location.pathname + location.hash); }
+  if (connected) { toast(`${{ tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' }[connected] ?? 'Compte'} connecté ✅ Tes vues sont maintenant comptées.`, 'ok'); history.replaceState(null, '', location.pathname + location.hash); }
   celebrate();
 }
 init().catch((err) => { $('#app').innerHTML = `<div class="card empty" style="margin-top:40px"><div class="e">😵</div>${esc(err.message)}</div>`; });
