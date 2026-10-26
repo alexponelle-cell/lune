@@ -965,6 +965,8 @@ describe('économie Apify : rythme de relevé des comptes de fans', () => {
     expect(fanAccountDue(tt(2), now - D, since, now)).toBe(true);
     expect(fanAccountDue(tt(7), null, since, now)).toBe(false); // vide
     expect(fanAccountDue(tt(14), null, since, now)).toBe(true);
+    expect(fanAccountDue({ ...tt(5), createdAt: now - 6 * D }, null, since, now)).toBe(true); // vide mais ajouté il y a 6 j : 2 nuits
+    expect(fanAccountDue({ ...tt(5), createdAt: now - 60 * D }, null, since, now)).toBe(false); // vide depuis longtemps : 2 semaines
     expect(fanAccountDue(tt(3), now - 20 * D, since, now)).toBe(false); // inactif
     expect(fanAccountDue(tt(7), now - 20 * D, since, now)).toBe(true);
     expect(fanAccountDue(tt(1), null, since, now, true)).toBe(true); // TikTok connecté : gratuit

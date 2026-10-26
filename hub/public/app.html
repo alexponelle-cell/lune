@@ -246,9 +246,10 @@ function load(st) {
   MONTEURS = Object.fromEntries(st.monteurs.map((m) => [m.name, m.rate ?? 0]));
   MCOL = Object.fromEntries(st.monteurs.map((m, i) => [m.name, PAL[i % PAL.length]]));
   const cn = new Map(clients.map((c) => [c.id, c.name])), mn = new Map(st.monteurs.map((m) => [m.id, m.name])), tn = new Map(st.tournages.map((t) => [t.id, t.code]));
-  VIDS = st.videos.map((v) => ({ id: v.id, client: cn.get(v.client_id), title: v.title, monteur: v.monteur_id ? mn.get(v.monteur_id) : '—', status: v.status, tag: v.tag ?? 'TOFU',
+  // Les clients / monteurs retirés ne sont plus envoyés : on ignore leurs vidéos et tournages (sinon les pages plantent)
+  VIDS = st.videos.filter((v) => cn.has(v.client_id)).map((v) => ({ id: v.id, client: cn.get(v.client_id), title: v.title, monteur: (v.monteur_id && mn.get(v.monteur_id)) || '—', status: v.status, tag: v.tag ?? 'TOFU',
     due: dt(v.due_at), sentAt: dt(v.sent_at), validated: dt(v.validated_at), planned: dt(v.planned_at), published: dt(v.published_at), views: v.views ?? 0, comment: v.comment ?? '', videoUrl: v.video_url ?? null, reminded: dt(v.reminded_at), tournage: tn.get(v.tournage_id) ?? null }));
-  TOURN = st.tournages.map((t) => ({ id: t.code, dbId: t.id, client: cn.get(t.client_id), date: new Date(t.date), hours: t.hours, spot: t.spot_name ? { n: t.spot_name, q: t.spot_place ?? '', p: t.spot_price ?? 0 } : null }));
+  TOURN = st.tournages.filter((t) => cn.has(t.client_id)).map((t) => ({ id: t.code, dbId: t.id, client: cn.get(t.client_id), date: new Date(t.date), hours: t.hours, spot: t.spot_name ? { n: t.spot_name, q: t.spot_place ?? '', p: t.spot_price ?? 0 } : null }));
   TX = (st.transactions ?? []).map((t) => ({ ...t }));
   EVENTS = (st.events ?? []).map((e) => ({ ...e, at: new Date(e.at) }));
   // Paie des monteurs = vidéos validées dans le mois × leur tarif
@@ -310,7 +311,7 @@ function margins(m) {
   const tot = Object.values(w).reduce((a, b) => a + b, 0) || 1;
   return Object.entries(CLIENTS).map(([c, fee]) => { const sh = (w[c] ?? 0) / tot, cm = Math.round(mont * sh), co = Math.round(s.other * sh); return { c, fee, cm, co, marge: fee - cm - co, pc: Math.round(((fee - cm - co) / fee) * 100) }; });
 }
-const monteurDue = (m) => { const s = stats(m); return Object.entries(VIDEOS[m] ?? {}).map(([mo, n]) => { const owed = n * MONTEURS[mo], paid = 0 - s.tx.filter((t) => t.who === mo).reduce((a, t) => a + t.amount, 0) + 0; return { mo, n, owed, paid, left: owed - paid }; }); };
+const monteurDue = (m) => { const s = stats(m); return Object.entries(VIDEOS[m] ?? {}).map(([mo, n]) => { const owed = n * (MONTEURS[mo] ?? 0), paid = 0 - s.tx.filter((t) => t.who === mo).reduce((a, t) => a + t.amount, 0) + 0; return { mo, n, owed, paid, left: owed - paid }; }); };
 const unpaidClients = (m) => { const s = stats(m); return Object.keys(CLIENTS).filter((c) => !s.tx.some((t) => t.who === c && t.amount > 0)); };
 const weekReels = () => VIDS.filter((v) => v.published && TODAY - v.published < 7 * DAY).sort((a, b) => b.views - a.views);
 
@@ -393,7 +394,7 @@ function pHome() {
       <div class="mid">${count(wkViews, 'k')}</div><p class="muted small" style="margin:2px 0 14px">${wk.length} reels publiés · ${cLabel()}</p>${bars(days.map((d) => d[1]), days.map((d) => d[0]))}</div>
     <div class="card yellow c4 in" style="--i:4"><div class="ch"><h3><span class="ic" style="background:rgba(0,0,0,.08)">${ic('chat', 16)}</span>SAV automatique</h3>${arrowBtn('sav')}</div>
       <div class="big">${hFmt(savStats().mins)}</div><p class="muted small" style="margin:4px 0 14px">gagnées pour Romain cette semaine</p><div class="row small"><span>🤖 ${savStats().auto} actions auto</span><span>⏰ ${savStats().mont} relances monteurs</span></div></div>
-    <div class="card c7 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>À faire aujourd'hui</h3><span class="pill g">le reste est géré tout seul</span></div>
+    <div class="card c7 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>À faire aujourd'hui</h3></div>
       ${modif.map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>${v.client} demande une modif</b><small>« ${v.title} » · ${v.comment}</small></div><button class="btn sm" data-go="videos">Voir</button></div>`).join('')}
       ${unpaidClients(month).filter(inC).map((c) => `<div class="li"><div class="av" style="${avBg(c)};width:44px;height:44px">${initials(c)}</div><div class="grow"><b>${c} n'a pas payé ${fmt(CLIENTS[c])}</b><small>Relance automatique envoyée hier</small></div><button class="btn sm ghost" data-go="compta" data-sub="factures">Facture</button></div>`).join('')}
       ${lt.slice(0, 2).map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>Montage en retard · ${v.monteur}</b><small>« ${v.title} » · relancé sur Slack</small></div><span class="pill down">retard</span></div>`).join('')}</div>
@@ -410,7 +411,7 @@ function pVideos() {
   const list = VIDS.filter((v) => inC(v.client));
   const PH = { pre: ['idee', 'script', 'afilmer', 'filme'], post: ['montage', 'avalider', 'modif', 'valide', 'planifie', 'publie'] };
   const cols = phase === 'all' ? Object.keys(ST) : PH[phase];
-  return `<div class="page-h"><div><h2>Toutes les vidéos</h2><p>De l'idée à la publication, synchronisé avec ton Notion. Fini les clips éparpillés.</p></div>
+  return `<div class="page-h"><div><h2>Toutes les vidéos</h2><p>Les vidéos de tes clients, de l'idée à la publication.</p></div>
     <div class="tabs">${[['all', 'Tout'], ['pre', 'Tournage'], ['post', 'Post-prod']].map(([k, l]) => `<button class="${phase === k ? 'on' : ''}" data-ph="${k}">${l}</button>`).join('')}</div></div>
   <div class="kanban">${cols.map((s, k) => { const all = list.filter((v) => v.status === s), vs = s === 'publie' ? [...all].sort((a, b) => b.published - a.published).slice(0, 4) : all; return `<div class="col in" style="--i:${k}"><div class="colh"><i style="background:${ST[s][1]}"></i>${ST[s][0]}<span>${all.length}</span></div>
     ${vs.map((v) => `<div class="vc"><div class="vt" style="background:${grad(v)}"><em>${v.tag}</em></div><b>${v.title}</b><small>${v.client}${v.monteur !== '—' ? ' · ' + v.monteur : ''}</small>${s === 'afilmer' && TOURN.find((t) => t.client === v.client) ? `<small>🎬 tournage ${TOURN.find((t) => t.client === v.client).id} · ${dFmt(TOURN.find((t) => t.client === v.client).date)}</small>` : ''}
@@ -433,7 +434,7 @@ function pPlanning() {
     return out.join('');
   };
   const t = nextTourn(), sc = t ? scriptsOf(t) : [], toPlan = V.filter((v) => v.status === 'valide');
-  return `<div class="page-h"><div><h2>Planning</h2><p>Tournages, rendus des monteurs, relances et publications : tout au même endroit.</p></div>
+  return `<div class="page-h"><div><h2>Planning</h2><p>Tournages, rendus des monteurs, relances et publications.</p></div>
     <div class="legend"><span><i style="background:#111"></i>Tournage</span><span><i style="background:#FFF7D1"></i>Publication</span><span><i style="background:#F6F6F2;border:1px solid #ddd"></i>Rendu montage</span><span><i style="background:#EEF0FF"></i>Relance auto</span><span><i style="background:#E8F5EE"></i>Google Agenda</span></div></div>
   <div class="bento"><div class="c12 in" style="grid-column:span 12;min-width:0"><div class="cal">${['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => `<div class="dh2">${d}</div>`).join('')}
     ${days.map((d) => `<div class="day ${d < dAgo(0, 0) ? 'past' : ''} ${isoDay(d) === isoDay(TODAY) ? 'today' : ''}"><div class="dn">${d.getDate()}${isoDay(d) === isoDay(TODAY) ? '<em>aujourd’hui</em>' : ''}</div>${evs(d)}</div>`).join('')}</div></div>
@@ -445,7 +446,7 @@ function pPlanning() {
     <div class="card c6 in" style="--i:2"><div class="ch"><h3><span class="ic">${ic('cal', 16)}</span>Les 7 prochains jours</h3></div>
       ${days.filter((d) => d >= dAgo(0, 0)).slice(0, 7).map((d) => { const e = evs(d); return e ? `<div class="li" style="align-items:flex-start"><b style="width:74px;flex:none;font-size:13px">${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</b><div class="grow" style="display:flex;flex-direction:column;gap:4px">${e.replace(/class="ev /g, 'style="white-space:normal" class="ev ')}</div></div>` : ''; }).join('') || '<p class="muted">Rien de prévu.</p>'}</div>
     <div class="card c6 in" style="--i:3"><div class="ch"><h3><span class="ic">${ic('check', 16)}</span>À planifier</h3><span class="pill ${toPlan.length ? 'y' : 'g'}">${toPlan.length}</span></div>
-      ${toPlan.map((v) => `<div class="li" style="flex-wrap:wrap"><div class="grow"><b>${esc(v.title)}</b><small>${esc(v.client)} · validée ${v.validated ? ago(Math.round((TODAY - v.validated) / DAY)) : ''}</small></div><div style="width:100%">${planForm(v)}</div></div>`).join('') || '<p class="muted small">Toutes les vidéos validées ont une date 👌</p>'}</div>
+      ${toPlan.map((v) => `<div class="li" style="flex-wrap:wrap"><div class="grow"><b>${esc(v.title)}</b><small>${esc(v.client)} · validée ${v.validated ? ago(Math.round((TODAY - v.validated) / DAY)) : ''}</small></div><div style="width:100%">${planForm(v)}</div></div>`).join('') || '<p class="muted small">Aucune vidéo à planifier.</p>'}</div>
     <div class="card c6 in" style="--i:4"><div class="ch"><h3><span class="ic">${ic('video', 16)}</span>Nouveau tournage</h3></div>
       <div class="field"><span class="muted small">Client</span><select id="ntc" class="sel" style="width:100%">${Object.keys(CLIENTS).map((c) => `<option value="${CIDS[c]}" ${c === cf ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
       <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="ntd" type="datetime-local" value="${isoDay(new Date(+TODAY + 7 * DAY))}T14:00" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:8px;font:inherit"><input id="nth" type="number" min="1" max="12" value="3" style="width:70px;border:1px solid var(--line);border-radius:12px;padding:8px;font:inherit"><span class="muted small">h</span></div>
@@ -457,15 +458,15 @@ function pClient() {
   const pubM = pub.filter((v) => v.published && ymOf(v.published) === ymOf(TODAY));
   const soon = vs.filter((v) => v.status === 'valide' || v.status === 'planifie').sort((a, b) => (a.planned ?? Infinity) - (b.planned ?? Infinity));
   const slug = norm(vc).toLowerCase().replace(/\s/g, '-');
-  return `<div class="page-h"><div><h2>Espace client</h2><p>Ce que voit ton client avec son lien perso. Pas de compte, pas de Notion.</p></div>
+  return `<div class="page-h"><div><h2>Espace client</h2><p>La page que voit ton client avec son lien.</p></div>
     ${cf === 'all' && !PORTAL ? `<span class="pill y">Aperçu de ${vc} · choisis un client en haut</span>` : ''}</div>
-  <div class="browser in"><div class="bbar"><i></i><i></i><i></i><span>${location.host}/c/${(TOKENS[vc] ?? '').slice(0, 6)}…</span><button class="btn sm ghost" id="copylink">🔗 Copier le lien</button> <button class="btn sm y" id="rep" style="margin-left:6px">📊 Rapport du mois</button></div>
+  <div class="browser in"><div class="bbar"><i></i><i></i><i></i><span>${location.host}/c/${(TOKENS[vc] ?? '').slice(0, 6)}…</span><button class="btn sm ghost" id="copylink">Copier le lien</button> <button class="btn sm y" id="rep" style="margin-left:6px">Rapport du mois</button></div>
     <div class="portal"><div class="row"><div class="row" style="gap:12px"><img src="data:image/png;base64,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" style="width:42px;height:42px;border-radius:50%"><div><div class="muted small">PersonalBrand360 × ${vc}</div><div class="mid">${toVal.length ? `${toVal.length} vidéo${toVal.length > 1 ? 's' : ''} à valider` : 'Tout est validé ✨'}</div></div></div>
       <div class="row" style="gap:18px"><div><div class="muted small">Vues ce mois</div><b class="mid">${kFmt(pubM.reduce((a, v) => a + v.views, 0))}</b></div><div><div class="muted small">Publiés ce mois</div><b class="mid">${pubM.length}</b></div></div></div>
       <div class="vals">${toVal.map((v, i) => `<div class="card in" style="--i:${i};box-shadow:none;border:1px solid var(--line)" data-card="${v.id}">${player(v)}
         <b style="display:block;margin-top:14px;font-size:16px">${esc(v.title)}</b><span class="muted small">Monté par ${esc(v.monteur)} · envoyé ${ago(waitD(v))}</span>
         <div class="row" style="margin-top:14px;flex-wrap:nowrap"><button class="btn y w" data-ok="${v.id}">✓ Valider</button><button class="btn ghost w" data-mod="${v.id}">Demander une modif</button></div>
-        <div class="hidden" id="mod-${v.id}"><textarea placeholder="Ex : coupe les 2 premières secondes, sous-titres plus gros…"></textarea><button class="btn sm" data-send="${v.id}">Envoyer au monteur</button></div></div>`).join('') || '<p class="muted">Rien à valider pour l’instant 🙌</p>'}</div>
+        <div class="hidden" id="mod-${v.id}"><textarea placeholder="Ex : coupe les 2 premières secondes, sous-titres plus gros…"></textarea><button class="btn sm" data-send="${v.id}">Envoyer au monteur</button></div></div>`).join('') || '<p class="muted">Rien à valider pour l’instant.</p>'}</div>
       ${soon.length ? `<h3 style="margin:28px 0 6px">Bientôt en ligne</h3>${soon.map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>${esc(v.title)}</b><small>${v.status === 'planifie' && v.planned ? `sort le ${dFmt(v.planned)}` : 'validée · date de sortie bientôt'}</small></div><span class="pill ${v.status === 'planifie' ? 'up' : 'g'}">${v.status === 'planifie' ? 'planifiée' : 'validée'}</span></div>`).join('')}` : ''}
       ${showReport ? reportHtml(vc) : ''}
       <h3 style="margin:28px 0 6px">Tes meilleurs reels</h3>${pub.slice(0, 3).map((v) => `<div class="li"><div class="thumb" style="background:${grad(v)}"></div><div class="grow"><b>${v.title}</b><small>${dFmt(v.published)} · ${v.tag}</small></div><b>${kFmt(v.views)}</b></div>`).join('')}</div></div>
@@ -488,7 +489,7 @@ function pPerfs() {
   const pub = VIDS.filter((v) => v.status === 'publie');
   if (!pub.some((v) => v.views > 0)) return `<div class="page-h"><div><h2>Performances</h2><p>Vues des reels publiés de chaque client.</p></div></div>
     <div class="card in" style="text-align:center;padding:40px"><div style="font-size:34px">📸</div><h3>Les vues arrivent bientôt</h3><p class="muted small" style="max-width:460px;margin:8px auto 0">Dès que l'Instagram de tes clients est relié (connexion officielle, un clic par client), les vues de chaque reel publié se mettent à jour toutes les nuits. ${pub.length} reel(s) publié(s) déjà repérés.</p></div>`;
-  return `<div class="page-h"><div><h2>Performances</h2><p>Vues relevées chaque nuit sur l'Instagram de chaque client (connexion officielle, gratuite).</p></div></div>
+  return `<div class="page-h"><div><h2>Performances</h2><p>Vues des reels publiés, relevées chaque nuit sur l'Instagram de chaque client.</p></div></div>
   <div class="bento">${Object.keys(CLIENTS).filter(inC).map((c, k) => {
     const vs = pub.filter((v) => v.client === c).sort((a, b) => b.views - a.views), max = vs[0]?.views || 1;
     const avg = (t) => { const x = vs.filter((v) => v.tag === t); return x.length ? Math.round(x.reduce((a, v) => a + v.views, 0) / x.length) : 0; };
@@ -509,13 +510,13 @@ const hFmt = (mins) => (mins >= 60 ? `~${Math.round(mins / 60)} h` : `${mins} mi
 const FB = ['Hook plus court (2 s max)', 'Sous-titres plus gros', 'Coupe les blancs', 'Musique trop forte', 'Ajoute un CTA à la fin', 'Zoom sur les moments clés'];
 let fbSel = new Set();
 function pSav() {
-  return `<div class="page-h"><div><h2>SAV automatique</h2><p>Le bot répond aux questions simples, relance les monteurs et les clients. Romain garde le vrai boulot.</p></div></div>
+  return `<div class="page-h"><div><h2>SAV</h2><p>Relances et messages envoyés aux clients et aux monteurs.</p></div></div>
   <div class="bento">
     ${(() => { const x = savStats(); return [['Actions auto', x.auto, 'cette semaine'], ['Relances monteurs', x.mont, 'sur Slack'], ['Relances validation', x.val, 'aux clients']]; })().map(([t, n, s], i) => `<div class="card c3 in" style="--i:${i}"><div class="muted small">${t}</div><div class="big" style="margin-top:6px">${count(n, 'n')}</div><div class="muted small">${s}</div></div>`).join('')}
     <div class="card yellow c3 in" style="--i:3"><div class="muted small">Temps gagné pour Romain</div><div class="big" style="margin-top:6px">${hFmt(savStats().mins)}</div><div class="muted small">cette semaine</div></div>
     <div class="card c7 in" style="--i:4"><div class="ch"><h3><span class="ic">${ic('chat', 16)}</span>Aujourd'hui</h3><span class="pill g">Slack · WhatsApp · mail</span></div>
       ${EVENTS.filter((e) => cf === 'all' || e.who === cf || e.text.includes(cf)).slice(0, 12).map((e) => `<div class="li" style="align-items:flex-start"><div class="av" style="background:${CCOL[e.who]?.[0] ?? '#EDEDE8'};width:36px;height:36px">${EV_IC[e.kind] ?? '•'}</div><div class="grow"><small>${e.at.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} · ${e.at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}${e.who ? ' · ' + e.who : ''}</small><b style="font-weight:600">${e.text}</b>${e.auto ? '' : '<div style="margin-top:6px"><span class="pill y">👤 par l’équipe</span></div>'}</div></div>`).join('') || '<p class="muted">Rien pour l’instant.</p>'}</div>
-    <div class="card c5 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>Feedback en 1 clic</h3></div>
+    <div class="card c5 in" style="--i:5"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>Feedback</h3></div>
       <select class="sel" id="fbv" style="width:100%;border-radius:14px;padding:10px 12px">${VIDS.filter((v) => ['montage', 'modif', 'avalider'].includes(v.status)).map((v) => `<option value="${v.id}">${v.title} · ${v.monteur}</option>`).join('')}</select>
       <div class="row" style="justify-content:flex-start;gap:6px;margin:12px 0">${FB.map((f, i) => `<button class="btn sm ghost ${fbSel.has(i) ? 'on' : ''}" data-fb="${i}">${f}</button>`).join('')}</div>
       <div id="fbprev" style="background:var(--soft);border-radius:16px;padding:14px;min-height:96px;font-size:13.5px" class="muted">Clique sur des remarques…</div>
@@ -525,7 +526,7 @@ function pSav() {
 
 function pCompta() {
   const subs = [['resume', 'Résumé'], ['moves', 'Mouvements'], ['monteurs', 'Monteurs'], ['factures', 'Factures'], ['bank', 'Banque']];
-  return `<div class="page-h"><div><h2>Compta</h2><p>Tout se range tout seul depuis ta banque. Tu ne remplis plus rien.</p></div>
+  return `<div class="page-h"><div><h2>Compta</h2><p>Encaissements, dépenses, paie des monteurs et marges par client.</p></div>
     <div class="row"><select class="sel" id="month">${MONTHS.map((m) => `<option value="${m}" ${m === month ? 'selected' : ''}>${mName(m)}</option>`).join('')}</select>
     <select class="sel" id="rate"><option value="0.261" ${rate === 0.261 ? 'selected' : ''}>Micro BNC · 26,1 %</option><option value="0.212" ${rate === 0.212 ? 'selected' : ''}>Micro BIC · 21,2 %</option><option value="0" ${rate === 0 ? 'selected' : ''}>Société · comptable</option></select></div></div>
   <div class="tabs" style="margin-bottom:18px">${subs.map(([k, l]) => `<button class="${sub === k ? 'on' : ''}" data-sub2="${k}">${l}</button>`).join('')}</div>
@@ -574,7 +575,7 @@ function invoice(c, num, amt) {
 }
 function cBank() {
   return `<div class="bento"><div class="card c6 in"><div class="ch"><h3>🏦 Qonto (recommandé)</h3><span class="pill up">automatique</span></div>
-      <p class="muted small">Dans Qonto : Paramètres → Intégrations → <b>clé API en lecture seule</b>, puis colle-la ici. Tes mouvements arrivent tout seuls.</p>
+      <p class="muted small">Dans Qonto : Paramètres → Intégrations → <b>clé API en lecture seule</b>, puis colle-la ici.</p>
       <div class="field"><span class="muted small">Identifiant</span><input placeholder="personalbrand360-1234" disabled></div><div class="field"><span class="muted small">Clé secrète (lecture seule)</span><input type="password" placeholder="••••••••••••" disabled></div>
       <button class="btn w" disabled style="opacity:.5">Connecter (pas actif dans la démo)</button>
       <div class="tip2">🔒 Enregistrée chiffrée, directement dans l'outil : personne ne la voit, et elle ne permet <b>que de lire</b>. Aucun virement possible.</div></div>
@@ -587,28 +588,101 @@ const SPOTS = [
   { n: 'Loft Lumière', q: 'Paris 18e', p: 35, pl: 6, eq: 'lumière naturelle · micros', h: 38 }, { n: 'Bureau Club', q: 'Paris 8e', p: 50, pl: 4, eq: 'fauteuils cuir · 3 caméras', h: 20 }, { n: 'Podcast Box', q: 'Paris 2e', p: 30, pl: 2, eq: 'cabine insonorisée', h: 220 },
 ];
 let spotImg = null, spotDone = false;
-/** Studios podcast à Paris : prix relevés sur leurs sites le 24 oct 2026 (à revérifier avant de réserver). */
+/**
+ * Studios et lieux de tournage à Paris. Prix relevés sur leurs sites / comparatifs le 26 oct 2026 (à revérifier avant de réserver).
+ * p = prix d'appel à l'heure (pour trier), op = opérateur inclus, auto = possible en autonomie, tags = décor confirmé par le studio.
+ */
 const STUDIOS = [
-  { n: 'Studiomatic', q: 'Bastille (11e)', p: 35, l: '35 €/h', inc: 'Libre-service · 3 caméras Mevo 1080p', u: 'https://www.studiomatic.co/en/studio-podcast-paris' },
-  { n: 'ForCast.studio', q: 'Paris 12e', p: 60, l: 'dès 60 € TTC/h (1 caméra) · 99 € TTC/h (3 caméras 4K + montage)', inc: '1 à 3 caméras', u: 'https://www.forcast.studio/' },
-  { n: 'Virtual Podcast Studio', q: 'Paris 19e', p: 80, l: '80 €/h en autonomie · 100 €/h avec technicien (TTC)', inc: '2 ou 3 caméras', u: 'https://www.virtualpodcaststudio.fr/' },
-  { n: 'Studio Podcast & Vidéo', q: 'Paris 6e', p: 102, l: '85 € HT (102 € TTC)/h · fichiers bruts', inc: '3 caméras + opérateur', u: 'https://studiosdepodcast.fr/' },
-  { n: 'Podmax', q: 'Paris 9e', p: 99, l: '99 € la 1re heure', inc: '3 caméras Sony 4K + opérateur', u: 'https://www.podmax.fr/' },
-  { n: 'Mumbo', q: 'Paris 2e', p: 120, l: '100 € HT/h', inc: '3 caméras Sony A7IV, 4 micros, opérateur', u: 'https://www.mumbo.fr/' },
-  { n: 'Underground Podcast', q: 'Paris', p: 125, l: 'dès 125 €/h', inc: '4 décors · 3 caméras + technicien', u: 'https://undergroundpodcast.fr/studio-podcast-paris/' },
-  { n: 'Paris Anim’ Beaujon (Ville de Paris)', q: 'Paris 8e', p: 0, l: 'tarif municipal sur demande', inc: 'Plusieurs caméras · souvent le moins cher', u: 'https://www.paris.fr/activites/studio-podcast-125739' },
-  { n: 'Peerspace (annonces)', q: 'tout Paris', p: 0, l: 'variable selon l’annonce', inc: 'Lofts, bureaux, studios à l’heure', u: 'https://www.peerspace.com/fr/spaces/fr/paris--%C3%AEle-de-france/podcast-studio' },
+  // --- Paris ---
+  { n: 'Studiomatic', q: 'Bastille (11e)', a: 11, p: 25, l: '25-29 €/h audio · 35 €/h vidéo, en autonomie', op: false, auto: true, cams: '3 caméras Mevo, Rodecaster', tags: ['table podcast'], u: 'https://www.studiomatic.co/en/studio-podcast-paris' },
+  { n: 'Studio Module', q: 'Porte d’Asnières (17e) + 19e', a: 17, p: 24, l: 'dès 36 € les 1 h 30, en autonomie', op: false, auto: true, cams: 'plateau équipé, vidéo en option', tags: ['table podcast'], u: 'https://www.studio-module.com/' },
+  { n: 'PodSpace', q: 'Paris 2e', a: 2, p: 35, l: 'dès 35 €/h (≈ 120 €/h avec équipe)', op: false, auto: true, cams: 'vidéo selon formule', tags: ['table podcast'], u: 'https://www.google.com/search?q=PodSpace+studio+podcast+Paris' },
+  { n: 'Leizart · salon', q: 'Paris 20e', a: 20, p: 45, l: 'dès 45 € TTC/h (matériel en option)', op: false, auto: true, cams: 'technicien en option', tags: ['salon', 'canapé', 'brique', 'néon'], u: 'https://leizart.com/studio-podcast-tournage-paris' },
+  { n: 'Leizart · cyclo', q: 'Paris 20e', a: 20, p: 50, l: 'dès 50 €/h, éclairage inclus', op: false, auto: true, cams: 'technicien en option', tags: ['fond uni', 'fond vert', 'salon'], u: 'https://leizart.com/studio-podcast-tournage-paris' },
+  { n: 'Leizart · Cocoon', q: 'Paris 20e', a: 20, p: 0, l: 'prix sur le site', op: false, auto: true, cams: 'interview, podcast, shooting', tags: ['salon'], u: 'https://leizart.com/cocoon-space' },
+  { n: 'Studio Video Paris', q: 'Paris', a: 0, p: 50, l: '50 €/h plateau (≈ 45 €/h par 10 h)', op: false, auto: true, cams: 'sans technicien, 2 h min', tags: ['fond uni', 'fond vert'], u: 'https://studio-video.com/' },
+  { n: 'ForCast.studio', q: 'Paris 12e', a: 12, p: 60, l: 'dès 60 € TTC/h · 99 € avec 3 caméras + montage', op: true, auto: false, cams: '1 à 3 caméras 4K, montage live', tags: ['table podcast'], u: 'https://www.forcast.studio/' },
+  { n: 'Dreamcast Studio', q: 'République (3e/10e)', a: 3, p: 70, l: 'dès 70 €/h, 1 h min', op: false, auto: true, cams: 'studio 30 m² en sous-sol', tags: ['table podcast'], u: 'https://www.peerspace.com/fr/spaces/fr/paris--%C3%AEle-de-france/podcast-studio' },
+  { n: 'Le Labo du Podcast', q: 'République', a: 10, p: 0, l: 'sur devis', op: true, auto: false, cams: 'plateau 30 m² modulable, audio + vidéo', tags: ['table podcast', 'plusieurs décors'], u: 'https://labodupodcast.com/' },
+  { n: 'Studio créatif Paris 18', q: 'Montmartre (18e)', a: 18, p: 75, l: 'dès 75 €/h, 2 h min', op: false, auto: true, cams: 'podcasts filmés, interviews, photo', tags: [], u: 'https://www.peerspace.com/fr/venues/fr/paris--%C3%AEle-de-france/video-studio' },
+  { n: 'Prodster Studio Montmartre', q: 'Montmartre (18e)', a: 18, p: 150, l: 'dès 150 €/h', op: true, auto: false, cams: 'studio audiovisuel 120 m²', tags: ['loft'], u: 'https://www.peerspace.com/fr/venues/fr/paris--%C3%AEle-de-france/video-studio' },
+  { n: 'SBM Studios', q: 'Sentier (2e)', a: 2, p: 84, l: '70 € HT/h (fichiers bruts)', op: true, auto: false, cams: 'multi-caméras', tags: ['table podcast', 'plusieurs décors'], u: 'https://studiosbm.fr/' },
+  { n: 'Virtual Podcast Studio', q: 'Paris 19e', a: 19, p: 80, l: '80 €/h autonomie · 100 €/h avec technicien (TTC)', op: true, auto: true, cams: '2 ou 3 caméras', tags: ['table podcast'], u: 'https://www.virtualpodcaststudio.fr/' },
+  { n: 'Podmax', q: 'Paris 9e', a: 9, p: 99, l: '99 € la 1re heure', op: true, auto: false, cams: '3 caméras Sony 4K', tags: ['table podcast'], u: 'https://www.podmax.fr/' },
+  { n: 'Le Cocon', q: 'Cherche-Midi (6e)', a: 6, p: 102, l: '85 € HT (102 € TTC)/h · Pro 110 € HT', op: true, auto: false, cams: '3 caméras + opérateur', tags: ['table podcast'], u: 'https://studiosdepodcast.fr/' },
+  { n: 'Mumbo', q: 'Sentier (2e)', a: 2, p: 120, l: '100 € HT/h · 125 € HT avec prémontage', op: true, auto: false, cams: '3 Sony A7IV, 4 micros', tags: ['plusieurs décors', 'salon'], u: 'https://www.mumbo.fr/' },
+  { n: 'Georges 15', q: 'Paris 15e', a: 15, p: 120, l: 'dès 100 € HT/h, fichiers sous 72 h', op: true, auto: false, cams: 'multi-caméras', tags: ['table podcast'], u: 'https://georges15.fr/studio-podcast-paris-15' },
+  { n: 'Creatory', q: 'Paris 9e', a: 9, p: 120, l: 'dès 120 €', op: true, auto: false, cams: 'podcast + vidéo', tags: ['plusieurs décors'], u: 'https://creatory-studio.com/' },
+  { n: "L'Atelier & Beyond", q: 'Paris 12e', a: 12, p: 120, l: 'dès 120 € TTC/h, fonds et son fournis', op: false, auto: true, cams: 'plateau vidéo', tags: ['fond uni'], u: 'https://www.latelierphotostudio.com/post/studio-video-paris' },
+  { n: 'Prception', q: 'Rue Saint-Marc (2e)', a: 2, p: 125, l: '125 €/h · Pro 150 € · Pro Max 290 €', op: true, auto: false, cams: '3 caméras + technicien', tags: ['table podcast'], u: 'https://prception.co/' },
+  { n: 'Underground Podcast', q: 'Marais (4e)', a: 4, p: 125, l: 'dès 125 €/h', op: true, auto: false, cams: '4 décors, 3 Blackmagic + technicien', tags: ['plusieurs décors', 'salon'], u: 'https://undergroundpodcast.fr/studio-podcast-paris/' },
+  { n: 'Storiz', q: 'Montparnasse (15e)', a: 15, p: 150, l: '150 € HT/h, régisseur inclus', op: true, auto: false, cams: 'audio + vidéo', tags: ['table podcast'], u: 'https://www.studiostoriz.com/' },
+  { n: 'Orso Media', q: 'Paris 17e', a: 17, p: 150, l: 'dès 150 € HT (vidéo en plus)', op: true, auto: false, cams: 'studio + régie', tags: ['table podcast'], u: 'https://orsomedia.io/location-studio-paris' },
+  { n: 'Studio Premier', q: 'Paris 2e', a: 2, p: 165, l: '150-180 € TTC/h en vidéo (50 € audio)', op: true, auto: false, cams: 'vidéo multi-caméras', tags: ['fond uni', 'table podcast'], u: 'https://studio-premier.fr/' },
+  { n: 'Studio 71', q: 'Paris 17e', a: 17, p: 0, l: 'prix sur la page', op: false, auto: true, cams: 'espace premium réunions + podcasts', tags: ['bureau'], u: 'https://www.wearescene.com/space/studio-71-premium-space-meetings-podcasts-paris-17th' },
+  { n: 'Studio vidéo & podcast (OfficeRiders)', q: 'Paris', a: 0, p: 0, l: 'prix sur l’annonce', op: false, auto: true, cams: 'studio intégralement équipé', tags: ['table podcast'], u: 'https://www.officeriders.com/fr/salles/studio-video-podcast-equipe' },
+  { n: 'Penny Lane', q: 'Paris 10e', a: 10, p: 0, l: 'sur devis', op: true, auto: false, cams: 'grands espaces, montage possible', tags: ['loft'], u: 'https://www.google.com/search?q=Penny+Lane+studio+podcast+Paris+10' },
+  { n: 'Paris Anim’ Beaujon (Ville de Paris)', q: 'Paris 8e', a: 8, p: 0, l: 'tarif municipal sur demande', op: false, auto: true, cams: 'plusieurs caméras', tags: ['table podcast'], u: 'https://www.paris.fr/activites/studio-podcast-125739' },
+  { n: 'Studiopodcast (Sonacom)', q: 'Porte Maillot / Neuilly', a: 17, p: 400, l: '200 € HT/h audio · 400 € HT/h vidéo', op: true, auto: false, cams: 'ingé son inclus, 2 à 8 h', tags: ['table podcast'], u: 'https://studiopodcast.fr/en/' },
+  { n: 'Peerspace (annonces à Paris)', q: 'tout Paris', a: 0, p: 0, l: '≈ 39-95 €/h selon l’annonce', op: false, auto: true, cams: 'salons, lofts, bureaux de particuliers', tags: ['salon', 'bureau', 'loft', 'brique'], u: 'https://www.peerspace.com/fr/venues/fr/paris--%C3%AEle-de-france/interview-filming-location' },
+  // --- Île-de-France ---
+  { n: 'Acacia Coworking', q: 'Boulogne-Billancourt (92)', a: 92, p: 20, l: '40 € les 2 h, en autonomie', op: false, auto: true, cams: 'jusqu’à 8 micros', tags: ['table podcast', 'bureau'], u: 'https://www.peerspace.com/fr/venues/fr/boulogne-billancourt--%C3%AEle-de-france/recording-studio' },
+  { n: 'Studio vidéo & podcast Prince-Marmottan', q: 'Boulogne-Billancourt (92)', a: 92, p: 80, l: '80 €/h, 4 h min', op: true, auto: false, cams: 'régie + assistance technique', tags: ['table podcast'], u: 'https://www.peerspace.com/pages/listings/67e3e51dba7ef9ef283bf168' },
+  { n: 'PodMax Levallois', q: 'Levallois-Perret (92)', a: 92, p: 145, l: '145 €/h, 1 h min', op: true, auto: false, cams: 'podcast vidéo clé en main', tags: ['table podcast'], u: 'https://www.peerspace.com/fr/spaces/fr/levallois-perret--%C3%AEle-de-france/podcast-studio' },
+  { n: 'Studio d’enregistrement Neuilly', q: 'Neuilly-sur-Seine (92)', a: 92, p: 60, l: '60 €/h, 2 h min', op: false, auto: true, cams: 'studio d’enregistrement', tags: ['table podcast'], u: 'https://www.peerspace.com/fr/venues/fr/neuilly-sur-seine--%C3%AEle-de-france/recording-studio' },
+  { n: 'Studio podcast Nanterre', q: 'Nanterre (92)', a: 92, p: 70, l: 'dès 70 €/h, 2 h min', op: false, auto: true, cams: 'studio podcast', tags: ['table podcast'], u: 'https://www.peerspace.com/fr/spaces/fr/bezons--%C3%AEle-de-france/podcast-studio' },
+  { n: 'Studio Pulp', q: 'Courbevoie (92)', a: 92, p: 140, l: 'dès 140 €/h, 2 h min', op: false, auto: true, cams: 'studio photo / vidéo / podcast', tags: ['fond uni'], u: 'https://www.peerspace.com/fr/venues/fr/courbevoie--%C3%AEle-de-france/video-studio' },
+  { n: 'Filme · studio insonorisé', q: 'Montreuil (93)', a: 93, p: 0, l: 'prix sur le site, résa 24/7', op: false, auto: true, cams: 'studio vidéo-podcast 50 m²', tags: ['table podcast'], u: 'https://www.filme.fr/products/location-studio-video-podcast' },
+  { n: 'Studio podcast Pantin', q: 'Pantin (93)', a: 93, p: 60, l: '≈ 60 €/h', op: false, auto: true, cams: 'studio podcast', tags: ['table podcast'], u: 'https://www.peerspace.com/fr/spaces/fr/pantin--%C3%AEle-de-france/podcast-studio' },
+  { n: 'M3KAST', q: 'Aulnay-sous-Bois (93)', a: 93, p: 80, l: '80 €/h, multi-caméras', op: true, auto: false, cams: 'studio multi-caméras, déplacement possible', tags: ['table podcast'], u: 'https://m3kast.fr/studio-podcast-93' },
+  { n: 'Studios à Saint-Denis', q: 'Saint-Denis (93)', a: 93, p: 50, l: 'dès ≈ 50 €/h', op: false, auto: true, cams: 'studios d’enregistrement', tags: ['table podcast'], u: 'https://www.peerspace.com/fr/venues/fr/saint-denis--%C3%AEle-de-france/recording-studio' },
+  { n: 'Studios autour de Versailles', q: 'Versailles (78)', a: 78, p: 60, l: 'dès ≈ 60 €/h', op: false, auto: true, cams: 'annonces Peerspace', tags: ['table podcast'], u: 'https://www.peerspace.com/fr/spaces/fr/versailles--%C3%AEle-de-france/podcast-studio' },
 ];
-let spotMax = 0;
+/** Mots de la recherche → styles de décor (la recherche filtre et classe la liste des studios). */
+const SYN = { salon: ['salon', 'canap', 'fauteuil', 'sofa', 'cosy', 'chaleureu', 'chaud', 'bois', 'étagère', 'etagere', 'biblioth', 'cheminée', 'maison', 'appart'],
+  canapé: ['canap', 'sofa', 'fauteuil'], brique: ['brique', 'industriel', 'pierre'], néon: ['néon', 'neon', 'rgb', 'led', 'couleur', 'gaming', 'coloré'],
+  'fond uni': ['fond blanc', 'fond noir', 'blanc', 'noir', 'uni', 'minimal', 'épuré', 'epure', 'cyclo', 'sobre'], 'fond vert': ['vert', 'incrust', 'green'],
+  bureau: ['bureau', 'office', 'entreprise', 'corporate', 'pro'], loft: ['loft', 'industriel', 'atelier', 'verrière', 'verriere', 'grand'],
+  'table podcast': ['podcast', 'table', 'micro', 'interview', 'face à face', 'face a face', 'discussion'], 'plusieurs décors': ['décors', 'decors', 'plusieurs', 'choix'] };
+const detectStyles = (txt) => { const t = (txt || '').toLowerCase(); return Object.keys(SYN).filter((k) => SYN[k].some((w) => t.includes(w))); };
+let spotQText = '';
+const STYLES = ['salon', 'canapé', 'brique', 'néon', 'fond uni', 'fond vert', 'bureau', 'loft', 'table podcast', 'plusieurs décors'];
+let spotZone = 'all', spotMax = 0, spotOp = 'all', spotHours = 2, spotPeople = 2;
+const spotTags = new Set();
+/** Message de demande de dispo, prêt à envoyer au studio. */
+function bookingMsg(s) {
+  const t = TOURN.filter((x) => x.date >= dAgo(0, 0)).sort((a, b) => a.date - b.date)[0];
+  const when = t ? `le ${t.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} vers ${t.date.getHours()} h` : 'le [date] vers [heure]';
+  return `Bonjour,\nJe cherche un lieu pour tourner un podcast / des vidéos face caméra ${when}, pendant ${spotHours} h, avec ${spotPeople} personne${spotPeople > 1 ? 's' : ''} à l'image.\n${s.op ? 'Est-ce que l’opérateur et les caméras sont inclus dans le tarif ?' : 'On vient avec notre matériel : est-ce que l’éclairage est inclus ?'}\nVotre espace « ${s.n} » serait-il disponible, et à quel tarif total (HT ou TTC) ?\nMerci !`;
+}
 function studiosCard() {
-  const mine = (RAW.mySpots ?? []).map((s, i) => ({ n: s.name, q: s.place, p: s.price, l: s.price ? `${s.price} €/h` : '', inc: s.note || 'Ton favori', u: s.url, mine: i }));
-  const list = [...mine, ...STUDIOS.filter((s) => !spotMax || (s.p && s.p <= spotMax)).sort((a, b) => (a.p || 999) - (b.p || 999))];
-  return `<div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3><span class="ic">${ic('mic', 16)}</span>Studios podcast à Paris</h3>
-      <select id="spmax" class="sel">${[[0, 'Tous les prix'], [50, '≤ 50 €/h'], [100, '≤ 100 €/h']].map(([v, l]) => `<option value="${v}" ${spotMax === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-    ${list.map((s) => `<div class="li" style="flex-wrap:wrap"><div class="grow" style="min-width:220px"><b>${s.mine !== undefined ? '⭐ ' : ''}${esc(s.n)}</b> <span class="muted small">· ${esc(s.q)}</span><small>${esc(s.inc)}</small></div>
-      <b class="small" style="max-width:260px;text-align:right">${esc(s.l)}</b>
-      <div class="row" style="gap:6px;flex-wrap:nowrap">${s.u ? `<a class="btn sm" href="${esc(s.u)}" target="_blank" rel="noopener">Voir / réserver</a>` : ''}<button class="btn sm y" data-note="${esc(JSON.stringify({ n: s.n, q: s.q, p: s.p }))}">J'ai réservé</button>${s.mine !== undefined ? `<button class="btn sm ghost" data-unfav="${s.mine}">✕</button>` : ''}</div></div>`).join('')}
-    <p class="muted small" style="margin-top:8px">Prix relevés sur les sites des studios le 24 oct 2026 : vérifie avant de réserver (HT / TTC, opérateur, montage).</p>
+  const mine = (RAW.mySpots ?? []).map((s, i) => ({ n: s.name, q: s.place, p: s.price, l: s.price ? `${s.price} €/h` : '', op: false, auto: true, cams: s.note || 'Ton favori', tags: [], u: s.url, mine: i }));
+  const inParis = (s) => s.a < 21;
+  const ok = (s) => (!spotMax || (s.p && s.p <= spotMax)) && (spotOp === 'all' || (spotOp === 'op' ? s.op : s.auto)) && (spotZone === 'all' || (spotZone === 'paris' ? inParis(s) : !inParis(s)));
+  // Ressemblance = part des styles demandés que le lieu a (0 à 100 %), puis le moins cher d'abord
+  const score = (s) => (spotTags.size ? Math.round((100 * [...spotTags].filter((t) => s.tags.includes(t)).length) / spotTags.size) : null);
+  const ranked = STUDIOS.filter(ok).map((s) => ({ ...s, match: score(s) })).filter((s) => s.match === null || s.match > 0)
+    .sort((a, b) => (b.match ?? 0) - (a.match ?? 0) || (a.p || 999) - (b.p || 999));
+  const list = [...mine, ...ranked];
+  const chip = (t) => `<button class="pill ${spotTags.has(t) ? 'y' : 'g'}" data-stag="${esc(t)}" style="border:0;cursor:pointer">${esc(t)}</button>`;
+  const sel = (id, cur, opts) => `<select id="${id}" class="sel">${opts.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+  return `<div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3><span class="ic">${ic('mic', 16)}</span>${spotTags.size ? 'Lieux qui collent à ta recherche' : 'Studios et lieux à Paris'}</h3><span class="pill g">${list.length} résultat${list.length > 1 ? 's' : ''}</span></div>
+    <div class="row" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="small muted">Décor :</span>${STYLES.map(chip).join('')}</div>
+    <div class="row small" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      ${sel('spmax', spotMax, [[0, 'Tous les prix'], [40, '≤ 40 €/h'], [50, '≤ 50 €/h'], [60, '≤ 60 €/h'], [100, '≤ 100 €/h']])}
+      ${sel('spzone', spotZone, [['all', 'Paris + banlieue'], ['paris', 'Paris'], ['idf', 'Banlieue (92, 93, 78…)']])}
+      ${sel('spop', spotOp, [['all', 'Avec ou sans opérateur'], ['op', 'Opérateur inclus'], ['auto', 'En autonomie']])}
+      <span>Durée</span><input id="sph" type="number" min="1" max="12" value="${spotHours}" style="width:56px;border:1px solid var(--line);border-radius:10px;padding:6px;font:inherit"><span>h</span>
+      <span>Personnes</span><input id="spppl" type="number" min="1" max="10" value="${spotPeople}" style="width:56px;border:1px solid var(--line);border-radius:10px;padding:6px;font:inherit">
+      ${spotTags.size || spotMax || spotOp !== 'all' || spotZone !== 'all' ? '<button class="btn sm ghost" id="spreset">Tout effacer</button>' : ''}</div>
+    ${spotQText ? `<p class="small" style="margin:4px 0 8px">Recherche : <b>« ${esc(spotQText)} »</b>${spotTags.size ? ` → ${[...spotTags].map(esc).join(', ')}` : ' (aucun style reconnu : choisis-en un ci-dessus)'}${spotMax ? ` · ≤ ${spotMax} €/h` : ''} · ${spotPeople} pers.</p>` : ''}
+    ${list.map((s, i) => `<div class="li" style="flex-wrap:wrap;align-items:flex-start"><div class="grow" style="min-width:240px">${s.match != null ? `<span class="pill ${s.match >= 75 ? 'up' : 'g'}" style="margin-right:6px">${s.match} %</span>` : ''}<b>${s.mine !== undefined ? '⭐ ' : ''}${esc(s.n)}</b> <span class="muted small">· ${esc(s.q)}</span>
+        <small>${esc(s.cams)}${s.op ? ' · <b>opérateur inclus</b>' : s.mine === undefined ? ' · en autonomie' : ''}</small>
+        ${s.tags.length ? `<div class="row" style="justify-content:flex-start;gap:4px;flex-wrap:wrap;margin-top:4px">${s.tags.map((t) => `<span class="pill ${spotTags.has(t) ? 'y' : 'g'}" style="font-size:11px">${esc(t)}</span>`).join('')}</div>` : ''}</div>
+      <div style="text-align:right;max-width:240px"><b class="small">${esc(s.l)}</b>${s.p ? `<div class="muted small">≈ ${fmt(s.p * spotHours)} pour ${spotHours} h</div>` : ''}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end">${s.u ? `<a class="btn sm" href="${esc(s.u)}" target="_blank" rel="noopener">Voir</a>` : ''}<button class="btn sm" data-ask="${i}">Demander une dispo</button><button class="btn sm y" data-note="${esc(JSON.stringify({ n: s.n, q: s.q, p: s.p }))}">J'ai réservé</button>${s.mine !== undefined ? `<button class="btn sm ghost" data-unfav="${s.mine}">✕</button>` : `<button class="btn sm ghost" title="Garder en favori" data-fav="${esc(JSON.stringify({ name: s.n, place: s.q, price: s.p, url: s.u, note: s.l.slice(0, 190) }))}">⭐</button>`}</div>
+      <div class="hidden" id="ask-${i}" style="width:100%"><textarea style="width:100%;min-height:110px;margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:13px">${esc(bookingMsg(s))}</textarea><button class="btn sm y" data-copyask="${i}">Copier le message</button></div></div>`).join('') || '<p class="muted small">Aucun lieu avec ces filtres : enlève un style ou monte le budget.</p>'}
+    <p class="muted small" style="margin-top:8px">Prix d'appel relevés sur les sites des studios, Peerspace et des comparatifs (26 oct 2026) : HT / TTC, opérateur et minimum d'heures varient, vérifie avant de réserver.</p>
     <details style="margin-top:6px"><summary class="small" style="cursor:pointer"><b>+ Ajouter un favori</b> (ex. le studio de Bobby)</summary>
       <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${['fvn|Nom', 'fvq|Quartier', 'fvp|€/h', 'fvu|Lien (facultatif)', 'fvo|Note'].map((x) => { const [id, ph] = x.split('|'); return `<input id="${id}" placeholder="${ph}" ${id === 'fvp' ? 'type="number" style="width:80px' : 'style="flex:1;min-width:120px'};border:1px solid var(--line);border-radius:10px;padding:7px 9px;font:inherit;font-size:13px">`; }).join('')}<button class="btn sm y" id="fvgo">Ajouter</button></div></details></div>`;
 }
@@ -626,14 +700,15 @@ function spotResults() {
 const shrink = (dataUrl) => new Promise((ok) => { const im = new Image(); im.onload = () => { const k = Math.min(1, 1024 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', 0.85)); }; im.onerror = () => ok(dataUrl); im.src = dataUrl; });
 function pSpots() {
   const upcoming = TOURN.filter((t) => inC(t.client) && t.date >= dAgo(0, 0)).sort((a, b) => a.date - b.date);
-  return `<div class="page-h"><div><h2>Spots de tournage</h2><p>Les studios podcast de Paris, tes favoris, et ce que tu as réservé : ça part dans le planning et dans la compta.</p></div></div>
-  <div class="bento"><div class="card c6 in"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>1. Chercher comme ta référence</h3>${RAW.spotAI ? '<span class="pill y">✨ IA + web</span>' : ''}</div>
-      <label class="drop" id="spdrop" style="min-height:${spotImg ? 0 : 120}px">${spotImg ? `<img src="${spotImg}" style="max-width:100%;max-height:200px;border-radius:14px">` : '📷 <b>Dépose ta référence</b><br><span class="small">capture d’un podcast, photo d’un décor…</span>'}<input type="file" accept="image/*" id="spfile" hidden></label>
-      <div class="field"><span class="muted small">Et/ou décris ce que tu veux</span><input id="spq" placeholder="Bureau, étagères en bois, lumière chaude, 2 fauteuils"></div>
-      <div class="row small" style="gap:8px;flex-wrap:wrap"><input id="spv" value="Paris" style="width:90px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit"><select id="spb" class="sel">${['30-50 €/h', '50-100 €/h', '100 €/h et plus'].map((x) => `<option>${x}</option>`).join('')}</select><select id="spn2" class="sel">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === 2 ? 'selected' : ''}>${n} pers.</option>`).join('')}</select></div>
-      ${RAW.spotAI ? `<button class="btn y w" id="spai" style="margin-top:14px">✨ Trouver des lieux qui ressemblent</button><p class="muted small" style="margin-top:8px">L’IA lit ta référence, cherche de vrais lieux à louer sur le web et prépare le message pour le studio (30 s à 1 min).</p>` : ''}
-      <div class="row small" style="gap:8px;margin-top:10px"><span class="muted">Recherche rapide :</span><button class="btn sm" data-sp="peerspace">Peerspace</button><button class="btn sm" data-sp="google">Google</button></div></div>
-    <div class="card c6 in" style="--i:1"><div class="ch"><h3><span class="ic">${ic('cal', 16)}</span>2. J'ai réservé</h3></div>
+  return `<div class="page-h"><div><h2>Spots de tournage</h2><p>Studios et lieux de tournage à Paris et en Île-de-France.</p></div></div>
+  <div class="bento"><div class="card c6 in"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>Chercher un lieu</h3>${RAW.spotAI ? '<span class="pill y">IA</span>' : ''}</div>
+      ${RAW.spotAI ? `<label class="drop" id="spdrop" style="min-height:${spotImg ? 0 : 120}px">${spotImg ? `<img src="${spotImg}" style="max-width:100%;max-height:200px;border-radius:14px">` : '📷 <b>Dépose ta référence</b><br><span class="small">capture d’un podcast, photo d’un décor…</span>'}<input type="file" accept="image/*" id="spfile" hidden></label>` : '<p class="muted small" style="margin:0 0 8px">Décris le lieu (salon, briques, fond blanc…), la liste en dessous se filtre.</p>'}
+      <div class="field"><span class="muted small">Et/ou décris ce que tu veux</span><input id="spq" value="${esc(spotQText)}" placeholder="Bureau, étagères en bois, lumière chaude, 2 fauteuils"></div>
+      <div class="row small" style="gap:8px;flex-wrap:wrap"><input id="spv" value="Paris" style="width:90px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit"><select id="spb" class="sel">${['30-50 €/h', '50-100 €/h', '100 €/h et plus'].map((x) => `<option ${(spotMax === 50 && x.startsWith('30')) || (spotMax === 100 && x.startsWith('50')) ? 'selected' : ''}>${x}</option>`).join('')}</select><select id="spn2" class="sel">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === spotPeople ? 'selected' : ''}>${n} pers.</option>`).join('')}</select></div>
+      ${RAW.spotAI ? `<button class="btn y w" id="spai" style="margin-top:14px">Chercher avec l'IA</button><p class="muted small" style="margin-top:8px">L'IA analyse la photo, cherche des lieux à louer sur le web et rédige le message pour le studio (30 s à 1 min).</p>` : ''}
+      <button class="btn ${RAW.spotAI ? '' : 'y'} w" id="spfind" style="margin-top:12px">Rechercher</button>
+      <div class="row small" style="gap:8px;margin-top:10px"><span class="muted">Chercher aussi sur :</span><button class="btn sm" data-sp="peerspace">Peerspace</button><button class="btn sm" data-sp="google">Google</button></div></div>
+    <div class="card c6 in" style="--i:1"><div class="ch"><h3><span class="ic">${ic('cal', 16)}</span>Noter une réservation</h3></div>
       ${upcoming.length ? `<div class="field"><span class="muted small">Pour le tournage</span><select id="spt" class="sel" style="width:100%">${upcoming.map((t) => `<option value="${t.dbId}">${t.id} · ${esc(t.client)} · ${dFmt(t.date)}${t.spot ? ' (déjà : ' + esc(t.spot.n) + ')' : ''}</option>`).join('')}</select></div>
       <div class="field"><span class="muted small">Nom du lieu</span><input id="spn" placeholder="Studio Lumière"></div>
       <div class="row" style="gap:8px;flex-wrap:nowrap"><input id="spa" placeholder="Adresse / quartier" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:8px;font:inherit"><input id="spp" type="number" placeholder="€/h" style="width:80px;border:1px solid var(--line);border-radius:12px;padding:8px;font:inherit"></div>
@@ -660,11 +735,11 @@ function pTeam() {
   const cl = RAW.clients ?? [], mo = RAW.monteurs ?? [];
   const cRow = (c) => `<div class="row" data-row="client" data-id="${c?.id ?? ''}" style="gap:6px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)">
     ${c ? `<label class="av" title="Choisir sa photo" style="${avBg(c.name)};width:36px;height:36px;cursor:pointer">${initials(c.name)}<input type="file" accept="image/*" data-photo="${c.id}" hidden></label>` : '<div class="av" style="background:var(--soft);width:36px;height:36px">+</div>'}<input data-k="color" type="color" value="${c?.color ?? '#FCCA09'}" title="Couleur du client" style="width:22px;height:22px;border:0;background:none;padding:0">${inp('name', c?.name, 'Nom du client', '170px')}${inp('fee', c?.fee, '€ / mois', '90px', 'number')}${inp('email', c?.email, 'E-mail (relances)')}${inp('instagram', c?.instagram, '@instagram (photo)', '150px')}
-    <button class="btn sm y" data-save="client">${c ? 'Enregistrer' : 'Ajouter'}</button>${c ? `<button class="btn sm ghost" data-link="${c.token}">🔗 Lien</button><button class="btn sm ghost" data-arch="clients|${c.id}" title="Retirer">✕</button>` : ''}</div>`;
+    <button class="btn sm y" data-save="client">${c ? 'Enregistrer' : 'Ajouter'}</button>${c ? `<button class="btn sm ghost" data-link="${c.token}">Lien</button><button class="btn sm ghost" data-arch="clients|${c.id}" title="Retirer">✕</button>` : ''}</div>`;
   const mRow = (m) => `<div class="row" data-row="monteur" data-id="${m?.id ?? ''}" style="gap:6px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)">
     ${inp('name', m?.name, 'Nom du monteur', '170px')}${inp('rate', m?.rate, '€ / vidéo', '90px', 'number')}${inp('slack', m?.slack, 'ID Slack (pour le @)')}
     <button class="btn sm y" data-save="monteur">${m ? 'Enregistrer' : 'Ajouter'}</button>${m ? `<button class="btn sm ghost" data-arch="monteurs|${m.id}" title="Retirer">✕</button>` : ''}</div>`;
-  return `<div class="page-h"><div><h2>Clients & monteurs</h2><p>Prix, tarifs et contacts : ce qui sert aux marges, à la paie et aux relances.</p></div></div>
+  return `<div class="page-h"><div><h2>Clients & monteurs</h2><p>Prix, tarifs et contacts de tes clients et monteurs.</p></div></div>
   <div class="bento"><div class="card c12 in" style="grid-column:span 12"><div class="ch"><h3><span class="ic">${ic('users', 16)}</span>Clients</h3><span class="muted small">€ / mois facturés · e-mail pour les relances</span></div>${cl.map(cRow).join('')}${cRow(null)}</div>
     <div class="card c12 in" style="grid-column:span 12;--i:1"><div class="ch"><h3><span class="ic">${ic('video', 16)}</span>Monteurs</h3><span class="muted small">€ par vidéo validée · ID Slack : profil Slack → ⋮ → Copier l'ID de membre</span></div>${mo.map(mRow).join('')}${mRow(null)}</div></div>`;
 }
@@ -672,19 +747,19 @@ function bindTeam(app) {
   app.querySelectorAll('[data-save]').forEach((b) => (b.onclick = () => act(b, async () => {
     const row = b.closest('[data-row]'), val = (k) => row.querySelector(`[data-k="${k}"]`)?.value ?? '', id = row.dataset.id, kind = row.dataset.row;
     const body = kind === 'client' ? { name: val('name'), fee: +val('fee') || 0, color: val('color'), email: val('email').trim(), instagram: val('instagram').trim() } : { name: val('name'), rate: +val('rate') || 0, slack: val('slack').trim() };
-    await post(`/api/${kind}s${id ? '/' + id : ''}`, body); toast('✓ Enregistré');
+    await post(`/api/${kind}s${id ? '/' + id : ''}`, body); toast('Enregistré');
   })));
   app.querySelectorAll('[data-photo]').forEach((inp) => (inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader();
     r.onload = () => { const im = new Image(); im.onload = () => act(null, async () => { const k = 160 / Math.min(im.width, im.height), cv = document.createElement('canvas'); cv.width = cv.height = 160;
-      cv.getContext('2d').drawImage(im, (160 - im.width * k) / 2, (160 - im.height * k) / 2, im.width * k, im.height * k); await post(`/api/clients/${inp.dataset.photo}/photo`, { photo: cv.toDataURL('image/jpeg', 0.85) }); toast('📸 Photo enregistrée'); }); im.src = r.result; }; r.readAsDataURL(f); }));
+      cv.getContext('2d').drawImage(im, (160 - im.width * k) / 2, (160 - im.height * k) / 2, im.width * k, im.height * k); await post(`/api/clients/${inp.dataset.photo}/photo`, { photo: cv.toDataURL('image/jpeg', 0.85) }); toast('Photo enregistrée'); }); im.src = r.result; }; r.readAsDataURL(f); }));
   app.querySelectorAll('[data-arch]').forEach((b) => (b.onclick = () => { const [t, id] = b.dataset.arch.split('|'); if (confirm('Retirer ? (son historique reste dans la compta)')) act(b, () => post(`/api/${t}/${id}/archive`)); }));
-  app.querySelectorAll('[data-link]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(`${location.origin}/c/${b.dataset.link}`); toast('🔗 Lien client copié'); }));
+  app.querySelectorAll('[data-link]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(`${location.origin}/c/${b.dataset.link}`); toast('Lien client copié'); }));
 }
 const field = (id, ph, type = 'text') => `<input id="${id}" type="${type}" placeholder="${ph}" autocomplete="off" style="flex:1;min-width:0;border:1px solid #e6e3dc;border-radius:999px;padding:8px 14px;font:inherit;background:#faf9f6">`;
 const syncedAt = (t) => (t ? new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'jamais');
 function qontoCard(i) {
   const q = RAW.qonto ?? {};
-  return `<div class="card c6 in" style="--i:${i}"><div class="conn" style="margin-bottom:10px"><div class="ci">🏦</div><div style="flex:1"><b>Banque Qonto</b><div class="muted small">${q.connected ? `Mouvements importés toutes les heures · dernière fois : ${syncedAt(q.lastSync)}` : 'Tes mouvements arrivent tout seuls dans la compta, rangés par client / monteur / outil.'}</div></div>${q.connected ? '<span class="pill up">connecté</span>' : ''}</div>
+  return `<div class="card c6 in" style="--i:${i}"><div class="conn" style="margin-bottom:10px"><div class="ci">🏦</div><div style="flex:1"><b>Banque Qonto</b><div class="muted small">${q.connected ? `Mouvements importés toutes les heures · dernière fois : ${syncedAt(q.lastSync)}` : 'Importe tes mouvements dans la compta, rangés par client, monteur ou outil.'}</div></div>${q.connected ? '<span class="pill up">connecté</span>' : ''}</div>
     ${q.connected ? '<div style="display:flex;gap:8px"><button class="btn sm y" id="qsync">Synchroniser</button><button class="btn sm" id="qoff">Déconnecter</button></div>'
       : `<ol class="small muted" style="margin:0 0 10px;padding-left:18px"><li>Appli Qonto → <b>Paramètres</b> → <b>Intégrations et partenaires</b> → <b>Clé API</b>.</li><li>Copie l'<b>identifiant</b> et la <b>clé secrète</b> (lecture seule : aucun virement possible avec).</li><li>Colle-les ici (jamais par message).</li></ol>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${field('qlog', 'Identifiant')}${field('qsec', 'Clé secrète', 'password')}<button class="btn sm y" id="qgo">Connecter</button></div>`}</div>`;
@@ -699,7 +774,7 @@ function calCard(i) {
 function pConnect() {
   const c = (icn, t, d, st, i) => `<div class="card c6 in conn" style="--i:${i}"><div class="ci">${icn}</div><div style="flex:1"><b>${t}</b><div class="muted small">${d}</div></div>${st}</div>`;
   const perso = RAW.mode === 'perso';
-  return `<div class="page-h"><div><h2>Connexions</h2><p>Une seule fois. Ensuite tout se remplit tout seul.</p></div></div>
+  return `<div class="page-h"><div><h2>Connexions</h2><p>Banque, agenda et outils reliés au hub.</p></div></div>
   <div class="bento">${qontoCard(0)}${calCard(1)}
     ${c('📊', 'Ton Google Sheet / autre banque', 'Exporte en CSV et dépose-le dans Compta → Banque (sans doublons).', '<button class="btn sm" data-go="compta" data-sub="bank">Importer</button>', 2)}
     ${c('✉️', 'E-mails aux clients', 'Relances de paiement envoyées de ton adresse.', RAW.integrations?.mail ? '<span class="pill up">branché</span>' : '<span class="pill g">à brancher</span>', 3)}
@@ -718,7 +793,7 @@ function answer(q) {
     const tot = mg.reduce((a, r) => ({ f: a.f + r.fee, m: a.m + r.marge }), { f: 0, m: 0 }), b = [...mg].sort((a, x) => x.pc - a.pc)[0];
     return [`Ta marge en ${mName(month)} est de **${fmt(tot.m)}** (${Math.round((tot.m / tot.f) * 100)} %). Ton client le plus rentable : **${b.c}** (${b.pc} %). Après URSSAF, il te reste **${fmt(s.rest)}**.`, { k: 'Marge totale', v: fmt(tot.m), d: `${Math.round((tot.m / tot.f) * 100)} % de ton CA` }];
   }
-  if (/pay|facture|impaye|doit/.test(t) && !/monteur/.test(t)) { const u = unpaidClients(month); return [u.length ? `**${u.join(', ')}** n'a pas encore payé (${fmt(u.reduce((a, c) => a + CLIENTS[c], 0))}). Relance en 1 clic : Compta → Factures → Relancer.` : 'Tous tes clients ont payé ce mois 🎉', u.length ? { k: 'En attente', v: fmt(u.reduce((a, c) => a + CLIENTS[c], 0)), d: u.join(', ') } : null]; }
+  if (/pay|facture|impaye|doit/.test(t) && !/monteur/.test(t)) { const u = unpaidClients(month); return [u.length ? `**${u.join(', ')}** n'a pas encore payé (${fmt(u.reduce((a, c) => a + CLIENTS[c], 0))}). Pour relancer : Compta → Factures → Relancer.` : 'Tous tes clients ont payé ce mois 🎉', u.length ? { k: 'En attente', v: fmt(u.reduce((a, c) => a + CLIENTS[c], 0)), d: u.join(', ') } : null]; }
   if (/valid/.test(t)) { const v = VIDS.filter((x) => x.status === 'avalider'); return [`**${v.length} vidéos** attendent une validation : ${v.map((x) => `« ${x.title} » (${x.client.replace('Client ', '')})`).join(', ')}. ${v.filter((x) => x.reminded).length} déjà relancée(s) ; les autres le seront à 48 h.`, { k: 'À valider', v: String(v.length), d: 'relance auto à 48 h' }]; }
   if (/meilleur|top|reel|vue/.test(t)) { const w = weekReels(), b = w[0]; return [`Ton meilleur reel de la semaine : **« ${b.title} »** (${b.client}) avec **${kFmt(b.views)} vues**. Au total, ${kFmt(w.reduce((a, v) => a + v.views, 0))} vues sur ${w.length} reels cette semaine.`, { k: 'Top reel', v: kFmt(b.views) + ' vues', d: b.title }]; }
   if (/monteur|virement/.test(t)) { const d = monteurDue(month), left = d.filter((x) => x.left > 0); return [left.length ? `Il te reste **${fmt(left.reduce((a, x) => a + x.left, 0))}** à payer : ${left.map((x) => `${x.mo} (${fmt(x.left)})`).join(', ')}. Les autres sont à jour.` : 'Tous tes monteurs sont payés ✅', { k: 'Dû aux monteurs', v: fmt(left.reduce((a, x) => a + x.left, 0)), d: `${mName(month)}` }]; }
@@ -756,7 +831,7 @@ document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.
 document.getElementById('bell').onclick = () => { openAsk(); setTimeout(() => ask('Qu’est-ce qui demande mon attention ?'), 350); };
 
 // ================= Rendu =================
-const HEAD = { home: ['Bonjour Adrien 👋', () => `${TODAY.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} · tout est à jour`], planning: ['Planning', () => ''], videos: ['Vidéos', () => `${VIDS.length} vidéos · 3 clients`], client: ['Espace client', () => 'Validation en 1 clic'], perfs: ['Performances', () => 'Mis à jour cette nuit'], sav: ['SAV', () => 'Romain respire'], compta: ['Compta', () => 'Synchronisée avec ta banque'], spots: ['Spots', () => 'Paris · 30-50 €/h'], connect: ['Connexions', () => 'une fois pour toutes'], team: ['Clients & monteurs', () => `${Object.keys(CLIENTS).length} clients · ${Object.keys(MONTEURS).length} monteurs`] };
+const HEAD = { home: ['Bonjour Adrien', () => TODAY.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })], planning: ['Planning', () => ''], videos: ['Vidéos', () => `${VIDS.length} vidéos · ${Object.keys(CLIENTS).length} clients`], client: ['Espace client', () => ''], perfs: ['Performances', () => ''], sav: ['SAV', () => ''], compta: ['Compta', () => ''], spots: ['Spots', () => ''], connect: ['Connexions', () => ''], team: ['Clients & monteurs', () => `${Object.keys(CLIENTS).length} clients · ${Object.keys(MONTEURS).length} monteurs`] };
 function animate(root) {
   root.querySelectorAll('[data-count]').forEach((el) => {
     const to = +el.dataset.count, f = el.dataset.f, t0 = performance.now(), D = 1100;
@@ -789,7 +864,8 @@ function render() {
   document.getElementById('nav').innerHTML = (perso ? PERSO.map((k) => PAGES.find((x) => x[0] === k)) : PAGES).map(([k, l, i]) => `<button class="nb ${page === k ? 'on' : ''}" data-go="${k}" aria-label="${l}">${ic(i)}<span class="tip">${l}</span>${k === 'client' ? '<span class="dot"></span>' : ''}</button>`).join('');
   document.getElementById('ttl').textContent = HEAD.home[0]; document.getElementById('sub').textContent = HEAD.home[1]();
   const app = document.getElementById('app');
-  app.innerHTML = { home: pHome, videos: pVideos, planning: pPlanning, client: pClient, perfs: pPerfs, sav: pSav, compta: pCompta, spots: pSpots, connect: pConnect, team: pTeam }[page]();
+  try { app.innerHTML = { home: pHome, videos: pVideos, planning: pPlanning, client: pClient, perfs: pPerfs, sav: pSav, compta: pCompta, spots: pSpots, connect: pConnect, team: pTeam }[page]();
+  } catch (e) { console.error(e); app.innerHTML = `<div class="card"><b>Cette page n’a pas pu s’afficher</b><p class="muted small">${esc(e.message)}</p></div>`; }
   animate(app); bind(app);
 }
 function bind(app) {
@@ -799,7 +875,7 @@ function bind(app) {
     const v = VIDS.find((x) => x.id === +b.dataset.ok);
     await post(PORTAL ? `/api/portal/${PORTAL}/videos/${v.id}/validate` : `/api/videos/${v.id}/validate`);
     b.closest('[data-card]').innerHTML = `<div class="done"><div class="ck">✓</div><b>Validée !</b><span class="muted small">${PORTAL ? 'Merci, l’équipe est prévenue' : `Statut mis à jour · ${v.monteur} prévenu`}</span></div>`;
-    toast(PORTAL ? '✓ Validée' : `✓ Validée${MONTEURS[v.monteur] ? ` · <b>+${MONTEURS[v.monteur]} €</b> dus à ${esc(v.monteur)}` : ''}`, ['Annuler', () => act(null, () => post(PORTAL ? `/api/portal/${PORTAL}/videos/${v.id}/undo` : `/api/videos/${v.id}/undo`).then(() => toast('↩️ Validation annulée')))], 15000);
+    toast(PORTAL ? '✓ Validée' : `✓ Validée${MONTEURS[v.monteur] ? ` · <b>+${MONTEURS[v.monteur]} €</b> dus à ${esc(v.monteur)}` : ''}`, ['Annuler', () => act(null, () => post(PORTAL ? `/api/portal/${PORTAL}/videos/${v.id}/undo` : `/api/videos/${v.id}/undo`).then(() => toast('Validation annulée')))], 15000);
   }, 1300)));
   app.querySelectorAll('[data-mod]').forEach((b) => (b.onclick = () => document.getElementById('mod-' + b.dataset.mod).classList.toggle('hidden')));
   app.querySelectorAll('[data-send]').forEach((b) => (b.onclick = () => act(b, async () => {
@@ -810,43 +886,43 @@ function bind(app) {
   app.querySelectorAll('[data-plan]').forEach((b) => (b.onclick = () => act(b, async () => {
     const at = new Date(app.querySelector(`[data-pd="${b.dataset.plan}"]`).value).getTime();
     if (!at) throw new Error('Choisis une date');
-    await post(`/api/videos/${b.dataset.plan}/plan`, { at }); toast(`📅 Planifiée le ${dFmt(new Date(at))}`);
+    await post(`/api/videos/${b.dataset.plan}/plan`, { at }); toast(`Planifiée le ${dFmt(new Date(at))}`);
   })));
   const ntgo = document.getElementById('ntgo'); if (ntgo) ntgo.onclick = () => act(ntgo, async () => {
     const date = new Date(document.getElementById('ntd').value).getTime(); if (!date) throw new Error('Choisis une date');
-    await post('/api/tournages', { client_id: +document.getElementById('ntc').value, date, hours: +document.getElementById('nth').value || 2 }); toast('🎬 Tournage ajouté');
+    await post('/api/tournages', { client_id: +document.getElementById('ntc').value, date, hours: +document.getElementById('nth').value || 2 }); toast('Tournage ajouté');
   });
   bindTeam(app);
   app.querySelectorAll('[data-ph]').forEach((b) => (b.onclick = () => { phase = b.dataset.ph; render(); }));
   const rp = document.getElementById('rep'); if (rp) rp.onclick = () => { showReport = !showReport; render(); if (showReport) setTimeout(() => document.getElementById('report')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); };
-  const sr = document.getElementById('sendrep'); if (sr) sr.onclick = () => act(sr, async () => { await post('/api/slack', { kind: 'rapport', text: `📊 Rapport de ${mName(month)} prêt pour *${vcOf()}* : ${location.origin}/c/${TOKENS[vcOf()]}` }); sr.textContent = 'Envoyé ✓'; toast(`📊 Lien du rapport de <b>${vcOf()}</b> envoyé sur Slack`); });
-  const br = document.getElementById('brief'); if (br) br.onclick = () => act(br, async () => { const t = nextTourn(); await post('/api/slack', { kind: 'brief', text: `🎬 *Tournage ${t.id}* · ${t.client} · ${dFmt(t.date)} à ${t.date.getHours()} h · 📍 ${t.spot ? t.spot.n + ' (' + t.spot.q + ')' : 'lieu à confirmer'}\nScripts :\n${scriptsOf(t).map((v) => '• ' + v.title).join('\n')}` }); br.textContent = 'Brief envoyé ✓'; toast('🎬 Brief envoyé sur <b>Slack</b>'); });
-  app.querySelectorAll('[data-tour]').forEach((e) => (e.onclick = () => toast(`🎬 ${e.dataset.tour} : voir le détail à droite`)));
+  const sr = document.getElementById('sendrep'); if (sr) sr.onclick = () => act(sr, async () => { await post('/api/slack', { kind: 'rapport', text: `📊 Rapport de ${mName(month)} prêt pour *${vcOf()}* : ${location.origin}/c/${TOKENS[vcOf()]}` }); sr.textContent = 'Envoyé ✓'; toast(`Lien du rapport de <b>${vcOf()}</b> envoyé sur Slack`); });
+  const br = document.getElementById('brief'); if (br) br.onclick = () => act(br, async () => { const t = nextTourn(); await post('/api/slack', { kind: 'brief', text: `🎬 *Tournage ${t.id}* · ${t.client} · ${dFmt(t.date)} à ${t.date.getHours()} h · 📍 ${t.spot ? t.spot.n + ' (' + t.spot.q + ')' : 'lieu à confirmer'}\nScripts :\n${scriptsOf(t).map((v) => '• ' + v.title).join('\n')}` }); br.textContent = 'Brief envoyé ✓'; toast('Brief envoyé sur <b>Slack</b>'); });
+  app.querySelectorAll('[data-tour]').forEach((e) => (e.onclick = () => toast(`${e.dataset.tour} : voir le détail à droite`)));
   app.querySelectorAll('[data-book]').forEach((b) => (b.onclick = () => act(b, async () => {
     const sp = SPOTS[+b.dataset.book], t = TOURN.filter((x) => !x.spot && inC(x.client) && x.date >= TODAY).sort((a, c) => a.date - c.date)[0] ?? nextTourn();
     if (!t) throw new Error('Aucun tournage à venir');
     await post(`/api/tournages/${t.dbId}/spot`, { name: sp.n, place: sp.q, price: sp.p });
-    toast(`📍 ${sp.n} réservé pour <b>${t.id}</b> · ${fmt(sp.p * t.hours)} ajoutés en compta et au planning`);
+    toast(`${sp.n} réservé pour <b>${t.id}</b> · ${fmt(sp.p * t.hours)} ajoutés en compta et au planning`);
   })));
-  const cl = document.getElementById('copylink'); if (cl) cl.onclick = () => { navigator.clipboard?.writeText(`${location.origin}/c/${TOKENS[vcOf()]}`); cl.textContent = 'Lien copié ✓'; toast('🔗 Lien client copié : envoie-le à ton client'); };
+  const cl = document.getElementById('copylink'); if (cl) cl.onclick = () => { navigator.clipboard?.writeText(`${location.origin}/c/${TOKENS[vcOf()]}`); cl.textContent = 'Lien copié ✓'; toast('Lien client copié : envoie-le à ton client'); };
   app.querySelectorAll('[data-fb]').forEach((b) => (b.onclick = () => { const i = +b.dataset.fb; fbSel.has(i) ? fbSel.delete(i) : fbSel.add(i); b.classList.toggle('on'); b.style.background = fbSel.has(i) ? 'var(--ink)' : ''; b.style.color = fbSel.has(i) ? '#fff' : ''; const v = VIDS.find((x) => x.id === +document.getElementById('fbv').value); const p = document.getElementById('fbprev'); p.classList.toggle('muted', !fbSel.size); p.innerHTML = fbSel.size ? `Yo ${v.monteur} 👋 Retours sur « ${v.title} » :<br>${[...fbSel].map((k) => '• ' + FB[k]).join('<br>')}<br>Merci 🙏` : 'Clique sur des remarques…'; }));
   const fs = document.getElementById('fbsend'); if (fs) fs.onclick = () => act(fs, async () => { if (!fbSel.size) throw new Error('Choisis au moins une remarque'); await post('/api/slack', { kind: 'feedback', text: document.getElementById('fbprev').innerText }); fs.textContent = 'Envoyé sur Slack ✓'; fbSel = new Set(); });
   const ms = document.getElementById('month'); if (ms) ms.onchange = () => { month = ms.value; render(); };
   const rs = document.getElementById('rate'); if (rs) rs.onchange = () => { rate = +rs.value; render(); };
   app.querySelectorAll('[data-cat]').forEach((s) => (s.onchange = () => act(s, () => post(`/api/tx/${s.dataset.cat}`, { cat: s.value }))));
-  app.querySelectorAll('[data-remind]').forEach((b) => (b.onclick = () => act(b, async () => { const c = b.dataset.remind; await post(`/api/clients/${CIDS[c]}/remind-invoice`, { month: mName(month), amount: CLIENTS[c] }); toast(`🧾 E-mail de relance envoyé à <b>${esc(c)}</b>`); })));
+  app.querySelectorAll('[data-remind]').forEach((b) => (b.onclick = () => act(b, async () => { const c = b.dataset.remind; await post(`/api/clients/${CIDS[c]}/remind-invoice`, { month: mName(month), amount: CLIENTS[c] }); toast(`E-mail de relance envoyé à <b>${esc(c)}</b>`); })));
   app.querySelectorAll('[data-pay]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(`Virement ${b.dataset.pay} : ${b.dataset.left} €`); b.textContent = 'Copié ✓ · à coller dans Qonto'; }));
   app.querySelectorAll('[data-inv]').forEach((b) => (b.onclick = () => { const [c, n, a] = b.dataset.inv.split('|'); const w = document.getElementById('invwrap'); w.innerHTML = invoice(c, n, +a); w.scrollIntoView({ behavior: 'smooth' }); }));
   const ex = document.getElementById('export'); if (ex) ex.onclick = () => { const rows = [['Date', 'Libellé', 'Catégorie', 'Qui', 'Montant'], ...stats(month).tx.map((t) => [t.date, t.label, CAT[t.cat], t.who ?? '', String(t.amount).replace('.', ',')])]; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + rows.map((r) => r.map((v) => `"${v}"`).join(';')).join('\n')], { type: 'text/csv' })); a.download = `compta-${month}.csv`; a.click(); };
   const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = () => act(el, fn); };
-  on('qgo', async () => { const r = await post('/api/qonto', { login: document.getElementById('qlog').value, secret: document.getElementById('qsec').value }); toast(`🏦 Qonto connecté : ${r.added} mouvement(s) importé(s)`); });
-  on('qsync', async () => { const r = await post('/api/qonto/sync'); toast(`🏦 ${r.added} nouveau(x) mouvement(s)`); });
+  on('qgo', async () => { const r = await post('/api/qonto', { login: document.getElementById('qlog').value, secret: document.getElementById('qsec').value }); toast(`Qonto connecté : ${r.added} mouvement(s) importé(s)`); });
+  on('qsync', async () => { const r = await post('/api/qonto/sync'); toast(`${r.added} nouveau(x) mouvement(s)`); });
   on('qoff', () => post('/api/qonto/disconnect'));
-  on('ggo', async () => { const r = await post('/api/calendar', { url: document.getElementById('gurl').value }); toast(`📅 Agenda relié : ${r.events} événement(s)`); });
-  on('gsync', async () => { const r = await post('/api/calendar/sync'); toast(`📅 ${r.events} événement(s)`); });
+  on('ggo', async () => { const r = await post('/api/calendar', { url: document.getElementById('gurl').value }); toast(`Agenda relié : ${r.events} événement(s)`); });
+  on('gsync', async () => { const r = await post('/api/calendar/sync'); toast(`${r.events} événement(s)`); });
   on('goff', () => post('/api/calendar/disconnect'));
-  const ngo = document.getElementById('ngo'); if (ngo) ngo.onclick = () => act(ngo, async () => { const r = await post('/api/notion/token', { token: document.getElementById('ntok').value }); toast(`✅ Notion connecté : ${r.bases} base(s), ${r.created} vidéo(s)`); });
-  const nsync = document.getElementById('nsync'); if (nsync) nsync.onclick = () => act(nsync, async () => { const r = await post('/api/notion/sync'); toast(`🔄 ${r.created} nouvelle(s), ${r.updated} mise(s) à jour`); });
+  const ngo = document.getElementById('ngo'); if (ngo) ngo.onclick = () => act(ngo, async () => { const r = await post('/api/notion/token', { token: document.getElementById('ntok').value }); toast(`Notion connecté : ${r.bases} base(s), ${r.created} vidéo(s)`); });
+  const nsync = document.getElementById('nsync'); if (nsync) nsync.onclick = () => act(nsync, async () => { const r = await post('/api/notion/sync'); toast(`${r.created} nouvelle(s), ${r.updated} mise(s) à jour`); });
   const noff = document.getElementById('noff'); if (noff) noff.onclick = () => act(noff, () => post('/api/notion/disconnect'));
   const csv = document.getElementById('csv'); if (csv) csv.onchange = async () => { const f = csv.files[0]; if (!f) return; const out = document.getElementById('csvres'); out.textContent = 'Import…';
     try { const r = await fetch('/api/import', { method: 'POST', body: await f.text() }); const j = await r.json(); if (!r.ok) throw new Error(j.error); load(j.state); out.innerHTML = `✅ <b>${j.added} nouvelles opérations</b> rangées (${j.total - j.added} déjà présentes).`; setTimeout(() => { sub = 'resume'; render(); }, 1400); } catch (err) { out.textContent = '❌ ' + err.message; } };
@@ -854,19 +930,32 @@ function bind(app) {
 app.querySelectorAll('[data-sp]').forEach((b) => (b.onclick = () => { const q = `${document.getElementById('spq').value} ${document.getElementById('spv').value}`.trim(); open(b.dataset.sp === 'peerspace' ? `https://www.google.com/search?q=${encodeURIComponent('site:peerspace.com ' + q)}` : `https://www.google.com/search?q=${encodeURIComponent('location studio tournage ' + q)}`, '_blank', 'noopener'); }));
   const sai = document.getElementById('spai'); if (sai) sai.onclick = () => { sai.textContent = '🔎 Analyse de la référence et recherche des lieux…'; act(sai, async () => {
     await post('/api/spots/find', { image: spotImg ?? undefined, text: document.getElementById('spq').value, city: document.getElementById('spv').value || 'Paris', budget: document.getElementById('spb').value, people: +document.getElementById('spn2').value });
-    toast('✨ Lieux trouvés'); setTimeout(() => document.getElementById('spres')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    toast('Lieux trouvés'); setTimeout(() => document.getElementById('spres')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
   }); };
-  const spc = document.getElementById('spcopy'); if (spc) spc.onclick = () => { navigator.clipboard?.writeText(document.getElementById('spbrief').value); toast('📋 Message copié : colle-le au studio'); };
-  app.querySelectorAll('[data-fav]').forEach((b) => (b.onclick = () => act(b, async () => { await post('/api/spots', JSON.parse(b.dataset.fav)); toast('⭐ Ajouté à tes favoris'); })));
+  const spc = document.getElementById('spcopy'); if (spc) spc.onclick = () => { navigator.clipboard?.writeText(document.getElementById('spbrief').value); toast('Message copié : colle-le au studio'); };
+  app.querySelectorAll('[data-fav]').forEach((b) => (b.onclick = () => act(b, async () => { await post('/api/spots', JSON.parse(b.dataset.fav)); toast('Ajouté à tes favoris'); })));
   const smx = document.getElementById('spmax'); if (smx) smx.onchange = () => { spotMax = +smx.value; render(); };
+  const szn = document.getElementById('spzone'); if (szn) szn.onchange = () => { spotZone = szn.value; render(); };
+  const sop = document.getElementById('spop'); if (sop) sop.onchange = () => { spotOp = sop.value; render(); };
+  const sph = document.getElementById('sph'); if (sph) sph.onchange = () => { spotHours = Math.max(1, +sph.value || 2); render(); };
+  const spp = document.getElementById('spppl'); if (spp) spp.onchange = () => { spotPeople = Math.max(1, +spp.value || 2); render(); };
+  const srs = document.getElementById('spreset'); if (srs) srs.onclick = () => { spotTags.clear(); spotMax = 0; spotOp = 'all'; spotZone = 'all'; spotQText = ''; render(); };
+  const sfd = document.getElementById('spfind'); if (sfd) sfd.onclick = () => {
+    spotQText = document.getElementById('spq').value.trim(); spotTags.clear(); detectStyles(spotQText).forEach((t) => spotTags.add(t));
+    const b = document.getElementById('spb').value; spotMax = b.startsWith('30') ? 50 : b.startsWith('50') ? 100 : 0; spotPeople = +document.getElementById('spn2').value || 2;
+    render(); setTimeout(() => document.getElementById('spmax')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
+  app.querySelectorAll('[data-stag]').forEach((b) => (b.onclick = () => { const t = b.dataset.stag; spotTags.has(t) ? spotTags.delete(t) : spotTags.add(t); render(); }));
+  app.querySelectorAll('[data-ask]').forEach((b) => (b.onclick = () => document.getElementById('ask-' + b.dataset.ask).classList.toggle('hidden')));
+  app.querySelectorAll('[data-copyask]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(document.querySelector(`#ask-${b.dataset.copyask} textarea`).value); toast('Message copié : colle-le au studio (site, e-mail ou Instagram)'); }));
   app.querySelectorAll('[data-note]').forEach((b) => (b.onclick = () => { const d = JSON.parse(b.dataset.note), set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
     set('spn', d.n); set('spa', d.q); set('spp', d.p || ''); const f = document.getElementById('spn'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); f.focus(); } else toast('Ajoute d’abord un tournage dans le Planning'); }));
   app.querySelectorAll('[data-unfav]').forEach((b) => (b.onclick = () => act(b, () => post(`/api/spots/${b.dataset.unfav}/remove`))));
   const fvg = document.getElementById('fvgo'); if (fvg) fvg.onclick = () => act(fvg, async () => { const v = (id) => document.getElementById(id).value.trim();
-    await post('/api/spots', { name: v('fvn'), place: v('fvq'), price: +v('fvp') || 0, url: v('fvu'), note: v('fvo') }); toast('⭐ Favori ajouté'); });
+    await post('/api/spots', { name: v('fvn'), place: v('fvq'), price: +v('fvp') || 0, url: v('fvu'), note: v('fvo') }); toast('Favori ajouté'); });
   const sps = document.getElementById('spsave'); if (sps) sps.onclick = () => act(sps, async () => {
     const name = document.getElementById('spn').value.trim(), price = +document.getElementById('spp').value; if (!name || !price) throw new Error('Nom et prix à l’heure');
-    await post(`/api/tournages/${document.getElementById('spt').value}/spot`, { name, place: document.getElementById('spa').value.trim(), price }); toast(`📍 ${esc(name)} enregistré · ajouté en compta`);
+    await post(`/api/tournages/${document.getElementById('spt').value}/spot`, { name, place: document.getElementById('spa').value.trim(), price }); toast(`${esc(name)} enregistré · ajouté en compta`);
   });
 }
 async function post(path, body) {
@@ -880,7 +969,7 @@ async function post(path, body) {
 /** Lance une action : bouton désactivé pendant l'appel, message d'erreur lisible, puis réaffichage. */
 async function act(el, fn, delay = 0) {
   if (el) el.disabled = true;
-  try { await fn(); setTimeout(render, delay); } catch (e) { toast('❌ ' + e.message); if (el) el.disabled = false; }
+  try { await fn(); setTimeout(render, delay); } catch (e) { toast('' + e.message); if (el) el.disabled = false; }
 }
 async function boot() {
   try {
