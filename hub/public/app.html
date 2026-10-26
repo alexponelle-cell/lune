@@ -246,9 +246,10 @@ function load(st) {
   MONTEURS = Object.fromEntries(st.monteurs.map((m) => [m.name, m.rate ?? 0]));
   MCOL = Object.fromEntries(st.monteurs.map((m, i) => [m.name, PAL[i % PAL.length]]));
   const cn = new Map(clients.map((c) => [c.id, c.name])), mn = new Map(st.monteurs.map((m) => [m.id, m.name])), tn = new Map(st.tournages.map((t) => [t.id, t.code]));
-  VIDS = st.videos.map((v) => ({ id: v.id, client: cn.get(v.client_id), title: v.title, monteur: v.monteur_id ? mn.get(v.monteur_id) : '—', status: v.status, tag: v.tag ?? 'TOFU',
+  // Les clients / monteurs retirés ne sont plus envoyés : on ignore leurs vidéos et tournages (sinon les pages plantent)
+  VIDS = st.videos.filter((v) => cn.has(v.client_id)).map((v) => ({ id: v.id, client: cn.get(v.client_id), title: v.title, monteur: (v.monteur_id && mn.get(v.monteur_id)) || '—', status: v.status, tag: v.tag ?? 'TOFU',
     due: dt(v.due_at), sentAt: dt(v.sent_at), validated: dt(v.validated_at), planned: dt(v.planned_at), published: dt(v.published_at), views: v.views ?? 0, comment: v.comment ?? '', videoUrl: v.video_url ?? null, reminded: dt(v.reminded_at), tournage: tn.get(v.tournage_id) ?? null }));
-  TOURN = st.tournages.map((t) => ({ id: t.code, dbId: t.id, client: cn.get(t.client_id), date: new Date(t.date), hours: t.hours, spot: t.spot_name ? { n: t.spot_name, q: t.spot_place ?? '', p: t.spot_price ?? 0 } : null }));
+  TOURN = st.tournages.filter((t) => cn.has(t.client_id)).map((t) => ({ id: t.code, dbId: t.id, client: cn.get(t.client_id), date: new Date(t.date), hours: t.hours, spot: t.spot_name ? { n: t.spot_name, q: t.spot_place ?? '', p: t.spot_price ?? 0 } : null }));
   TX = (st.transactions ?? []).map((t) => ({ ...t }));
   EVENTS = (st.events ?? []).map((e) => ({ ...e, at: new Date(e.at) }));
   // Paie des monteurs = vidéos validées dans le mois × leur tarif
@@ -310,7 +311,7 @@ function margins(m) {
   const tot = Object.values(w).reduce((a, b) => a + b, 0) || 1;
   return Object.entries(CLIENTS).map(([c, fee]) => { const sh = (w[c] ?? 0) / tot, cm = Math.round(mont * sh), co = Math.round(s.other * sh); return { c, fee, cm, co, marge: fee - cm - co, pc: Math.round(((fee - cm - co) / fee) * 100) }; });
 }
-const monteurDue = (m) => { const s = stats(m); return Object.entries(VIDEOS[m] ?? {}).map(([mo, n]) => { const owed = n * MONTEURS[mo], paid = 0 - s.tx.filter((t) => t.who === mo).reduce((a, t) => a + t.amount, 0) + 0; return { mo, n, owed, paid, left: owed - paid }; }); };
+const monteurDue = (m) => { const s = stats(m); return Object.entries(VIDEOS[m] ?? {}).map(([mo, n]) => { const owed = n * (MONTEURS[mo] ?? 0), paid = 0 - s.tx.filter((t) => t.who === mo).reduce((a, t) => a + t.amount, 0) + 0; return { mo, n, owed, paid, left: owed - paid }; }); };
 const unpaidClients = (m) => { const s = stats(m); return Object.keys(CLIENTS).filter((c) => !s.tx.some((t) => t.who === c && t.amount > 0)); };
 const weekReels = () => VIDS.filter((v) => v.published && TODAY - v.published < 7 * DAY).sort((a, b) => b.views - a.views);
 
@@ -789,7 +790,8 @@ function render() {
   document.getElementById('nav').innerHTML = (perso ? PERSO.map((k) => PAGES.find((x) => x[0] === k)) : PAGES).map(([k, l, i]) => `<button class="nb ${page === k ? 'on' : ''}" data-go="${k}" aria-label="${l}">${ic(i)}<span class="tip">${l}</span>${k === 'client' ? '<span class="dot"></span>' : ''}</button>`).join('');
   document.getElementById('ttl').textContent = HEAD.home[0]; document.getElementById('sub').textContent = HEAD.home[1]();
   const app = document.getElementById('app');
-  app.innerHTML = { home: pHome, videos: pVideos, planning: pPlanning, client: pClient, perfs: pPerfs, sav: pSav, compta: pCompta, spots: pSpots, connect: pConnect, team: pTeam }[page]();
+  try { app.innerHTML = { home: pHome, videos: pVideos, planning: pPlanning, client: pClient, perfs: pPerfs, sav: pSav, compta: pCompta, spots: pSpots, connect: pConnect, team: pTeam }[page]();
+  } catch (e) { console.error(e); app.innerHTML = `<div class="card"><b>Cette page n’a pas pu s’afficher</b><p class="muted small">${esc(e.message)}</p></div>`; }
   animate(app); bind(app);
 }
 function bind(app) {
