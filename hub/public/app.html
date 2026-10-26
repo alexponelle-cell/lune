@@ -613,6 +613,14 @@ const STUDIOS = [
   { n: 'Paris Anim’ Beaujon (Ville de Paris)', q: 'Paris 8e', a: 8, p: 0, l: 'tarif municipal sur demande', op: false, auto: true, cams: 'plusieurs caméras', tags: ['table podcast'], u: 'https://www.paris.fr/activites/studio-podcast-125739' },
   { n: 'Peerspace (annonces de particuliers)', q: 'tout Paris', a: 0, p: 0, l: '≈ 39-95 €/h selon l’annonce', op: false, auto: true, cams: 'lieux bruts : salons, lofts, bureaux', tags: ['salon', 'bureau', 'loft', 'brique'], u: 'https://www.peerspace.com/fr/venues/fr/paris--%C3%AEle-de-france/interview-filming-location' },
 ];
+/** Mots de la recherche → styles de décor (la recherche filtre et classe la liste des studios). */
+const SYN = { salon: ['salon', 'canap', 'fauteuil', 'sofa', 'cosy', 'chaleureu', 'chaud', 'bois', 'étagère', 'etagere', 'biblioth', 'cheminée', 'maison', 'appart'],
+  canapé: ['canap', 'sofa', 'fauteuil'], brique: ['brique', 'industriel', 'pierre'], néon: ['néon', 'neon', 'rgb', 'led', 'couleur', 'gaming', 'coloré'],
+  'fond uni': ['fond blanc', 'fond noir', 'blanc', 'noir', 'uni', 'minimal', 'épuré', 'epure', 'cyclo', 'sobre'], 'fond vert': ['vert', 'incrust', 'green'],
+  bureau: ['bureau', 'office', 'entreprise', 'corporate', 'pro'], loft: ['loft', 'industriel', 'atelier', 'verrière', 'verriere', 'grand'],
+  'table podcast': ['podcast', 'table', 'micro', 'interview', 'face à face', 'face a face', 'discussion'], 'plusieurs décors': ['décors', 'decors', 'plusieurs', 'choix'] };
+const detectStyles = (txt) => { const t = (txt || '').toLowerCase(); return Object.keys(SYN).filter((k) => SYN[k].some((w) => t.includes(w))); };
+let spotQText = '';
 const STYLES = ['salon', 'canapé', 'brique', 'néon', 'fond uni', 'fond vert', 'bureau', 'loft', 'table podcast', 'plusieurs décors'];
 let spotMax = 0, spotOp = 'all', spotHours = 2, spotPeople = 2;
 const spotTags = new Set();
@@ -624,19 +632,24 @@ function bookingMsg(s) {
 }
 function studiosCard() {
   const mine = (RAW.mySpots ?? []).map((s, i) => ({ n: s.name, q: s.place, p: s.price, l: s.price ? `${s.price} €/h` : '', op: false, auto: true, cams: s.note || 'Ton favori', tags: [], u: s.url, mine: i }));
-  const ok = (s) => (!spotMax || (s.p && s.p <= spotMax)) && (spotOp === 'all' || (spotOp === 'op' ? s.op : s.auto)) && [...spotTags].every((t) => s.tags.includes(t));
-  const list = [...mine, ...STUDIOS.filter(ok).sort((a, b) => (a.p || 999) - (b.p || 999))];
+  const ok = (s) => (!spotMax || (s.p && s.p <= spotMax)) && (spotOp === 'all' || (spotOp === 'op' ? s.op : s.auto));
+  // Ressemblance = part des styles demandés que le lieu a (0 à 100 %), puis le moins cher d'abord
+  const score = (s) => (spotTags.size ? Math.round((100 * [...spotTags].filter((t) => s.tags.includes(t)).length) / spotTags.size) : null);
+  const ranked = STUDIOS.filter(ok).map((s) => ({ ...s, match: score(s) })).filter((s) => s.match === null || s.match > 0)
+    .sort((a, b) => (b.match ?? 0) - (a.match ?? 0) || (a.p || 999) - (b.p || 999));
+  const list = [...mine, ...ranked];
   const chip = (t) => `<button class="pill ${spotTags.has(t) ? 'y' : 'g'}" data-stag="${esc(t)}" style="border:0;cursor:pointer">${esc(t)}</button>`;
   const sel = (id, cur, opts) => `<select id="${id}" class="sel">${opts.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
-  return `<div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3><span class="ic">${ic('mic', 16)}</span>Studios et lieux à Paris</h3><span class="pill g">${list.length} résultat${list.length > 1 ? 's' : ''}</span></div>
+  return `<div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3><span class="ic">${ic('mic', 16)}</span>${spotTags.size ? 'Lieux qui collent à ta recherche' : 'Studios et lieux à Paris'}</h3><span class="pill g">${list.length} résultat${list.length > 1 ? 's' : ''}</span></div>
     <div class="row" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="small muted">Décor :</span>${STYLES.map(chip).join('')}</div>
     <div class="row small" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-      ${sel('spmax', spotMax, [[0, 'Tous les prix'], [40, '≤ 40 €/h'], [60, '≤ 60 €/h'], [100, '≤ 100 €/h']])}
+      ${sel('spmax', spotMax, [[0, 'Tous les prix'], [40, '≤ 40 €/h'], [50, '≤ 50 €/h'], [60, '≤ 60 €/h'], [100, '≤ 100 €/h']])}
       ${sel('spop', spotOp, [['all', 'Avec ou sans opérateur'], ['op', 'Opérateur inclus'], ['auto', 'En autonomie']])}
       <span>Durée</span><input id="sph" type="number" min="1" max="12" value="${spotHours}" style="width:56px;border:1px solid var(--line);border-radius:10px;padding:6px;font:inherit"><span>h</span>
       <span>Personnes</span><input id="spppl" type="number" min="1" max="10" value="${spotPeople}" style="width:56px;border:1px solid var(--line);border-radius:10px;padding:6px;font:inherit">
       ${spotTags.size || spotMax || spotOp !== 'all' ? '<button class="btn sm ghost" id="spreset">Tout effacer</button>' : ''}</div>
-    ${list.map((s, i) => `<div class="li" style="flex-wrap:wrap;align-items:flex-start"><div class="grow" style="min-width:240px"><b>${s.mine !== undefined ? '⭐ ' : ''}${esc(s.n)}</b> <span class="muted small">· ${esc(s.q)}</span>
+    ${spotQText ? `<p class="small" style="margin:4px 0 8px">🔎 Tu cherches : <b>« ${esc(spotQText)} »</b>${spotTags.size ? ` → ${[...spotTags].map(esc).join(', ')}` : ' (aucun style reconnu : choisis-en un ci-dessus)'}${spotMax ? ` · ≤ ${spotMax} €/h` : ''} · ${spotPeople} pers.</p>` : ''}
+    ${list.map((s, i) => `<div class="li" style="flex-wrap:wrap;align-items:flex-start"><div class="grow" style="min-width:240px">${s.match != null ? `<span class="pill ${s.match >= 75 ? 'up' : 'g'}" style="margin-right:6px">${s.match} %</span>` : ''}<b>${s.mine !== undefined ? '⭐ ' : ''}${esc(s.n)}</b> <span class="muted small">· ${esc(s.q)}</span>
         <small>${esc(s.cams)}${s.op ? ' · <b>opérateur inclus</b>' : s.mine === undefined ? ' · en autonomie' : ''}</small>
         ${s.tags.length ? `<div class="row" style="justify-content:flex-start;gap:4px;flex-wrap:wrap;margin-top:4px">${s.tags.map((t) => `<span class="pill ${spotTags.has(t) ? 'y' : 'g'}" style="font-size:11px">${esc(t)}</span>`).join('')}</div>` : ''}</div>
       <div style="text-align:right;max-width:240px"><b class="small">${esc(s.l)}</b>${s.p ? `<div class="muted small">≈ ${fmt(s.p * spotHours)} pour ${spotHours} h</div>` : ''}</div>
@@ -663,10 +676,11 @@ function pSpots() {
   return `<div class="page-h"><div><h2>Spots de tournage</h2><p>Les studios podcast de Paris, tes favoris, et ce que tu as réservé : ça part dans le planning et dans la compta.</p></div></div>
   <div class="bento"><div class="card c6 in"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>1. Chercher comme ta référence</h3>${RAW.spotAI ? '<span class="pill y">✨ IA + web</span>' : ''}</div>
       ${RAW.spotAI ? `<label class="drop" id="spdrop" style="min-height:${spotImg ? 0 : 120}px">${spotImg ? `<img src="${spotImg}" style="max-width:100%;max-height:200px;border-radius:14px">` : '📷 <b>Dépose ta référence</b><br><span class="small">capture d’un podcast, photo d’un décor…</span>'}<input type="file" accept="image/*" id="spfile" hidden></label>` : '<p class="muted small" style="margin:0 0 8px">Tape ce que tu veux et lance la recherche, ou filtre la liste juste en dessous par décor.</p>'}
-      <div class="field"><span class="muted small">Et/ou décris ce que tu veux</span><input id="spq" placeholder="Bureau, étagères en bois, lumière chaude, 2 fauteuils"></div>
-      <div class="row small" style="gap:8px;flex-wrap:wrap"><input id="spv" value="Paris" style="width:90px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit"><select id="spb" class="sel">${['30-50 €/h', '50-100 €/h', '100 €/h et plus'].map((x) => `<option>${x}</option>`).join('')}</select><select id="spn2" class="sel">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === 2 ? 'selected' : ''}>${n} pers.</option>`).join('')}</select></div>
+      <div class="field"><span class="muted small">Et/ou décris ce que tu veux</span><input id="spq" value="${esc(spotQText)}" placeholder="Bureau, étagères en bois, lumière chaude, 2 fauteuils"></div>
+      <div class="row small" style="gap:8px;flex-wrap:wrap"><input id="spv" value="Paris" style="width:90px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit"><select id="spb" class="sel">${['30-50 €/h', '50-100 €/h', '100 €/h et plus'].map((x) => `<option ${(spotMax === 50 && x.startsWith('30')) || (spotMax === 100 && x.startsWith('50')) ? 'selected' : ''}>${x}</option>`).join('')}</select><select id="spn2" class="sel">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === spotPeople ? 'selected' : ''}>${n} pers.</option>`).join('')}</select></div>
       ${RAW.spotAI ? `<button class="btn y w" id="spai" style="margin-top:14px">✨ Trouver des lieux qui ressemblent</button><p class="muted small" style="margin-top:8px">L’IA lit ta référence, cherche de vrais lieux à louer sur le web et prépare le message pour le studio (30 s à 1 min).</p>` : ''}
-      <div class="row small" style="gap:8px;margin-top:10px"><span class="muted">Recherche rapide :</span><button class="btn sm" data-sp="peerspace">Peerspace</button><button class="btn sm" data-sp="google">Google</button></div></div>
+      <button class="btn ${RAW.spotAI ? '' : 'y'} w" id="spfind" style="margin-top:12px">🔎 Rechercher dans les studios</button>
+      <div class="row small" style="gap:8px;margin-top:10px"><span class="muted">Chercher aussi sur :</span><button class="btn sm" data-sp="peerspace">Peerspace</button><button class="btn sm" data-sp="google">Google</button></div></div>
     <div class="card c6 in" style="--i:1"><div class="ch"><h3><span class="ic">${ic('cal', 16)}</span>2. J'ai réservé</h3></div>
       ${upcoming.length ? `<div class="field"><span class="muted small">Pour le tournage</span><select id="spt" class="sel" style="width:100%">${upcoming.map((t) => `<option value="${t.dbId}">${t.id} · ${esc(t.client)} · ${dFmt(t.date)}${t.spot ? ' (déjà : ' + esc(t.spot.n) + ')' : ''}</option>`).join('')}</select></div>
       <div class="field"><span class="muted small">Nom du lieu</span><input id="spn" placeholder="Studio Lumière"></div>
@@ -897,7 +911,12 @@ app.querySelectorAll('[data-sp]').forEach((b) => (b.onclick = () => { const q = 
   const sop = document.getElementById('spop'); if (sop) sop.onchange = () => { spotOp = sop.value; render(); };
   const sph = document.getElementById('sph'); if (sph) sph.onchange = () => { spotHours = Math.max(1, +sph.value || 2); render(); };
   const spp = document.getElementById('spppl'); if (spp) spp.onchange = () => { spotPeople = Math.max(1, +spp.value || 2); render(); };
-  const srs = document.getElementById('spreset'); if (srs) srs.onclick = () => { spotTags.clear(); spotMax = 0; spotOp = 'all'; render(); };
+  const srs = document.getElementById('spreset'); if (srs) srs.onclick = () => { spotTags.clear(); spotMax = 0; spotOp = 'all'; spotQText = ''; render(); };
+  const sfd = document.getElementById('spfind'); if (sfd) sfd.onclick = () => {
+    spotQText = document.getElementById('spq').value.trim(); spotTags.clear(); detectStyles(spotQText).forEach((t) => spotTags.add(t));
+    const b = document.getElementById('spb').value; spotMax = b.startsWith('30') ? 50 : b.startsWith('50') ? 100 : 0; spotPeople = +document.getElementById('spn2').value || 2;
+    render(); setTimeout(() => document.getElementById('spmax')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
   app.querySelectorAll('[data-stag]').forEach((b) => (b.onclick = () => { const t = b.dataset.stag; spotTags.has(t) ? spotTags.delete(t) : spotTags.add(t); render(); }));
   app.querySelectorAll('[data-ask]').forEach((b) => (b.onclick = () => document.getElementById('ask-' + b.dataset.ask).classList.toggle('hidden')));
   app.querySelectorAll('[data-copyask]').forEach((b) => (b.onclick = () => { navigator.clipboard?.writeText(document.querySelector(`#ask-${b.dataset.copyask} textarea`).value); toast('📋 Message copié : colle-le au studio (site, e-mail ou Instagram)'); }));
