@@ -646,6 +646,23 @@ const SYN = { salon: ['salon', 'canap', 'fauteuil', 'sofa', 'cosy', 'chaleureu',
   'table podcast': ['podcast', 'table', 'micro', 'interview', 'face à face', 'face a face', 'discussion'], 'plusieurs décors': ['décors', 'decors', 'plusieurs', 'choix'] };
 const detectStyles = (txt) => { const t = (txt || '').toLowerCase(); return Object.keys(SYN).filter((k) => SYN[k].some((w) => t.includes(w))); };
 let spotQText = '';
+const fold = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const STOP = new Set(['avec', 'pour', 'dans', 'une', 'des', 'les', 'sur', 'pas', 'tres', 'plus', 'veux', 'cherche', 'studio', 'studios', 'lieu', 'lieux', 'paris', 'genre', 'style', 'comme', 'ambiance', 'et', 'ou', 'un', 'le', 'la', 'de', 'du', 'en', 'au', 'aux', 'qui', 'que', 'mon', 'ma', 'mes']);
+/** Mots utiles de la recherche (sans accents ni mots vides). */
+const words = (q) => fold(q).split(/[^a-z0-9]+/).filter((w) => w.length >= 2 && !STOP.has(w));
+/** Un mot colle-t-il à ce lieu ? (nom, quartier, ville, matériel, prix, décor, ou synonyme d'un décor du lieu) */
+const wordHits = (w, st) => {
+  if (['cher', 'econom', 'budget'].some((k) => w.startsWith(k))) return !!st.p && st.p <= 60;
+  if (['operateur', 'technicien', 'equipe', 'regie', 'ingenieur'].some((k) => w.startsWith(k))) return st.op;
+  if (['autonom', 'seul', 'libre'].some((k) => w.startsWith(k))) return st.auto;
+  if (['banlieue', 'idf'].includes(w)) return st.a > 20;
+  const hay = fold([st.n, st.q, st.cams, st.l, ...st.tags].join(' '));
+  if (w.length >= 3 && hay.includes(w)) return true;
+  if (/^\d{1,2}e?$/.test(w)) return st.a === +w.replace('e', '');
+  return st.tags.some((t) => (SYN[t] ?? []).some((k) => { const f = fold(k); return f.startsWith(w) || (w.length >= 4 && w.startsWith(f.slice(0, 4))); }));
+};
+/** % de mots de la recherche que le lieu remplit (null si pas de recherche). */
+const textScore = (st, q) => { const ws = words(q); if (!ws.length) return null; return Math.round((100 * ws.filter((w) => wordHits(w, st)).length) / ws.length); };
 const STYLES = ['salon', 'canapé', 'brique', 'néon', 'fond uni', 'fond vert', 'bureau', 'loft', 'table podcast', 'plusieurs décors'];
 let spotZone = 'all', spotMax = 0, spotOp = 'all', spotHours = 2, spotPeople = 2;
 const spotTags = new Set();
@@ -660,13 +677,17 @@ function studiosCard() {
   const inParis = (s) => s.a < 21;
   const ok = (s) => (!spotMax || (s.p && s.p <= spotMax)) && (spotOp === 'all' || (spotOp === 'op' ? s.op : s.auto)) && (spotZone === 'all' || (spotZone === 'paris' ? inParis(s) : !inParis(s)));
   // Ressemblance = part des styles demandés que le lieu a (0 à 100 %), puis le moins cher d'abord
-  const score = (s) => (spotTags.size ? Math.round((100 * [...spotTags].filter((t) => s.tags.includes(t)).length) / spotTags.size) : null);
+  // Ressemblance : mots de la recherche et décors cochés (moyenne des deux s'il y a les deux)
+  const score = (s) => {
+    const parts = [textScore(s, spotQText), spotTags.size ? Math.round((100 * [...spotTags].filter((t) => s.tags.includes(t)).length) / spotTags.size) : null].filter((x) => x !== null);
+    return parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
+  };
   const ranked = STUDIOS.filter(ok).map((s) => ({ ...s, match: score(s) })).filter((s) => s.match === null || s.match > 0)
     .sort((a, b) => (b.match ?? 0) - (a.match ?? 0) || (a.p || 999) - (b.p || 999));
   const list = [...mine, ...ranked];
   const chip = (t) => `<button class="pill ${spotTags.has(t) ? 'y' : 'g'}" data-stag="${esc(t)}" style="border:0;cursor:pointer">${esc(t)}</button>`;
   const sel = (id, cur, opts) => `<select id="${id}" class="sel">${opts.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
-  return `<div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3><span class="ic">${ic('mic', 16)}</span>${spotTags.size ? 'Lieux qui collent à ta recherche' : 'Studios et lieux à Paris'}</h3><span class="pill g">${list.length} résultat${list.length > 1 ? 's' : ''}</span></div>
+  return `<div class="card c12 in" style="grid-column:span 12;--i:2"><div class="ch"><h3><span class="ic">${ic('mic', 16)}</span>${spotTags.size || spotQText ? 'Lieux qui collent à ta recherche' : 'Studios et lieux · Paris et Île-de-France'}</h3><span class="pill g">${list.length} résultat${list.length > 1 ? 's' : ''}</span></div>
     <div class="row" style="justify-content:flex-start;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="small muted">Décor :</span>${STYLES.map(chip).join('')}</div>
     <div class="row small" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:6px">
       ${sel('spmax', spotMax, [[0, 'Tous les prix'], [40, '≤ 40 €/h'], [50, '≤ 50 €/h'], [60, '≤ 60 €/h'], [100, '≤ 100 €/h']])}
@@ -674,14 +695,14 @@ function studiosCard() {
       ${sel('spop', spotOp, [['all', 'Avec ou sans opérateur'], ['op', 'Opérateur inclus'], ['auto', 'En autonomie']])}
       <span>Durée</span><input id="sph" type="number" min="1" max="12" value="${spotHours}" style="width:56px;border:1px solid var(--line);border-radius:10px;padding:6px;font:inherit"><span>h</span>
       <span>Personnes</span><input id="spppl" type="number" min="1" max="10" value="${spotPeople}" style="width:56px;border:1px solid var(--line);border-radius:10px;padding:6px;font:inherit">
-      ${spotTags.size || spotMax || spotOp !== 'all' || spotZone !== 'all' ? '<button class="btn sm ghost" id="spreset">Tout effacer</button>' : ''}</div>
-    ${spotQText ? `<p class="small" style="margin:4px 0 8px">Recherche : <b>« ${esc(spotQText)} »</b>${spotTags.size ? ` → ${[...spotTags].map(esc).join(', ')}` : ' (aucun style reconnu : choisis-en un ci-dessus)'}${spotMax ? ` · ≤ ${spotMax} €/h` : ''} · ${spotPeople} pers.</p>` : ''}
+      ${spotTags.size || spotMax || spotOp !== 'all' || spotZone !== 'all' || spotQText ? '<button class="btn sm ghost" id="spreset">Tout effacer</button>' : ''}</div>
+    ${spotQText ? `<p class="small" style="margin:4px 0 8px">Recherche : <b>« ${esc(spotQText)} »</b>${spotMax ? ` · ≤ ${spotMax} €/h` : ''} · ${spotPeople} pers.</p>` : ''}
     ${list.map((s, i) => `<div class="li" style="flex-wrap:wrap;align-items:flex-start"><div class="grow" style="min-width:240px">${s.match != null ? `<span class="pill ${s.match >= 75 ? 'up' : 'g'}" style="margin-right:6px">${s.match} %</span>` : ''}<b>${s.mine !== undefined ? '⭐ ' : ''}${esc(s.n)}</b> <span class="muted small">· ${esc(s.q)}</span>
         <small>${esc(s.cams)}${s.op ? ' · <b>opérateur inclus</b>' : s.mine === undefined ? ' · en autonomie' : ''}</small>
         ${s.tags.length ? `<div class="row" style="justify-content:flex-start;gap:4px;flex-wrap:wrap;margin-top:4px">${s.tags.map((t) => `<span class="pill ${spotTags.has(t) ? 'y' : 'g'}" style="font-size:11px">${esc(t)}</span>`).join('')}</div>` : ''}</div>
       <div style="text-align:right;max-width:240px"><b class="small">${esc(s.l)}</b>${s.p ? `<div class="muted small">≈ ${fmt(s.p * spotHours)} pour ${spotHours} h</div>` : ''}</div>
       <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end">${s.u ? `<a class="btn sm" href="${esc(s.u)}" target="_blank" rel="noopener">Voir</a>` : ''}<button class="btn sm" data-ask="${i}">Demander une dispo</button><button class="btn sm y" data-note="${esc(JSON.stringify({ n: s.n, q: s.q, p: s.p }))}">J'ai réservé</button>${s.mine !== undefined ? `<button class="btn sm ghost" data-unfav="${s.mine}">✕</button>` : `<button class="btn sm ghost" title="Garder en favori" data-fav="${esc(JSON.stringify({ name: s.n, place: s.q, price: s.p, url: s.u, note: s.l.slice(0, 190) }))}">⭐</button>`}</div>
-      <div class="hidden" id="ask-${i}" style="width:100%"><textarea style="width:100%;min-height:110px;margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:13px">${esc(bookingMsg(s))}</textarea><button class="btn sm y" data-copyask="${i}">Copier le message</button></div></div>`).join('') || '<p class="muted small">Aucun lieu avec ces filtres : enlève un style ou monte le budget.</p>'}
+      <div class="hidden" id="ask-${i}" style="width:100%"><textarea style="width:100%;min-height:110px;margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:13px">${esc(bookingMsg(s))}</textarea><button class="btn sm y" data-copyask="${i}">Copier le message</button></div></div>`).join('') || `<p class="muted small">Aucun lieu ne correspond${spotQText ? ` à « ${esc(spotQText)} »` : ''}. Essaie d'autres mots (salon, brique, fond blanc, Boulogne, opérateur…) ou cherche sur <a href="https://www.google.com/search?q=${encodeURIComponent('location studio tournage ' + spotQText + ' Paris')}" target="_blank" rel="noopener">Google</a>.</p>`}
     <p class="muted small" style="margin-top:8px">Prix d'appel relevés sur les sites des studios, Peerspace et des comparatifs (26 oct 2026) : HT / TTC, opérateur et minimum d'heures varient, vérifie avant de réserver.</p>
     <details style="margin-top:6px"><summary class="small" style="cursor:pointer"><b>+ Ajouter un favori</b> (ex. le studio de Bobby)</summary>
       <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${['fvn|Nom', 'fvq|Quartier', 'fvp|€/h', 'fvu|Lien (facultatif)', 'fvo|Note'].map((x) => { const [id, ph] = x.split('|'); return `<input id="${id}" placeholder="${ph}" ${id === 'fvp' ? 'type="number" style="width:80px' : 'style="flex:1;min-width:120px'};border:1px solid var(--line);border-radius:10px;padding:7px 9px;font:inherit;font-size:13px">`; }).join('')}<button class="btn sm y" id="fvgo">Ajouter</button></div></details></div>`;
@@ -704,7 +725,7 @@ function pSpots() {
   <div class="bento"><div class="card c6 in"><div class="ch"><h3><span class="ic">${ic('spark', 16)}</span>Chercher un lieu</h3>${RAW.spotAI ? '<span class="pill y">IA</span>' : ''}</div>
       ${RAW.spotAI ? `<label class="drop" id="spdrop" style="min-height:${spotImg ? 0 : 120}px">${spotImg ? `<img src="${spotImg}" style="max-width:100%;max-height:200px;border-radius:14px">` : '📷 <b>Dépose ta référence</b><br><span class="small">capture d’un podcast, photo d’un décor…</span>'}<input type="file" accept="image/*" id="spfile" hidden></label>` : '<p class="muted small" style="margin:0 0 8px">Décris le lieu (salon, briques, fond blanc…), la liste en dessous se filtre.</p>'}
       <div class="field"><span class="muted small">Et/ou décris ce que tu veux</span><input id="spq" value="${esc(spotQText)}" placeholder="Bureau, étagères en bois, lumière chaude, 2 fauteuils"></div>
-      <div class="row small" style="gap:8px;flex-wrap:wrap"><input id="spv" value="Paris" style="width:90px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit"><select id="spb" class="sel">${['30-50 €/h', '50-100 €/h', '100 €/h et plus'].map((x) => `<option ${(spotMax === 50 && x.startsWith('30')) || (spotMax === 100 && x.startsWith('50')) ? 'selected' : ''}>${x}</option>`).join('')}</select><select id="spn2" class="sel">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === spotPeople ? 'selected' : ''}>${n} pers.</option>`).join('')}</select></div>
+      <div class="row small" style="gap:8px;flex-wrap:wrap"><input id="spv" value="Paris" style="width:90px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:inherit"><select id="spb" class="sel">${['Tout budget', '30-50 €/h', '50-100 €/h'].map((x) => `<option ${(spotMax === 50 && x.startsWith('30')) || (spotMax === 100 && x.startsWith('50')) ? 'selected' : ''}>${x}</option>`).join('')}</select><select id="spn2" class="sel">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${n === spotPeople ? 'selected' : ''}>${n} pers.</option>`).join('')}</select></div>
       ${RAW.spotAI ? `<button class="btn y w" id="spai" style="margin-top:14px">Chercher avec l'IA</button><p class="muted small" style="margin-top:8px">L'IA analyse la photo, cherche des lieux à louer sur le web et rédige le message pour le studio (30 s à 1 min).</p>` : ''}
       <button class="btn ${RAW.spotAI ? '' : 'y'} w" id="spfind" style="margin-top:12px">Rechercher</button>
       <div class="row small" style="gap:8px;margin-top:10px"><span class="muted">Chercher aussi sur :</span><button class="btn sm" data-sp="peerspace">Peerspace</button><button class="btn sm" data-sp="google">Google</button></div></div>
@@ -941,7 +962,7 @@ app.querySelectorAll('[data-sp]').forEach((b) => (b.onclick = () => { const q = 
   const spp = document.getElementById('spppl'); if (spp) spp.onchange = () => { spotPeople = Math.max(1, +spp.value || 2); render(); };
   const srs = document.getElementById('spreset'); if (srs) srs.onclick = () => { spotTags.clear(); spotMax = 0; spotOp = 'all'; spotZone = 'all'; spotQText = ''; render(); };
   const sfd = document.getElementById('spfind'); if (sfd) sfd.onclick = () => {
-    spotQText = document.getElementById('spq').value.trim(); spotTags.clear(); detectStyles(spotQText).forEach((t) => spotTags.add(t));
+    spotQText = document.getElementById('spq').value.trim();
     const b = document.getElementById('spb').value; spotMax = b.startsWith('30') ? 50 : b.startsWith('50') ? 100 : 0; spotPeople = +document.getElementById('spn2').value || 2;
     render(); setTimeout(() => document.getElementById('spmax')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
   };
