@@ -28,6 +28,7 @@ const asset = (name: string) => readFileSync(new URL(`./app/${name}`, import.met
 const ASSETS = {
   html: asset('index.html'),
   css: asset('app.css'),
+  neo: asset('neo.css'),
   js: asset('app.js'),
   fan: asset('fan.html'),
   fanSober: asset('fan-sober.html'),
@@ -546,6 +547,7 @@ export function createApp(deps: WebDeps): Hono {
 
   app.get('/', (c) => c.html(ASSETS.html));
   app.get('/app.css', (c) => c.body(ASSETS.css, 200, { 'content-type': 'text/css; charset=utf-8' }));
+  app.get('/neo.css', (c) => c.body(ASSETS.neo, 200, { 'content-type': 'text/css; charset=utf-8' }));
   app.get('/app.js', (c) => c.body(ASSETS.js, 200, { 'content-type': 'text/javascript; charset=utf-8' }));
 
   // --- Mars unique : ce Mars affiche aussi les autres créateurs --------------------------

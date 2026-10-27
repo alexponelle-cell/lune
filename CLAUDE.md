@@ -32,7 +32,7 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
   (abonnement à la formation / commu du créateur, etc.) dans une boutique.
 - Pour chaque créateur : **un site fans**, **un serveur Discord** (monté par la commande `/setup` du bot), et ses clippeurs.
 - **Créateurs actifs** : BeOne, SQUIDUU, Loann, **Cubi Game**, **Mickaël Wu**, **Noah Panchaud** (signés). **DEBO** : abandonné (service recyclé pour Cubi). **Prospects** : Croshoot, Josplay, Nighting (en pause).
-- **Mars** = dashboard staff (classement, comptes à vérifier, coaching des clippeurs…).
+- **Mars** = dashboard staff (classement, comptes à vérifier, coaching des clippeurs…). **Nouvelle DA (27 oct, d'après 2 reels Insta « AI dashboard »)** : `src/web/app/neo.css` (thèmes Mars clair / Sauge / Nuit = ancienne DA, sélecteur en bas, `mars.theme` en localStorage), accueil en cartes bento (`pageAgence`), courbes lissées qui se dessinent, chiffres qui comptent, assistant **Lune** (orbe en bas à droite, ⌘K / barre de recherche, voix du navigateur) qui répond par mots-clés avec les vrais chiffres, 0 € (`Lune` dans `app.js`).
 - **Serveur des monteurs** (« Agence PersonalBrand360 ») : 📦 ressources communes en lecture seule, puis par créateur
   📣annonces / 👱ressource / 💬général, + salon privé. Monté par `/setup-montage` (`src/bot/montage.ts`, bouton 🧹 pour nettoyer).
 
