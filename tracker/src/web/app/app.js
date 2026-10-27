@@ -2136,12 +2136,11 @@ const Lune = (() => {
     if (panel) return;
     panel = document.createElement('aside');
     panel.className = 'lune';
-    panel.setAttribute('aria-label', 'Lune, assistant');
-    panel.innerHTML = `<header>${ORB}<div><b>Lune</b><small>Calculé ici · 100 % gratuit</small></div><span class="sp"></span>
+    panel.setAttribute('aria-label', 'Lune');
+    panel.innerHTML = `<header>${ORB}<div><b>Lune</b></div><span class="sp"></span>
         <button data-sound title="Lire les réponses à voix haute">🔈</button><button data-reset title="Effacer">↺</button><button data-close title="Fermer">✕</button></header>
       <div class="log"></div>
-      <form><input placeholder="Pose ta question…" autocomplete="off">${SR ? `<button type="button" data-mic title="Parler">${icon('mic')}</button>` : ''}<button type="submit" title="Envoyer">${icon('send')}</button></form>
-      <div class="note">Les réponses sont calculées à partir de tes chiffres. Aucune donnée ne part ailleurs.</div>`;
+      <form><input placeholder="Pose ta question…" autocomplete="off">${SR ? `<button type="button" data-mic title="Parler">${icon('mic')}</button>` : ''}<button type="submit" title="Envoyer">${icon('send')}</button></form>`;
     document.body.append(panel);
     reset();
     $('form', panel).addEventListener('submit', (e) => {
@@ -2176,7 +2175,7 @@ const Lune = (() => {
   }
 
   function reset() {
-    $('.log', panel).innerHTML = `<div class="bot">${ORB}<div><div class="say">Salut 👋 Je suis <b>Lune</b>. Demande-moi tes chiffres : vues, posts, meilleurs clippeurs, qui relancer…</div>
+    $('.log', panel).innerHTML = `<div class="bot">${ORB}<div><div class="say">Tu veux savoir quoi ?</div>
       <div class="chips">${SUGGEST.map((q) => `<button data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div></div></div>`;
   }
 
@@ -2278,7 +2277,7 @@ const Lune = (() => {
     }
     const wait = $('[data-wait]', log());
     wait.removeAttribute('data-wait');
-    $('div', wait).innerHTML = `<div class="say">${a.html}</div>${a.card ?? ''}${a.focus || a.go ? `<div class="acts">${a.focus ? `<button data-focus="${a.focus}">👀 Voir sur le dashboard</button>` : ''}${a.go ? `<button data-go="${esc(a.go[0])}">${esc(a.go[1])}</button>` : ''}</div>` : ''}${a.chips ? `<div class="chips">${a.chips.map((c) => `<button data-q="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}`;
+    $('div', wait).innerHTML = `<div class="say">${a.html}</div>${a.card ?? ''}${a.focus || a.go ? `<div class="acts">${a.focus ? `<button data-focus="${a.focus}">Voir</button>` : ''}${a.go ? `<button data-go="${esc(a.go[0])}">${esc(a.go[1])}</button>` : ''}</div>` : ''}${a.chips ? `<div class="chips">${a.chips.map((c) => `<button data-q="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}`;
     $$('.k-big', wait).forEach(countUp);
     scroll();
     const plain = a.speak ?? a.html.replace(/<[^>]+>/g, '');
@@ -2321,17 +2320,17 @@ const Lune = (() => {
     const t = fold(q);
     if (/nuit|sombre|dark|noir/.test(t) && /mode|theme|passe|met|active/.test(t)) {
       setTheme('nuit');
-      return { html: 'C’est fait 🌙 Mode nuit activé.' };
+      return { html: 'Mode nuit.' };
     }
     if (/sauge|vert/.test(t) && /mode|theme|passe|met/.test(t)) {
       setTheme('sauge');
-      return { html: 'C’est fait 🌿 Thème Sauge activé.' };
+      return { html: 'Thème Sauge.' };
     }
     if (/clair|jour|light|mars/.test(t) && /mode|theme|passe|met/.test(t)) {
       setTheme('mars');
-      return { html: 'C’est fait ☀️ Thème Mars activé.' };
+      return { html: 'Thème Mars.' };
     }
-    if (/^(salut|bonjour|yo|hello|coucou|wesh)\b/.test(t) && t.length < 20) return { html: 'Salut 👋 Qu’est-ce que tu veux savoir ?', chips: SUGGEST.slice(0, 4) };
+    if (/^(salut|bonjour|yo|hello|coucou|wesh)\b/.test(t) && t.length < 20) return { html: 'Salut, tu veux savoir quoi ?', chips: SUGGEST.slice(0, 4) };
 
     const p = periodOf(t);
     if (/compte.*(verif|valid)|a verifier|commande|livrer|boutique|echange/.test(t)) {
@@ -2339,7 +2338,7 @@ const Lune = (() => {
       const toReview = f.accountsToReview?.length ?? 0;
       const pending = (f.orders ?? []).filter((o) => o.status === 'pending').length;
       return {
-        html: `Tu as ${b(toReview)} compte${toReview > 1 ? 's' : ''} à vérifier et ${b(pending)} commande${pending > 1 ? 's' : ''} à livrer${toReview + pending ? '.' : ' : tout est à jour ✅'}`,
+        html: `Tu as ${b(toReview)} compte${toReview > 1 ? 's' : ''} à vérifier et ${b(pending)} commande${pending > 1 ? 's' : ''} à livrer${toReview + pending ? '.' : ' : rien en attente'}`,
         card: `<div class="mini" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><small>Comptes à vérifier</small><div class="big"><span class="k-big num">${toReview}</span></div></div><div><small>Commandes à livrer</small><div class="big"><span class="k-big num">${pending}</span></div></div></div>`,
         go: ['#/boutique', 'Ouvrir la boutique fans'],
       };
@@ -2370,7 +2369,7 @@ const Lune = (() => {
     }
     if (/inactif|pas poste|rien poste|relanc|alerte|retard|dort|longtemps|absent|baisse/.test(t)) {
       const al = d.alerts;
-      if (!al.length) return { html: 'Personne à relancer : tout le monde poste 🎉', focus: 'alerts' };
+      if (!al.length) return { html: 'Personne à relancer.', focus: 'alerts' };
       return {
         html: `${b(al.length)} clippeur${al.length > 1 ? 's' : ''} à relancer. Le plus urgent : ${b(esc(al[0].username))}${al[0].inactiveDays != null ? `, ${b(`${al[0].inactiveDays} jours`)} sans poster` : ''}.`,
         card: `<div class="mini">${al.slice(0, 5).map((a) => `<a class="who" href="#/clipper/${a.clipperId}" style="justify-content:space-between">${`<span class="who">${avatar(a.username)}<b>${esc(a.username)}</b></span>`}<span class="delta down">${a.inactiveDays != null ? `${a.inactiveDays} j` : `−${a.dropPercent} %`}</span></a>`).join('')}</div>`,
@@ -2407,7 +2406,7 @@ const Lune = (() => {
       };
     }
     return {
-      html: 'Je n’ai pas compris 🤔 Je sais répondre sur les vues, les posts, les meilleurs clippeurs, qui relancer, les comptes à vérifier et les commandes. Tu peux aussi écrire le pseudo d’un clippeur.',
+      html: 'Pas compris. Essaie : vues, posts, meilleur clippeur, qui relancer, comptes à vérifier, commandes, ou un pseudo.',
       chips: SUGGEST.slice(0, 4),
     };
   }
@@ -2415,22 +2414,10 @@ const Lune = (() => {
   function mountFloating() {
     const orb = document.createElement('button');
     orb.className = 'orb float';
-    orb.title = 'Lune, ton assistant';
+    orb.title = 'Lune';
     orb.innerHTML = '<span class="eyes"><i></i><i></i></span>';
     orb.addEventListener('click', toggle);
     document.body.append(orb);
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem('lune.hint') === '1';
-      sessionStorage.setItem('lune.hint', '1');
-    } catch {}
-    if (!seen) {
-      const hint = document.createElement('div');
-      hint.className = 'orb-hint';
-      hint.innerHTML = 'Je suis <b>Lune</b>, demande-moi tes chiffres';
-      document.body.append(hint);
-      setTimeout(() => hint.remove(), 7000);
-    }
     document.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
