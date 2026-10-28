@@ -55,6 +55,10 @@ de travailler avec Alex et l'état actuel. Le mettre à jour quand quelque chose
     table `youtube_tokens` v21) ; vues toujours lues avec la clé. Actif seulement si `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` sont mis
     (projet Google Cloud « System Agency » sur le compte de la mère d'Alex). App Google en mode **Test** (100 utilisateurs test max) :
     ne mettre les variables qu'après la validation Google. Relais comme TikTok : `YOUTUBE_REDIRECT_URI`.
+    **État (28 oct)** : projet Google Cloud « System Agency » sur le compte d'Alex (alexandreponelle11), app « Neptune Clipping » en production,
+    site validé dans Search Console (fichier `googleb4c9e6a13d5b1d3b.html` servi par `server.ts`, les 2 comptes d'Alex propriétaires),
+    démo filmée, **demande de validation envoyée le 28 oct** (branding refusé 2 fois « site pas à votre nom » → appel « résultat incorrect »).
+    Clés retirées de Railway en attendant. Si refus : acheter un domaine (~10 €/an) ou laisser le bouton en pause (les vues marchent avec la clé API).
   - TikTok / Instagram : **connexion officielle OAuth** (gratuite, prouve que le compte est au clippeur), sinon **Apify** (payant).
   - Fans : relevé chaque nuit après minuit (Paris). Comptes Apify : toutes les 2 nuits, moins souvent si inactifs (économies).
 - Anti-triche : un clip compte seulement si le compte est vérifié, si le clip est publié après l'ajout du compte,
