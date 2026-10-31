@@ -4,7 +4,8 @@ import type { Account, Clipper, Repo } from '../db/repo.js';
 import type { FetcherRegistry } from '../platforms/types.js';
 import { citesCreator, clipKeywords } from './clipCheck.js';
 import { parseAccountInput, parseAccountLinks, type AccountLink, type Platform } from '../domain/links.js';
-import type { AgencyService } from './agency.js';
+import { type AgencyService, readableError } from './agency.js';
+import { trackingReport, type TrackingReport } from '../domain/tracking.js';
 import { type CoinsState, coinsDiagnosis, type FaqInfo, type FaqIntent, fanAccountError, videoKey } from '../domain/faq.js';
 import { beone } from '../creators/beone.js';
 import { parisMidnight } from '../jobs/collect.js';
@@ -1353,6 +1354,20 @@ export class FanService {
       roblox: this.rewardAccount(o.clipperId).value,
     }));
     return { creatorName: this.creator.creatorName, accountsToReview: this.accountsToReview(), clipRule: this.clipRuleSince() !== null, clipKeywords: this.clipKeywords(), accountLabel: this.creator.rewardAccount.kind === 'email' ? 'E-mail' : 'Roblox', creator: { id: this.creator.id, theme: this.creator.theme }, settings: s, clients: this.repo.listClients().map((c) => ({ id: c.id, name: c.name })), fans, items: this.fans.items(), orders };
+  }
+
+  /** Contrôle du relevé de la nuit (YouTube, TikTok, Instagram) : comptes relus, en erreur, en retard. */
+  trackingReport(now = Date.now()): TrackingReport | null {
+    const clientId = this.settings().clientId;
+    if (clientId === null) return null;
+    const names = new Map(this.repo.listClippers({ clientId, includeInactive: true }).map((c) => [c.id, c.username]));
+    const accounts = this.repo
+      .listActiveAccounts()
+      .filter((a) => a.clientId === clientId)
+      .map((a) => ({ ...a, username: names.get(a.clipperId) ?? '?' }));
+    const report = trackingReport(accounts, this.repo.lastPublishedByAccount(), this.officialLogin?.connected() ?? new Set(), parisMidnight(now), now);
+    for (const p of report.problems) if (p.error) p.error = readableError(p.error);
+    return report;
   }
 
   saveItem(id: number | null, input: ItemInput) {

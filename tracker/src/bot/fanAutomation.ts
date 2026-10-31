@@ -7,6 +7,7 @@ import { dayKey as dayKeyOf } from '../domain/time.js';
 import { startOfDay } from '../domain/time.js';
 import { drawMotivation, type MotivationState, motivationMessage } from '../domain/motivation.js';
 import { log } from '../log.js';
+import { trackingMessage } from '../domain/tracking.js';
 import type { FanService } from '../services/fans.js';
 import { ANNOUNCE_CHANNEL, BEST_CLIPS_CHANNEL, ROLE_CLIP_WEEK, ROLE_WEEKEND, bare, ensureTierRoles, LEVELUP_CHANNEL, levelRoleName, ROLE_READER, ROLE_RULES, ROLE_TRAINED, LOG_CHANNEL, RANKING_CHANNEL, ROLE_ALERTS, ROLE_CLIPPER, ROLE_PENDING, ROLE_TOP, VIDEOS_CHANNEL } from './fanServer.js';
 
@@ -408,6 +409,20 @@ export async function motivationFans(client: Client<true>, fans: FanService, now
   const { index, bag } = drawMotivation(state, undefined, random);
   for (const g of generals) await g.send({ content: motivationMessage(index), allowedMentions: { parse: ['everyone'] } }).catch((err) => log.warn(`motivation (${g.guild.name}) : ${String(err)}`));
   fans.setBotState('motivation', { day, bag, last: index } satisfies MotivationState);
+  return true;
+}
+
+/** Rapport du relevé de la nuit (YouTube, TikTok, Instagram) dans le salon log du staff, une fois par jour entre 8 h et midi. */
+export async function trackingDigest(client: Client<true>, fans: FanService, now = Date.now()): Promise<boolean> {
+  const { hour, day } = parisClock(now);
+  if (hour < 8 || hour >= 12 || fans.botState<string>('tracking-digest', '') === day) return false;
+  const report = fans.trackingReport(now);
+  if (!report) return false;
+  const logs = setupGuilds(client, fans).map((g) => channel(g, LOG_CHANNEL)).filter((c): c is TextChannel => !!c);
+  if (!logs.length) return false;
+  const content = trackingMessage(report);
+  for (const c of logs) await c.send({ content, allowedMentions: { parse: [] } }).catch((err) => log.warn(`relevé de la nuit (${c.guild.name}) : ${String(err)}`));
+  fans.setBotState('tracking-digest', day);
   return true;
 }
 

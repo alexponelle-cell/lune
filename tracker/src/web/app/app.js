@@ -1698,6 +1698,26 @@ function bindAccountSearch(tries = 0) {
   input.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 250); };
 }
 
+/** Relevé de la nuit : chaque compte (YouTube, TikTok, Instagram) a-t-il bien été relu ? */
+function trackingCard(t) {
+  if (!t) return '';
+  const NAME = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram' };
+  const plats = Object.entries(t.platforms).filter(([, x]) => x.total);
+  if (!plats.length) return '';
+  const WHY = { late: 'pas relu à temps', never: 'jamais relu' };
+  const when = (at) => (at ? `relu ${ago(at)}` : 'jamais relu');
+  return `<div class="card"><div class="card-head"><div><h2>Relevé de la nuit ${t.problems.length ? `<span class="tag">${t.problems.length}</span>` : '<span class="pill ok">tout est relu</span>'}</h2>
+      <p>Chaque nuit après minuit. Un compte en erreur est réessayé 45 min plus tard ; le résumé part à 8 h dans le salon log du staff.</p></div></div>
+    <div class="mini-stats">${plats.map(([p, x]) => {
+      const bad = x.error + x.late + x.never;
+      return `<div><b class="num" style="${bad ? 'color:var(--red)' : ''}">${x.ok + x.waiting} / ${x.total}</b><span>${NAME[p]} · ${x.ok} cette nuit${x.waiting ? `, ${x.waiting} plus tard` : ''}${bad ? ` · <b style="color:var(--red)">${bad} à régler</b>` : ''}</span></div>`;
+    }).join('')}</div>
+    ${t.problems.length ? `<div class="table-wrap"><table><thead><tr><th>Compte</th><th>Clippeur</th><th>Problème</th><th class="r">Dernier relevé</th></tr></thead><tbody>
+      ${t.problems.map((p) => `<tr><td><a href="${esc(p.url)}" target="_blank" rel="noopener"><span class="plat ${p.platform}">${PLAT_SHORT[p.platform]}</span> @${esc(p.handle)}</a></td><td>${esc(p.username)}</td>
+        <td>${p.status === 'error' ? `<span class="pill ko">${esc(p.error ?? 'erreur')}</span>` : `<span class="pill wait">${WHY[p.status]}</span>`}</td><td class="r faint">${when(p.lastCheckedAt)}</td></tr>`).join('')}
+    </tbody></table></div>` : ''}</div>`;
+}
+
 async function pageBoutique() {
   setTimeout(() => { loadFaqMisses(); bindAccountSearch(); }, 0);
   loading();
@@ -1708,6 +1728,7 @@ async function pageBoutique() {
   main().innerHTML = `<div class="page-head"><div><h1>Boutique fans</h1><p>Les fans clippent, gagnent des coins avec leurs vues et les échangent contre des objets en jeu</p></div>
     <div class="actions"><button class="btn dark" data-fan-refresh>${icon('refresh')} Relever les vues maintenant</button><a class="btn" href="/fan" target="_blank" rel="noopener">Voir l'espace fan</a></div></div>
     <div class="stack">
+      ${trackingCard(d.tracking)}
       <form class="card card-pad stack" id="fan-settings"><div><h2 style="margin:0;font-size:15px">Réglages</h2>
         <p class="faint" style="margin:2px 0 0;font-size:12px">Bot des fans : <b>${d.fansBot ? (nep.state === 'ready' ? `${esc(nep.tag)} connecté ✅${nep.error ? ` · ⚠️ ${esc(nep.error)}` : ''}` : nep.state === 'error' ? `erreur : ${esc(nep.error)}` : 'connexion…') : 'non configuré'}</b> · Neptune : <b>${d.neptuneKey ? 'relié' : 'non relié'}</b> · ${d.emailApi ? 'Livraison e-mail : <b>automatique ✅</b>' : `API du jeu : <b>${!d.gameApi ? 'non configurée' : d.gameCheck?.ok ? `connectée ✅ (${d.gameCheck.remaining}/${d.gameCheck.limit} dons dispo sur ${Math.round(d.gameCheck.windowSeconds / 60)} min)` : `<span style="color:var(--orange)">⚠️ ${esc(d.gameCheck?.error ?? 'injoignable')}</span>`}</b>`} ${d.apify ? ` · Apify : <b style="${d.apify.limit && d.apify.used / d.apify.limit >= 0.8 ? 'color:var(--orange)' : ''}">${d.apify.used.toFixed(2)} $${d.apify.limit ? ` / ${d.apify.limit} $` : ''}${d.apify.limit && d.apify.used / d.apify.limit >= 0.8 ? ' ⚠️ presque au plafond (TikTok / Insta se mettront en pause)' : ''}</b>${d.apify.resetAt ? ` (remise à zéro le ${new Date(d.apify.resetAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })})` : ''}` : ''} · Messages privés (7 j) : <b>${d.notifications.sent} envoyés</b>${d.notifications.failed ? `, ${d.notifications.failed} impossibles (DM fermés)` : ''}${d.notifications.pending ? `, ${d.notifications.pending} en attente` : ''}</p></div>
         <div class="grid-form">
@@ -2123,7 +2144,7 @@ function mountThemes() {
 
 const ORB = '<span class="orb"><span class="eyes"><i></i><i></i></span></span>';
 const fold = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-const SUGGEST = ['Combien de vues cette semaine ?', 'Qui est mon meilleur clippeur ?', 'Qui n’a pas posté depuis longtemps ?', 'Combien de posts ce mois-ci ?', 'Combien de comptes à vérifier ?', 'Passe en mode nuit'];
+const SUGGEST = ['Le relevé de cette nuit est bon ?', 'Combien de vues cette semaine ?', 'Qui est mon meilleur clippeur ?', 'Qui n’a pas posté depuis longtemps ?', 'Combien de posts ce mois-ci ?', 'Combien de comptes à vérifier ?', 'Passe en mode nuit'];
 
 const Lune = (() => {
   let panel;
@@ -2333,6 +2354,17 @@ const Lune = (() => {
     if (/^(salut|bonjour|yo|hello|coucou|wesh)\b/.test(t) && t.length < 20) return { html: 'Salut, tu veux savoir quoi ?', chips: SUGGEST.slice(0, 4) };
 
     const p = periodOf(t);
+    if (/releve|tracking|track|recup|collecte|bug|erreur/.test(t)) {
+      const tr = (await api('/api/fans')).tracking;
+      if (!tr) return { html: 'Aucun programme fans réglé ici.' };
+      const NAME = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram' };
+      const parts = Object.entries(tr.platforms).filter(([, x]) => x.total).map(([p, x]) => `${NAME[p]} ${b(`${x.ok + x.waiting}/${x.total}`)}`);
+      return {
+        html: `Relevé de la nuit : ${parts.join(', ')}. ${tr.problems.length ? `${b(tr.problems.length)} compte(s) à régler.` : 'Tout est relu.'}`,
+        card: tr.problems.length ? `<div class="mini">${tr.problems.slice(0, 6).map((p) => `<div class="who" style="justify-content:space-between;padding:5px 0"><span><b>${NAME[p.platform]} @${esc(p.handle)}</b> <span class="faint">${esc(p.username)}</span></span><span class="delta down">${p.status === 'error' ? 'erreur' : p.status === 'late' ? 'en retard' : 'jamais relu'}</span></div>`).join('')}</div>` : '',
+        go: ['#/boutique', 'Voir le détail'],
+      };
+    }
     if (/compte.*(verif|valid)|a verifier|commande|livrer|boutique|echange/.test(t)) {
       const f = await api('/api/fans');
       const toReview = f.accountsToReview?.length ?? 0;

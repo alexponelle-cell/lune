@@ -1,0 +1,53 @@
+import { describe, expect, it } from 'vitest';
+import { trackingMessage, trackingReport, trackStatus, type TrackedAccount } from '../src/domain/tracking.js';
+
+const H = 3_600_000;
+const D = 24 * H;
+const since = Date.UTC(2026, 9, 31, 23); // minuit à Paris
+const now = since + 9 * H; // 9 h du matin
+const acc = (o: Partial<TrackedAccount>): TrackedAccount => ({ id: 1, platform: 'tiktok', handle: 'x', url: 'https://x', lastCheckedAt: since + H, lastError: null, createdAt: since - 60 * D, ...o });
+
+describe('relevé de la nuit', () => {
+  it('relu cette nuit sans erreur = ok, avec erreur = error', () => {
+    expect(trackStatus(acc({}), now - D, since, now, false)).toBe('ok');
+    expect(trackStatus(acc({ lastError: 'Apify: hard limit' }), now - D, since, now, false)).toBe('error');
+  });
+  it('compte gratuit (YouTube, connecté) pas relu cette nuit = en retard', () => {
+    expect(trackStatus(acc({ platform: 'youtube', lastCheckedAt: since - 5 * H }), now - D, since, now, false)).toBe('late');
+    expect(trackStatus(acc({ lastCheckedAt: since - 5 * H }), now - D, since, now, true)).toBe('late');
+    // à 1 h du matin, le relevé a encore le temps
+    expect(trackStatus(acc({ platform: 'youtube', lastCheckedAt: since - 5 * H }), now - D, since, since + H, false)).toBe('waiting');
+  });
+  it('compte payant : attend son tour, en retard seulement au-delà de son rythme + 1 jour', () => {
+    expect(trackStatus(acc({ lastCheckedAt: since - 20 * H }), now - D, since, now, false)).toBe('waiting');
+    expect(trackStatus(acc({ lastCheckedAt: now - 4 * D }), now - D, since, now, false)).toBe('late');
+    // inactif depuis 20 jours : 1 fois par semaine
+    expect(trackStatus(acc({ lastCheckedAt: now - 6 * D }), now - 20 * D, since, now, false)).toBe('waiting');
+    expect(trackStatus(acc({ lastCheckedAt: now - 9 * D }), now - 20 * D, since, now, false)).toBe('late');
+  });
+  it('jamais relu après 3 h = never', () => {
+    expect(trackStatus(acc({ lastCheckedAt: null, createdAt: now - 4 * H }), null, since, now, false)).toBe('never');
+    expect(trackStatus(acc({ lastCheckedAt: null, createdAt: now - H }), null, since, now, false)).toBe('waiting');
+  });
+  it('rapport par réseau + message staff', () => {
+    const r = trackingReport(
+      [
+        { ...acc({ id: 1, platform: 'youtube' }), username: 'Nono' },
+        { ...acc({ id: 2, lastError: 'compte introuvable', handle: 'bad' }), username: 'Théo' },
+        { ...acc({ id: 3, platform: 'instagram', lastCheckedAt: since - 20 * H }), username: 'Lina' },
+      ],
+      new Map([[1, now - D], [2, now - D], [3, now - D]]),
+      new Set(),
+      since,
+      now,
+    );
+    expect(r.platforms.youtube).toMatchObject({ total: 1, ok: 1 });
+    expect(r.platforms.tiktok).toMatchObject({ total: 1, error: 1 });
+    expect(r.platforms.instagram).toMatchObject({ total: 1, waiting: 1 });
+    expect(r.problems.map((p) => p.handle)).toEqual(['bad']);
+    const msg = trackingMessage(r);
+    expect(msg).toContain('✅ **YouTube** : 1 relu(s)');
+    expect(msg).toContain('⚠️ **TikTok**');
+    expect(msg).toContain('@bad (Théo) : compte introuvable');
+  });
+});
